@@ -46,6 +46,7 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
+import interactions_mbx;
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System &system, std::size_t selectedComponent,
@@ -78,83 +79,134 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   {
     return std::nullopt;
   }
-
-  std::vector<double3> electricFieldMoleculeNew(molecule_atoms.size());
-  std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
-
-  // compute external field energy contribution
-  time_begin = std::chrono::system_clock::now();
-  std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-      system.hasExternalField, system.forceField, system.simulationBox, 
-      system.externalFieldInterpolationGrid, trialMolecule.second, molecule_atoms);
-  time_end = std::chrono::system_clock::now();
-  component.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
-  if (!externalFieldMolecule.has_value()) return std::nullopt;
-
-  // compute framework-molecule energy contribution
-  time_begin = std::chrono::system_clock::now();
-  std::optional<RunningEnergy> frameworkMolecule;
-  if (system.forceField.computePolarization)
+  
+  // Update move construction statistics
+  component.mc_moves_statistics.addConstructed(move, selectedDirection);
+  
+  // Compute MBX Energy
+  if (system.useMBX)
   {
-    frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-        system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second,
-        molecule_atoms);
-  }
-  else
-  {
+    RunningEnergy energyDifference{};
+
+    time_begin = std::chrono::system_clock::now();
+    RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(system, components, system.simulationBox, system.framework,
+                                                       selectedComponent, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
+                                                       trialMolecule.second, true);
+
+    time_end = std::chrono::system_clock::now();
+    component.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
+    system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
+  
+    // Energy of the system before the insertion of trial molecule
+    RunningEnergy oldTotalEnergy = system.runningEnergies;
+    // MBX energy difference before and after the insertion move old and new configuration 
+    energyDifference.mbxEnergy = newTotalEnergy.mbxEnergy - oldTotalEnergy.mbxEnergy;
+
+    // compute framework-molecule energy contribution
+    time_begin = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> frameworkMolecule;
+    
     frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
         system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
         system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
-  }
-  time_end = std::chrono::system_clock::now();
-  component.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
-  if (!frameworkMolecule.has_value()) return std::nullopt;
 
-  // compute molecule-molecule energy contribution
-  time_begin = std::chrono::system_clock::now();
-  std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
-  time_end = std::chrono::system_clock::now();
-  component.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
-  if (!interMolecule.has_value()) return std::nullopt;
+    time_end = std::chrono::system_clock::now();
+    component.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
+    system.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
+    if (!frameworkMolecule.has_value()) return std::nullopt;
 
-  // compute Ewald energy contribution
-  time_begin = std::chrono::system_clock::now();
-  RunningEnergy ewaldFourierEnergy;
-  if (system.forceField.computePolarization)
-  {
-    ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
-        trialMolecule.second, molecule_atoms);
+    energyDifference.frameworkMoleculeVDW = frameworkMolecule.value().frameworkMoleculeVDW; 
+
+    // compute framework-molecule tail energy contribution
+    time_begin = std::chrono::system_clock::now();
+    RunningEnergy tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                              system.spanOfFrameworkAtoms(), trialMolecule.second,
+                                                              molecule_atoms);
+    time_end = std::chrono::system_clock::now();
+    component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+    system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+    energyDifference.tail = tailEnergyDifferenceFrameworkMolecule.tail;
+
   }
   else
   {
-    ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
-        system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-        system.simulationBox, trialMolecule.second, molecule_atoms);
+    // MBX not used
+    std::vector<double3> electricFieldMoleculeNew(molecule_atoms.size());
+    std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
+
+    // compute external field energy contribution
+    time_begin = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
+        system.hasExternalField, system.forceField, system.simulationBox, 
+        system.externalFieldInterpolationGrid, trialMolecule.second, molecule_atoms);
+    time_end = std::chrono::system_clock::now();
+    component.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
+    system.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
+    if (!externalFieldMolecule.has_value()) return std::nullopt;
+
+    // compute framework-molecule energy contribution
+    time_begin = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> frameworkMolecule;
+    if (system.forceField.computePolarization)
+    {
+      frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
+          system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+          system.spanOfFrameworkAtoms(), electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second,
+          molecule_atoms);
+    }
+    else
+    {
+      frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
+          system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
+          system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
+    }
+    time_end = std::chrono::system_clock::now();
+    component.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
+    system.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
+    if (!frameworkMolecule.has_value()) return std::nullopt;
+
+    // compute molecule-molecule energy contribution
+    time_begin = std::chrono::system_clock::now();
+    std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
+        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, molecule_atoms);
+    time_end = std::chrono::system_clock::now();
+    component.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
+    system.mc_moves_cputime[move]["Molecule-Molecule"] += (time_end - time_begin);
+    if (!interMolecule.has_value()) return std::nullopt;
+
+    // compute Ewald energy contribution
+    time_begin = std::chrono::system_clock::now();
+    RunningEnergy ewaldFourierEnergy;
+    if (system.forceField.computePolarization)
+    {
+      ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
+          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
+          system.totalEik, system.forceField, system.simulationBox, electricFieldMoleculeNew, electricFieldMoleculeOld,
+          trialMolecule.second, molecule_atoms);
+    }
+    else
+    {
+      ewaldFourierEnergy = Interactions::energyDifferenceEwaldFourier(
+          system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
+          system.simulationBox, trialMolecule.second, molecule_atoms);
+    }
+    time_end = std::chrono::system_clock::now();
+    component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+    system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+
+    RunningEnergy polarizationDifference;
+    if (system.forceField.computePolarization)
+    {
+      // Compute polarization energy difference
+      polarizationDifference = Interactions::computePolarizationEnergyDifference(
+          system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
+    }
+
+    // get the total difference in energy
+    RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
+                                    ewaldFourierEnergy + polarizationDifference;
+
   }
-  time_end = std::chrono::system_clock::now();
-  component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-
-  RunningEnergy polarizationDifference;
-  if (system.forceField.computePolarization)
-  {
-    // Compute polarization energy difference
-    polarizationDifference = Interactions::computePolarizationEnergyDifference(
-        system.forceField, electricFieldMoleculeNew, electricFieldMoleculeOld, trialMolecule.second, molecule_atoms);
-  }
-
-  // get the total difference in energy
-  RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
-                                   ewaldFourierEnergy + polarizationDifference;
-
-  component.mc_moves_statistics.addConstructed(move, selectedDirection);
 
   // apply acceptance/rejection rule
   if (random.uniform() < std::exp(-system.beta * energyDifference.potentialEnergy()))
