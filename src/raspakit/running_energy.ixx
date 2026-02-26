@@ -69,13 +69,16 @@ export struct RunningEnergy
         intraVDW(0.0),
         intraCoul(0.0),
         tail(0.0),
+        frameworkMoleculeTail(0.0),
+        moleculeMoleculeTail(0.0),
         polarization(0.0),
         dudlambdaVDW(0.0),
         dudlambdaCharge(0.0),
         dudlambdaEwald(0.0),
         translationalKineticEnergy(0.0),
         rotationalKineticEnergy(0.0),
-        NoseHooverEnergy(0.0)
+        NoseHooverEnergy(0.0),
+        mbxEnergy(0.0)
   {
   }
 
@@ -180,7 +183,10 @@ export struct RunningEnergy
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
            frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
            ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
-           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + tail + polarization;
+           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + polarization +
+          //  tail +
+           frameworkMoleculeTail + moleculeMoleculeTail +
+           mbxEnergy;
   }
 
   /**
@@ -268,6 +274,8 @@ export struct RunningEnergy
     intraVDW = 0.0;
     intraCoul = 0.0;
     tail = 0.0;
+    frameworkMoleculeTail = 0.0;
+    moleculeMoleculeTail = 0.0;
     polarization = 0.0;
     dudlambdaVDW = 0.0;
     dudlambdaCharge = 0.0;
@@ -275,6 +283,7 @@ export struct RunningEnergy
     translationalKineticEnergy = 0.0;
     rotationalKineticEnergy = 0.0;
     NoseHooverEnergy = 0.0;
+    mbxEnergy = 0.0;
   }
 
   inline RunningEnergy& operator+=(const RunningEnergy& b)
@@ -303,6 +312,8 @@ export struct RunningEnergy
     intraVDW += b.intraVDW;
     intraCoul += b.intraCoul;
     tail += b.tail;
+    frameworkMoleculeTail += b.frameworkMoleculeTail;
+    moleculeMoleculeTail += b.moleculeMoleculeTail;
     polarization += b.polarization;
     dudlambdaVDW += b.dudlambdaVDW;
     dudlambdaCharge += b.dudlambdaCharge;
@@ -310,6 +321,7 @@ export struct RunningEnergy
     translationalKineticEnergy += b.translationalKineticEnergy;
     rotationalKineticEnergy += b.rotationalKineticEnergy;
     NoseHooverEnergy += b.NoseHooverEnergy;
+    mbxEnergy += b.mbxEnergy;
 
     return *this;
   }
@@ -340,6 +352,8 @@ export struct RunningEnergy
     intraVDW -= b.intraVDW;
     intraCoul -= b.intraCoul;
     tail -= b.tail;
+    frameworkMoleculeTail -= b.frameworkMoleculeTail;
+    moleculeMoleculeTail -= b.moleculeMoleculeTail;
     polarization -= b.polarization;
     dudlambdaVDW -= b.dudlambdaVDW;
     dudlambdaCharge -= b.dudlambdaCharge;
@@ -347,6 +361,7 @@ export struct RunningEnergy
     translationalKineticEnergy -= b.translationalKineticEnergy;
     rotationalKineticEnergy -= b.rotationalKineticEnergy;
     NoseHooverEnergy -= b.NoseHooverEnergy;
+    mbxEnergy -= b.mbxEnergy;
 
     return *this;
   }
@@ -378,6 +393,8 @@ export struct RunningEnergy
     v.intraVDW = -intraVDW;
     v.intraCoul = -intraCoul;
     v.tail = -tail;
+    v.frameworkMoleculeTail = -frameworkMoleculeTail;
+    v.moleculeMoleculeTail = -moleculeMoleculeTail;
     v.polarization = -polarization;
     v.dudlambdaVDW = -dudlambdaVDW;
     v.dudlambdaCharge = -dudlambdaCharge;
@@ -385,6 +402,7 @@ export struct RunningEnergy
     v.translationalKineticEnergy = -translationalKineticEnergy;
     v.rotationalKineticEnergy = -rotationalKineticEnergy;
     v.NoseHooverEnergy = -NoseHooverEnergy;
+    v.mbxEnergy = -mbxEnergy;
 
     return v;
   }
@@ -415,6 +433,8 @@ export struct RunningEnergy
   double intraVDW;                    ///< Intramolecular van der Waals energy.
   double intraCoul;                   ///< Intramolecular Coulomb energy.
   double tail;                        ///< Tail correction energy for van der Waals interactions.
+  double frameworkMoleculeTail;       ///< Tail correction energy for frameworkMolecule Interaction
+  double moleculeMoleculeTail;        ///< Tail correction energy for moleculeMolecule Interaction
   double polarization;                ///< Energy contribution from polarization effects.
   double dudlambdaVDW;                ///< Derivative of van der Waals energy with respect to lambda.
   double dudlambdaCharge;             ///< Derivative of Coulomb energy with respect to lambda (real space).
@@ -422,6 +442,7 @@ export struct RunningEnergy
   double translationalKineticEnergy;  ///< Translational kinetic energy.
   double rotationalKineticEnergy;     ///< Rotational kinetic energy.
   double NoseHooverEnergy;            ///< Energy associated with Nose-Hoover thermostat/barostat.
+  double mbxEnergy;                   ///< Energy calculated from MBX.
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const RunningEnergy& c);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, RunningEnergy& c);
@@ -454,6 +475,8 @@ export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnerg
   m.intraVDW = a.intraVDW + b.intraVDW;
   m.intraCoul = a.intraCoul + b.intraCoul;
   m.tail = a.tail + b.tail;
+  m.frameworkMoleculeTail = a.frameworkMoleculeTail + b.frameworkMoleculeTail;
+  m.moleculeMoleculeTail = a.moleculeMoleculeTail + b.moleculeMoleculeTail;
   m.polarization = a.polarization + b.polarization;
   m.dudlambdaVDW = a.dudlambdaVDW + b.dudlambdaVDW;
   m.dudlambdaCharge = a.dudlambdaCharge + b.dudlambdaCharge;
@@ -461,6 +484,7 @@ export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnerg
   m.translationalKineticEnergy = a.translationalKineticEnergy + b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a.rotationalKineticEnergy + b.rotationalKineticEnergy;
   m.NoseHooverEnergy = a.NoseHooverEnergy + b.NoseHooverEnergy;
+  m.mbxEnergy = a.mbxEnergy + b.mbxEnergy;
 
   return m;
 }
@@ -492,6 +516,8 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
   m.intraVDW = a.intraVDW - b.intraVDW;
   m.intraCoul = a.intraCoul - b.intraCoul;
   m.tail = a.tail - b.tail;
+  m.frameworkMoleculeTail = a.frameworkMoleculeTail - b.frameworkMoleculeTail;
+  m.moleculeMoleculeTail = a.moleculeMoleculeTail - b.moleculeMoleculeTail;
   m.polarization = a.polarization - b.polarization;
   m.dudlambdaVDW = a.dudlambdaVDW - b.dudlambdaVDW;
   m.dudlambdaCharge = a.dudlambdaCharge - b.dudlambdaCharge;
@@ -499,6 +525,8 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
   m.translationalKineticEnergy = a.translationalKineticEnergy - b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a.rotationalKineticEnergy - b.rotationalKineticEnergy;
   m.NoseHooverEnergy = a.NoseHooverEnergy - b.NoseHooverEnergy;
+  m.mbxEnergy = a.mbxEnergy - b.mbxEnergy;
+
   return m;
 }
 
@@ -529,6 +557,8 @@ export inline RunningEnergy operator*(double a, const RunningEnergy b)
   m.intraVDW = a * b.intraVDW;
   m.intraCoul = a * b.intraCoul;
   m.tail = a * b.tail;
+  m.frameworkMoleculeTail = a * b.frameworkMoleculeTail;
+  m.moleculeMoleculeTail = a * b.moleculeMoleculeTail;
   m.polarization = a * b.polarization;
   m.dudlambdaVDW = a * b.dudlambdaVDW;
   m.dudlambdaCharge = a * b.dudlambdaCharge;
@@ -536,6 +566,7 @@ export inline RunningEnergy operator*(double a, const RunningEnergy b)
   m.translationalKineticEnergy = a * b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a * b.rotationalKineticEnergy;
   m.NoseHooverEnergy = a * b.NoseHooverEnergy;
+  m.mbxEnergy = a * b.mbxEnergy;
 
   return m;
 }
@@ -567,6 +598,8 @@ export inline RunningEnergy operator*(const RunningEnergy a, double b)
   m.intraVDW = b * a.intraVDW;
   m.intraCoul = b * a.intraCoul;
   m.tail = b * a.tail;
+  m.frameworkMoleculeTail = b * a.frameworkMoleculeTail;
+  m.moleculeMoleculeTail = b * a.moleculeMoleculeTail;
   m.polarization = b * a.polarization;
   m.dudlambdaVDW = b * a.dudlambdaVDW;
   m.dudlambdaCharge = b * a.dudlambdaCharge;
@@ -574,6 +607,7 @@ export inline RunningEnergy operator*(const RunningEnergy a, double b)
   m.translationalKineticEnergy = b * a.translationalKineticEnergy;
   m.rotationalKineticEnergy = b * a.rotationalKineticEnergy;
   m.NoseHooverEnergy = b * a.NoseHooverEnergy;
+  m.mbxEnergy = b * a.mbxEnergy;
 
   return m;
 }
