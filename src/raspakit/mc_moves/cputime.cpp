@@ -42,6 +42,7 @@ MCMoveCpuTime::MCMoveCpuTime()
                      {"Framework-Molecule", std::chrono::duration<double>::zero()},
                      {"Molecule-Molecule", std::chrono::duration<double>::zero()},
                      {"Ewald", std::chrono::duration<double>::zero()},
+                     {"MBX", std::chrono::duration<double>::zero()},
                  }},
                 {MoveTypes::RandomTranslation,
                  {
@@ -58,6 +59,7 @@ MCMoveCpuTime::MCMoveCpuTime()
                      {"Framework-Molecule", std::chrono::duration<double>::zero()},
                      {"Molecule-Molecule", std::chrono::duration<double>::zero()},
                      {"Ewald", std::chrono::duration<double>::zero()},
+                     {"MBX", std::chrono::duration<double>::zero()},
                  }},
                 {MoveTypes::RandomRotation,
                  {
@@ -72,6 +74,7 @@ MCMoveCpuTime::MCMoveCpuTime()
                      {"Total", std::chrono::duration<double>::zero()},
                      {"NonEwald", std::chrono::duration<double>::zero()},
                      {"Ewald", std::chrono::duration<double>::zero()},
+                     {"MBX", std::chrono::duration<double>::zero()},
                  }},
                 {MoveTypes::PartialReinsertionCBMC,
                  {
@@ -87,6 +90,7 @@ MCMoveCpuTime::MCMoveCpuTime()
                      {"NonEwald", std::chrono::duration<double>::zero()},
                      {"Tail", std::chrono::duration<double>::zero()},
                      {"Ewald", std::chrono::duration<double>::zero()},
+                     {"MBX", std::chrono::duration<double>::zero()},
                  }},
                 {MoveTypes::SwapCBMC,
                  {
@@ -96,6 +100,7 @@ MCMoveCpuTime::MCMoveCpuTime()
                      {"NonEwald", std::chrono::duration<double>::zero()},
                      {"Tail", std::chrono::duration<double>::zero()},
                      {"Ewald", std::chrono::duration<double>::zero()},
+                     {"MBX", std::chrono::duration<double>::zero()},
                  }},
                 {MoveTypes::SwapCFCMC,
                  {
@@ -162,7 +167,8 @@ MCMoveCpuTime::MCMoveCpuTime()
                  {{"Total", std::chrono::duration<double>::zero()},
                   {"NonEwald", std::chrono::duration<double>::zero()},
                   {"Tail", std::chrono::duration<double>::zero()},
-                  {"Ewald", std::chrono::duration<double>::zero()}}},
+                  {"Ewald", std::chrono::duration<double>::zero()},
+                  {"MBX", std::chrono::duration<double>::zero()}}},
                 {MoveTypes::WidomCFCMC,
                  {{"Total", std::chrono::duration<double>::zero()},
                   {"ExternalField", std::chrono::duration<double>::zero()},
@@ -184,6 +190,7 @@ MCMoveCpuTime::MCMoveCpuTime()
                      {"NonEwald", std::chrono::duration<double>::zero()},
                      {"Tail", std::chrono::duration<double>::zero()},
                      {"Ewald", std::chrono::duration<double>::zero()},
+                     {"MBX", std::chrono::duration<double>::zero()},
                  }},
                 {MoveTypes::GibbsVolume,
                  {
