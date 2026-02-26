@@ -123,7 +123,8 @@ export struct System
          double heliumVoidFraction, std::optional<Framework> framework, std::vector<Component> components,
          std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
          std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
-         std::optional<std::size_t> sampleMoviesEvery = std::nullopt);
+         std::optional<std::size_t> sampleMoviesEvery = std::nullopt,
+         std::optional<bool> useMBXCalculator=std::nullopt, std::optional<std::string> mbxFilePath=std::nullopt);
 
   System(std::size_t id, double T, std::optional<double> P, double heliumVoidFraction,
          std::optional<Framework> framework, std::vector<Component> components);
@@ -179,6 +180,13 @@ export struct System
 
   ForceField forceField;
   bool hasExternalField{ true };
+
+  // MBX related settings
+  bool useMBX{false};                         // flag for enabling MBX energy calculations
+  std::string mbxSettingsFilePath{"None"};    // path of the MBX setting JSON file
+  // stores intra-molecular permanent electrostatic interactions of the framework atoms (charge-charge interactions) calculated by MBX. 
+  double elecPermFrameworkMBX{0.0};              
+  void preComputeElecPermFrameworkMBX();
 
   std::vector<std::vector<std::size_t>> numberOfPseudoAtoms;
   std::vector<std::size_t> totalNumberOfPseudoAtoms;
@@ -326,6 +334,8 @@ export struct System
   std::size_t randomIntegerMoleculeOfComponent(RandomNumber &random, std::size_t selectedComponent);
 
   std::size_t indexOfFirstMolecule(std::size_t selectedComponent);
+  std::size_t indexOfFirstMolecule(std::size_t selectedComponent) const;
+
   std::vector<Atom>::iterator iteratorForMolecule(std::size_t selectedComponent, std::size_t selectedMolecule);
   std::vector<double3>::iterator iteratorForElectricField(std::size_t selectedComponent, std::size_t selectedMolecule);
   std::vector<Molecule>::iterator indexForMolecule(std::size_t selectedComponent, std::size_t selectedMolecule);
