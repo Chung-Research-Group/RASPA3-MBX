@@ -101,6 +101,7 @@ import interactions_framework_molecule;
 import interactions_framework_molecule_grid;
 import interactions_intermolecular;
 import interactions_ewald;
+import interactions_mbx;
 import interactions_internal;
 import interactions_external_field;
 import interactions_external_field_grid;
@@ -125,7 +126,8 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
                std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f, std::vector<Component> c,
                std::vector<std::vector<double3>> initialpositions, std::vector<std::size_t> initialNumberOfMolecules,
                std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities,
-               std::optional<std::size_t> sampleMoviesEvery)
+               std::optional<std::size_t> sampleMoviesEvery,
+               std::optional<bool> useMBXCalculator, std::optional<std::string> mbxFilePath)
     : systemId(id),
       temperature(T),
       pressure(P.value_or(0.0) / Units::PressureConversionFactor),
@@ -173,6 +175,24 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
     simulationBox = box.value();
   }
 
+  // MBX related system member variables
+  this->useMBX = false;               // Default value
+  this->mbxSettingsFilePath = "None"; // Default value
+
+  if (useMBXCalculator.has_value())
+  {
+    if (useMBXCalculator.value())
+    {
+      if (!mbxFilePath.has_value())
+      {
+        throw std::runtime_error(std::format("[System]: MBX Settings File Note Found!"));      
+      }
+      this->useMBX = true;
+      this->mbxSettingsFilePath = mbxFilePath.value();
+      std::cerr << "Using MBX for energy calculations..." << std::endl; 
+    }
+  }
+
   removeRedundantMoves();
   determineSwappableComponents();
   determineFractionalComponents();
@@ -184,6 +204,14 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
   if (framework.has_value())
   {
     simulationBox = framework->simulationBox.scaled(framework->numberOfUnitCells);
+
+    // Precompute the MBX permanent electrostatic interactions of the framework atoms
+    if (useMBX)
+    {
+      std::cerr << "Pre-computing MBX intra-molecule permanent electrostatics interactions for framework..." << std::endl;
+      preComputeElecPermFrameworkMBX();
+    }
+
   }
 
   forceField.initializeEwaldParameters(simulationBox);
@@ -828,6 +856,17 @@ const std::span<const double3> System::spanElectricFieldOld(std::size_t selected
 }
 
 std::size_t System::indexOfFirstMolecule(std::size_t selectedComponent)
+{
+  std::size_t index{0};
+  for (std::size_t i = 0; i < selectedComponent; ++i)
+  {
+    std::size_t size = components[i].atoms.size();
+    index += size * numberOfMoleculesPerComponent[i];
+  }
+  return index + numberOfFrameworkAtoms;
+}
+
+std::size_t System::indexOfFirstMolecule(std::size_t selectedComponent) const
 {
   std::size_t index{0};
   for (std::size_t i = 0; i < selectedComponent; ++i)
@@ -1928,9 +1967,26 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy externalFieldEnergy;
     Interactions::computeExternalFieldEnergy(hasExternalField,
       forceField, simulationBox, moleculeAtomPositions, externalFieldEnergy, externalFieldInterpolationGrid);
-
-    return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
+    
+    // MBX part
+    if (useMBX)
+    {
+      RunningEnergy mbx = Interactions::computeMBXEnergySystem(*this, components, 
+                                                          simulationBox, framework,
+                                                          frameworkAtomPositions, 
+                                                          moleculeAtomPositions);
+    
+      // host-guest VDW interaction from FF + MBX energy
+      mbx.frameworkMoleculeVDW =  frameworkMoleculeEnergy.frameworkMoleculeVDW;
+      mbx.tail = frameworkMoleculeTailEnergy.tail;
+      
+      return mbx;
+    }
+    else
+    {    
+      return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
            ewaldEnergy + polarizationEnergy + runningIntraEnergy + externalFieldEnergy;
+    }
   }
   else
   {
@@ -1951,9 +2007,26 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy externalFieldEnergy;
     Interactions::computeExternalFieldEnergy(hasExternalField,
       forceField, simulationBox, moleculeAtomPositions, externalFieldEnergy, externalFieldInterpolationGrid);
-
-    return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
+    
+      // MBX part
+    if (useMBX)
+    {
+      RunningEnergy mbx = Interactions::computeMBXEnergySystem(*this, components, 
+                                                          simulationBox, framework,
+                                                          frameworkAtomPositions, 
+                                                          moleculeAtomPositions);
+    
+      // host-guest VDW interaction from FF + MBX energy
+      mbx.frameworkMoleculeVDW =  frameworkMoleculeEnergy.frameworkMoleculeVDW;
+      mbx.tail = frameworkMoleculeTailEnergy.tail;
+      
+      return mbx;
+    }
+    else
+    { 
+      return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
            ewaldEnergy + runningIntraEnergy + externalFieldEnergy;
+    }
   }
 }
 
@@ -3384,3 +3457,9 @@ void System::writeRestartFile()
 }
 
 std::string System::repr() const { return std::string("system test"); }
+
+void System::preComputeElecPermFrameworkMBX()
+{
+  elecPermFrameworkMBX = Interactions::computeFrameworkElecPermMBXEnergy(*this, simulationBox, 
+                                                                          framework, spanOfFrameworkAtoms());
+}
