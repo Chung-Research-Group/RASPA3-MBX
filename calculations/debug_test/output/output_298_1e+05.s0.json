@@ -1,0 +1,367 @@
+{
+    "initialization": {
+        "components": {
+            "Mg_MOF74_pacman": {
+                "bondTypes": [],
+                "id": 0,
+                "mass": 43687.44000000012,
+                "n_bonds": 0,
+                "name": "Mg_MOF74_pacman"
+            },
+            "co2": {
+                "acentricFactor": 0.22394,
+                "bondTypes": [],
+                "cbmcStartingBead": 0,
+                "criticalPressure": 7377300.0,
+                "criticalTemperature": 304.1282,
+                "diagonalizedInertiaVector": [
+                    42.306484686427,
+                    42.30648468642294,
+                    4.05560757047095e-12
+                ],
+                "fugacityCoefficient": 1.0,
+                "id": 0,
+                "mass": 43.9898,
+                "molFraction": 1.0,
+                "moveProbabilities": {
+                    "Gibbs swap (CBMC)": 0.0,
+                    "Gibbs swap (CFCMC)": 0.0,
+                    "Gibbs volume": 0.0,
+                    "Hybrid MC": 0.0,
+                    "Identity change (CBMC)": 0.0,
+                    "Parallel tempering": 0.0,
+                    "Random rotation": 0.0,
+                    "Random translation": 0.0,
+                    "Reinsertion (CBMC)": 0.25,
+                    "Rotation": 0.25,
+                    "Swap": 0.25,
+                    "Swap (CB/CFCMC)": 0.0,
+                    "Swap (CBMC)": 0.0,
+                    "Swap (CFCMC)": 0.0,
+                    "Translation": 0.25,
+                    "Volume change": 0.0,
+                    "Widom": 0.0,
+                    "Widom (CB/CFCMC)": 0.0,
+                    "Widom (CFCMC)": 0.0
+                },
+                "n_atoms": 3,
+                "n_bonds": 0,
+                "name": "co2",
+                "netCharge": 0.0,
+                "rotationalDOF": 2,
+                "shape": "linear",
+                "swappable": true,
+                "translationalDOF": 3
+            }
+        },
+        "forceField": {
+            "Ewald": {
+                "alpha": 0.18203205061148325,
+                "kVectors": [
+                    9,
+                    9,
+                    7
+                ],
+                "precision": 1e-06
+            },
+            "interactions": [
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "Mg",
+                    "typeB": "Mg",
+                    "ε/kʙ [K]": 0.0,
+                    "σ/kʙ [Å]": 0.0
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "Mg",
+                    "typeB": "H",
+                    "ε/kʙ [K]": 0.0,
+                    "σ/kʙ [Å]": 1.425
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "Mg",
+                    "typeB": "C",
+                    "ε/kʙ [K]": 0.0,
+                    "σ/kʙ [Å]": 1.735
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "Mg",
+                    "typeB": "O",
+                    "ε/kʙ [K]": 0.0,
+                    "σ/kʙ [Å]": 1.515
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "Mg",
+                    "typeB": "Cco2",
+                    "ε/kʙ [K]": 13.838500000000002,
+                    "σ/kʙ [Å]": 3.4223
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "Mg",
+                    "typeB": "Oco2",
+                    "ε/kʙ [K]": 0.1006,
+                    "σ/kʙ [Å]": 3.5473
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "H",
+                    "typeB": "H",
+                    "ε/kʙ [K]": 7.650000000000001,
+                    "σ/kʙ [Å]": 2.85
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "H",
+                    "typeB": "C",
+                    "ε/kʙ [K]": 19.13449764169418,
+                    "σ/kʙ [Å]": 3.16
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "H",
+                    "typeB": "O",
+                    "ε/kʙ [K]": 19.194374175783903,
+                    "σ/kʙ [Å]": 2.94
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "H",
+                    "typeB": "Cco2",
+                    "ε/kʙ [K]": 14.371847480404181,
+                    "σ/kʙ [Å]": 2.825
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "H",
+                    "typeB": "Oco2",
+                    "ε/kʙ [K]": 24.583531072651056,
+                    "σ/kʙ [Å]": 2.95
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "C",
+                    "typeB": "C",
+                    "ε/kʙ [K]": 47.86,
+                    "σ/kʙ [Å]": 3.47
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "C",
+                    "typeB": "O",
+                    "ε/kʙ [K]": 48.0097656732461,
+                    "σ/kʙ [Å]": 3.25
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "C",
+                    "typeB": "Cco2",
+                    "ε/kʙ [K]": 35.947461662821205,
+                    "σ/kʙ [Å]": 3.135
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "C",
+                    "typeB": "Oco2",
+                    "ε/kʙ [K]": 61.48934867113166,
+                    "σ/kʙ [Å]": 3.26
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "O",
+                    "typeB": "O",
+                    "ε/kʙ [K]": 48.16,
+                    "σ/kʙ [Å]": 3.03
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "O",
+                    "typeB": "Cco2",
+                    "ε/kʙ [K]": 36.059950083160125,
+                    "σ/kʙ [Å]": 2.915
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "O",
+                    "typeB": "Oco2",
+                    "ε/kʙ [K]": 61.6817639177091,
+                    "σ/kʙ [Å]": 3.04
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "Cco2",
+                    "typeB": "Cco2",
+                    "ε/kʙ [K]": 27.0,
+                    "σ/kʙ [Å]": 2.8
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "Cco2",
+                    "typeB": "Oco2",
+                    "ε/kʙ [K]": 46.18441295502196,
+                    "σ/kʙ [Å]": 2.925
+                },
+                {
+                    "potential": "Lennard-Jones",
+                    "shift [K]": 0.0,
+                    "tailCorrections": true,
+                    "typeA": "Oco2",
+                    "typeB": "Oco2",
+                    "ε/kʙ [K]": 79.0,
+                    "σ/kʙ [Å]": 3.05
+                }
+            ],
+            "pseudoAtoms": [
+                {
+                    "charge": 0.0,
+                    "mass": 24.305,
+                    "name": "Mg",
+                    "source": "UFF"
+                },
+                {
+                    "charge": 0.0,
+                    "mass": 1.008,
+                    "name": "H",
+                    "source": "DREIDING"
+                },
+                {
+                    "charge": 0.0,
+                    "mass": 12.011,
+                    "name": "C",
+                    "source": "DREIDING"
+                },
+                {
+                    "charge": 0.0,
+                    "mass": 15.999,
+                    "name": "O",
+                    "source": "DREIDING"
+                },
+                {
+                    "charge": 0.7,
+                    "mass": 12.0,
+                    "name": "Cco2",
+                    "source": "TraPPE"
+                },
+                {
+                    "charge": -0.35,
+                    "mass": 15.9949,
+                    "name": "Oco2",
+                    "source": "TraPPE"
+                }
+            ]
+        },
+        "hardwareInfo": {
+            "compile_date": "Oct 26 2025",
+            "compile_time": "16:22:08",
+            "compiler": "gcc Clang 20.1.6 (https://github.com/conda-forge/clangdev-feedstock 69175687c377cc7048411dff42e3315ed4c1da0b)",
+            "hostname": "DRAKECH3N-new",
+            "os_arch": "x86_64",
+            "os_release": "6.6.87.2-microsoft-standard-WSL2",
+            "os_type": "Linux",
+            "os_version": "#1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025",
+            "start_date": "Fri, Feb 27",
+            "start_time": "10:20:00"
+        },
+        "initialConditions": {
+            "beta": 0.004035983951527738,
+            "box": [
+                [
+                    51.7456,
+                    0.0,
+                    0.0
+                ],
+                [
+                    -25.87279999999999,
+                    44.81300413406805,
+                    0.0
+                ],
+                [
+                    2.1033308775355792e-15,
+                    3.643075945020055e-15,
+                    34.35
+                ]
+            ],
+            "boxAngles": [
+                90.0,
+                90.0,
+                119.99999999999999
+            ],
+            "boxLengths": [
+                51.7456,
+                51.7456,
+                34.35
+            ],
+            "pressure": 100000.0,
+            "temperature": 298.0
+        },
+        "reactions": null,
+        "units": {
+            "Boltzmann constant [-]": 0.8314464919307584,
+            "Coulomb potential [K]": 167101.08000665612,
+            "Energy to Kelvin [-]": 1.202724284692786,
+            "Kelvin to energy [-]": 0.8314457542157568,
+            "acceleration [m²/s]": 1.0000000000000002e-08,
+            "charge [C/particle]": 1.60217733e-19,
+            "dielectric constant [s² C²/(kg m³)]": 1.5458657349975197e-05,
+            "diffusion [m²/s]": 1.0000000000000002e-08,
+            "dipole moment [C.m]": 1.60217733e-29,
+            "electric field [V]": 1036427.222447343,
+            "electric potential [V]": 0.00010364272224473431,
+            "energy [J]": 1.6605402000000002e-23,
+            "force [N]": 1.6605402000000002e-13,
+            "length [m]": 1e-10,
+            "mass [kg]": 1.6605402e-27,
+            "polarizability [-]": 1.5458657349975198e-35,
+            "pressure [Pa]": 16605402.0,
+            "temperature": "Kelvin",
+            "time [s]": 1e-12,
+            "velocity [m/s]": 100.0
+        }
+    },
+    "seed": 4011083497,
+    "version": "3.0.5"
+}

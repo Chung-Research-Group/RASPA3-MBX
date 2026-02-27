@@ -1,0 +1,12 @@
+{
+  "atom": [],
+  "molecules": [],
+  "simulationBox": {
+    "angleAlpha": 1.0,
+    "angleBeta": 1.0,
+    "angleGamma": 1.3333333333333333,
+    "lengthA": 51.7456,
+    "lengthB": 51.7456,
+    "lengthC": 34.35
+  }
+}

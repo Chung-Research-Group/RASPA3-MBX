@@ -1,0 +1,109 @@
+{
+    "PseudoAtoms" : [
+        {
+            "name" : "Mg",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "Mg",
+            "print_as" : "Mg",
+            "mass" : 24.305,
+            "source": "UFF"
+        },
+        {
+            "name" : "H",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "H",
+            "print_as" : "H",
+            "mass" : 1.008,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "C",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "C",
+            "print_as" : "C",
+            "mass" : 12.011,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "O",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "O",
+            "print_as" : "O",
+            "mass" : 15.999,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "Cco2",
+            "framework" : false,
+            "print_to_output" : true,
+            "element" : "C",
+            "print_as" : "C",
+            "mass" : 12.0,
+            "charge" :  0.70,
+            "source": "TraPPE"
+        },
+        {
+            "name" : "Oco2",
+            "framework" : false,
+            "print_to_output" : true,
+            "element" : "O",
+            "print_as" : "O",
+            "mass" : 15.9949,
+            "charge" :  -0.35,
+            "source": "TraPPE"
+        }
+    ],
+    "SelfInteractions" : [
+        {
+            "name" : "H",
+            "type" : "lennard-jones",    
+            "parameters" : [7.65, 2.85],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "C",
+            "type" : "lennard-jones",    
+            "parameters" : [47.86, 3.47],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "O",
+            "type" : "lennard-jones",    
+            "parameters" : [48.16, 3.03],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "Cco2",
+            "type" : "lennard-jones",    
+            "parameters" : [27.0, 2.800],
+            "source": "TraPPE"
+        },
+        {
+            "name" : "Oco2",
+            "type" : "lennard-jones",    
+            "parameters" : [79.0, 3.050],
+            "source": "TraPPE"
+        }
+    ],
+    "BinaryInteractions":[
+        {
+            "names" : ["Mg","Cco2"],
+            "type" : "lennard-jones",    
+            "parameters" : [13.8385, 3.4223],
+            "source": "Fit"
+        },
+        {
+            "names" : ["Mg","Oco2"],
+            "type" : "lennard-jones",    
+            "parameters" : [0.1006, 3.5473],
+            "source": "Fit"
+        }
+    ],
+    "MixingRule" : "Lorentz-Berthelot",
+    "TruncationMethod" : "truncated",
+    "TailCorrections" : true
+}
