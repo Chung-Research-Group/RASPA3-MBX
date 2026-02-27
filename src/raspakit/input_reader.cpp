@@ -970,6 +970,43 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
       std::string typeString = value["Type"].get<std::string>();
 
+      // MBX options parsing
+      std::optional<bool> useMBXCalculator{std::nullopt};
+      std::optional<std::string> mbxFilePath{std::nullopt};
+      
+      if (value.contains("UseMBX"))
+      {
+        if (!value["UseMBX"].is_boolean())
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: system key 'UseMBX' must have a value of "
+                          "type-bool (true/false)\n"));
+        }
+        useMBXCalculator = value["UseMBX"].get<bool>();
+        
+        if (useMBXCalculator.value())
+        {
+          if (value.contains("MBXSettingsFile") && value["MBXSettingsFile"].is_string())
+          {
+            mbxFilePath = value["MBXSettingsFile"].get<std::string>();
+            
+            // Test whether the given file exists
+            std::ifstream MBXFile(mbxFilePath.value());
+            if (!MBXFile.is_open())
+            {
+              throw std::runtime_error(std::format("[Input reader]: Failed to read the MBX Settings File. Please provide a valid filename!\n"));   
+            }
+            MBXFile.close();
+          }
+          else
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: system must have a key 'MBXSettingsFile' with a value of "
+                            "type-string representing the name of the file containing MBX settings\n"));
+          }
+        }
+      }
+
       if (!value.contains("ExternalTemperature"))
       {
         throw std::runtime_error(
@@ -1071,7 +1108,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId] =
             System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
                    jsonFrameworkComponents, jsonComponents[systemId], jsonRestartFilePositions[systemId],
-                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
+                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities,
+                   useMBXCalculator, mbxFilePath);
       }
       else if (caseInSensStringCompare(typeString, "Box"))
       {
@@ -1103,7 +1141,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
         systems[systemId] = System(systemId, forceFields[systemId].value(), simulationBox, T, P, 1.0, {},
                                    jsonComponents[systemId], jsonRestartFilePositions[systemId],
-                                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities);
+                                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities,
+                                   useMBXCalculator, mbxFilePath);
       }
       else
       {
@@ -1714,7 +1753,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "MacroStateUseBias",
     "MacroStateMinimumNumberOfMolecules",
     "MacroStateMaximumNumberOfMolecules",
-    "RestartFileName"};
+    "RestartFileName",
+    "UseMBX",
+    "MBXSettingsFile"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
     "Name",
