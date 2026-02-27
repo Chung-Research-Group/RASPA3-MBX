@@ -83,10 +83,14 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   // Update move construction statistics
   component.mc_moves_statistics.addConstructed(move, selectedDirection);
   
+  // These variables needed to be declared here, since they will be used in both cases at the end.
+  std::vector<double3> electricFieldMoleculeNew(molecule_atoms.size());
+  std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
+
+  RunningEnergy energyDifference;
   // Compute MBX Energy
   if (system.useMBX)
   {
-    RunningEnergy energyDifference{};
 
     time_begin = std::chrono::system_clock::now();
     RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(system, components, system.simulationBox, system.framework,
@@ -131,9 +135,6 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   else
   {
     // MBX not used
-    std::vector<double3> electricFieldMoleculeNew(molecule_atoms.size());
-    std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
-
     // compute external field energy contribution
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
@@ -203,7 +204,7 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
     }
 
     // get the total difference in energy
-    RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
+    energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                     ewaldFourierEnergy + polarizationDifference;
 
   }
@@ -219,7 +220,8 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
     molecule = trialMolecule.first;
 
     // Update the electric field if polarization is computed
-    if (system.forceField.computePolarization)
+    // Update: if MBX is used, do not update the elec field here.
+    if (system.forceField.computePolarization && !system.useMBX)
     {
       std::span<double3> electricFieldMolecule = system.spanElectricFieldNew(selectedComponent, selectedMolecule);
       std::copy(electricFieldMoleculeNew.begin(), electricFieldMoleculeNew.end(), electricFieldMolecule.begin());

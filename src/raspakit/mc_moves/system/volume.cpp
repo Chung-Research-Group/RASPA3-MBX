@@ -77,10 +77,17 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
   // Update constructed move counts
   system.mc_moves_statistics.addConstructed(move);
+
+  double cutOffFrameworkVDW_stored = system.forceField.cutOffFrameworkVDW;
+  double cutOffMoleculeVDW_stored = system.forceField.cutOffMoleculeVDW;
+  double cutOffCoulomb_stored = system.forceField.cutOffCoulomb;
+  double ewald_alpha_stored = system.forceField.EwaldAlpha;
+  int3 ewald_k_stored = system.forceField.numberOfWaveVectors;
   
+  RunningEnergy newTotalEnergy;
+
   if (system.useMBX)
   {
-    RunningEnergy mbxEnergy{};
     // Should work only and only if there is not framework, check required for avoiding undefined
     // behaviour in our MBX implementation.
     if (!system.framework.has_value())
@@ -88,24 +95,17 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
       time_begin = std::chrono::system_clock::now();
       std::span<const Atom> frameworkAtoms{};  // Volume move is processed without framework, hence no frameworkAtoms
 
-      mbxEnergy = Interactions::computeMBXEnergySystem(system, system.components, newBox, system.framework, frameworkAtoms, newPositions.second);
+      RunningEnergy mbxEnergy = Interactions::computeMBXEnergySystem(system, system.components, newBox, system.framework, frameworkAtoms, newPositions.second);
       time_end = std::chrono::system_clock::now();
       system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
 
       // Since, no framework is involved, MBX itself contains all the neccessary energy contributions. 
-      RunningEnergy newTotalEnergy = mbxEnergy;
+      newTotalEnergy = mbxEnergy;
     }   
   }
   else
   {
     // Handle case when MBX is not used
-  
-    double cutOffFrameworkVDW_stored = system.forceField.cutOffFrameworkVDW;
-    double cutOffMoleculeVDW_stored = system.forceField.cutOffMoleculeVDW;
-    double cutOffCoulomb_stored = system.forceField.cutOffCoulomb;
-    double ewald_alpha_stored = system.forceField.EwaldAlpha;
-    int3 ewald_k_stored = system.forceField.numberOfWaveVectors;
-
     system.forceField.initializeAutomaticCutOff(newBox);
 
     time_begin = std::chrono::system_clock::now();
@@ -131,7 +131,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
     system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
     // Sum up all energy contributions
-    RunningEnergy newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
+    newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
 
     // The intra-molecular energies have not changed by the com-scaling
     newTotalEnergy.bond = oldTotalEnergy.bond;

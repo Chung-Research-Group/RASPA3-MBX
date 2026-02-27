@@ -70,9 +70,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     // Increment constructed swap deletion move counts
     component.mc_moves_statistics.addConstructed(move, 1);
 
+    RunningEnergy energyDifference;
+
     if (system.useMBX)
     {
-      RunningEnergy energyDifference{};
+      
       time_begin = std::chrono::system_clock::now();
       // Energy of the system after the insertion of new trial molecule.
       // MBX will crash if the newly inserted atoms overlap the exisiting atoms. We have not added the check for that
@@ -84,30 +86,33 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
       component.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
 
+      RunningEnergy oldTotalEnergy = system.runningEnergies;
+      energyDifference.mbxEnergy = newTotalEnergy.mbxEnergy - oldTotalEnergy.mbxEnergy;
+
       // Compute framework-molecule energy contribution
       time_begin = std::chrono::system_clock::now();
-      std::optional<RunningEnergy> frameworkMolecule;
 
-      frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
+      std::optional<RunningEnergy> frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
           system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
           system.spanOfFrameworkAtoms(), {}, molecule);
-      
+      if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
-      if (!frameworkMolecule.has_value()) return std::nullopt;
+      
 
       energyDifference.frameworkMoleculeVDW = frameworkMolecule.value().frameworkMoleculeVDW; 
       
       // compute framework-molecule tail energy contribution
       time_begin = std::chrono::system_clock::now();
-      RunningEnergy tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+      std::optional<RunningEnergy> tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                 system.spanOfFrameworkAtoms(), {}, molecule);
+      if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
 
-      energyDifference.tail = tailEnergyDifferenceFrameworkMolecule.tail;
+      energyDifference.tail = tailEnergyDifferenceFrameworkMolecule.value().tail;
     }
     else
     {
@@ -184,7 +189,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
       }
 
       // Get the total difference in energy
-      RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
+      energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                       energyFourierDifference + tailEnergyDifference + polarizationDifference;
     }
     

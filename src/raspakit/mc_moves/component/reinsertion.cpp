@@ -180,25 +180,30 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
   double Pacc = correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight;
 
+  // Big question here: original implementation did not include tail energy here. Also no tail correction factor.
+  // But we need to g-g tail correction for MBX energy comparison. So let's calculate here.
+  // Compute tail energy difference due to long-range corrections
+  time_begin = std::chrono::system_clock::now();
+  RunningEnergy tailEnergyDifferenceInterMolecule =
+      Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
+                                                              system.spanOfMoleculeAtoms(), newMolecule, molecule_atoms);
+  RunningEnergy tailEnergyDifferenceFrameworkMolecule =
+      Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                                 system.spanOfFrameworkAtoms(), newMolecule, molecule_atoms);
+  RunningEnergy tailEnergyDifference = tailEnergyDifferenceInterMolecule + tailEnergyDifferenceFrameworkMolecule;
+  time_end = std::chrono::system_clock::now();
+
+  // Update CPU time statistics for the tail corrections
+  component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+
+  RunningEnergy energyDifferenceFF = (growData->energies - retraceData.energies) + 
+                                    energyFourierDifference + polarizationDifference + tailEnergyDifference;
+  RunningEnergy energyDifferenceMBX;
   if (system.useMBX)
   {
     // Compute the total energy difference from FF. Now it just calculates everything all again, no matter it has been calculated before or not. 
     // We can optimize this later by reusing the calculated energy difference from the CBMC growth and retrace steps. But it's not taking much time anyway, so we can leave it for now.
-    // Compute tail energy difference due to long-range corrections
-    RunningEnergy tailEnergyDifferenceInterMolecule = Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                system.spanOfMoleculeAtoms(), newMolecule, molecule_atoms);
-    RunningEnergy tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                  system.spanOfFrameworkAtoms(), newMolecule, molecule_atoms);
-    RunningEnergy tailEnergyDifference = tailEnergyDifferenceInterMolecule + tailEnergyDifferenceFrameworkMolecule;
-
-    std::optional<RunningEnergy> frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-        system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-        system.spanOfFrameworkAtoms(), newMolecule, molecule_atoms);
-    std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
-        system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newMolecule, molecule_atoms);
-
-    RunningEnergy energyDifferenceFF = frameworkMolecule.value() + interMolecule.value() + energyFourierDifference + tailEnergyDifference;  
-
     // Now we calculate the MBX energy difference.
     // We calculate the system energy difference before and after the CMBC Reinsertion
     time_begin = std::chrono::system_clock::now();
@@ -212,17 +217,16 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     
     // Energy of the system before the insertion of trial molecule
     RunningEnergy oldTotalEnergy = system.runningEnergies;
-
     // MBX energy difference before and after the insertion move old and new configuration 
-    RunningEnergy energyDifferenceMBX{};
     energyDifferenceMBX.mbxEnergy = newTotalEnergy.mbxEnergy - oldTotalEnergy.mbxEnergy;
 
     // The energyDifference for frameworkMoleculeVDW contribution as obtained from forceField
-    energyDifferenceMBX.frameworkMoleculeVDW = frameworkMolecule.frameworkMoleculeVDW;
+    energyDifferenceMBX.frameworkMoleculeVDW = growData->energies.frameworkMoleculeVDW 
+                                              - retraceData.energies.frameworkMoleculeVDW;
     energyDifferenceMBX.tail = tailEnergyDifferenceFrameworkMolecule.tail;
 
     // Add the correction factor, exp(-beta*DeltaDeltaE)
-    Pacc *= std::exp(-system.beta * (energyDifferenceMBX.potentialEnergy() - energyDifferenceFF.potentialEnergy()))
+    Pacc *= std::exp(-system.beta * (energyDifferenceMBX.potentialEnergy() - energyDifferenceFF.potentialEnergy()));
   }
 
   // Apply Metropolis acceptance criterion.
@@ -249,6 +253,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       return (energyNew.value() - energyOld.value()) + energyFourierDifference + polarizationDifference;
     }
 
+    // Should we add the tail energy back here? 
     return (growData->energies - retraceData.energies) + energyFourierDifference + polarizationDifference;
   };
 

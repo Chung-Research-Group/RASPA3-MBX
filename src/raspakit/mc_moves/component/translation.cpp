@@ -85,10 +85,14 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   // Update move construction statistics
   component.mc_moves_statistics.addConstructed(move, selectedDirection);
   
+  std::vector<double3> electricFieldMoleculeNew(molecule_atoms.size());
+  std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
+
+  RunningEnergy energyDifference;
+
   if (system.useMBX)
   {
-    RunningEnergy energyDifference{};
-
+    
     time_begin = std::chrono::system_clock::now();
     RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(system, components, system.simulationBox, system.framework,
                                                        selectedComponent, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
@@ -132,9 +136,6 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   }
   else
   {
-
-    std::vector<double3> electricFieldMoleculeNew(molecule_atoms.size());
-    std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
 
     // Compute external field energy contribution
     time_begin = std::chrono::system_clock::now();
@@ -205,7 +206,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
     }
 
     // Calculate the total energy difference
-    RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
+    energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                     ewaldFourierEnergy + polarizationDifference; 
   }
   
@@ -223,7 +224,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
     molecule = trialMolecule.first;
 
     // Update the electric field if polarization is computed
-    if (system.forceField.computePolarization)
+    if (system.forceField.computePolarization && !system.useMBX)
     {
       std::span<double3> electricFieldMolecule = system.spanElectricFieldNew(selectedComponent, selectedMolecule);
       std::copy(electricFieldMoleculeNew.begin(), electricFieldMoleculeNew.end(), electricFieldMolecule.begin());

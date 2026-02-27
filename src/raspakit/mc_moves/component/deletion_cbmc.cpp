@@ -148,24 +148,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
     double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
 
+    RunningEnergy energyDifferenceFF = -retraceData.energies + energyFourierDifference + tailEnergyDifference + polarizationDifference;
+    RunningEnergy energyDifferenceMBX;
     if (system.useMBX)
     {
       // Compute the total energy difference from FF. Now it just calculates everything all again, no matter it has been calculated before or not. 
-      // We can optimize this later by reusing the calculated energy difference from the CBMC growth and retrace steps. But it's not taking much time anyway, so we can leave it for now.
-      // Compute tail energy difference due to long-range corrections
-      RunningEnergy tailEnergyDifferenceInterMolecule = Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                  system.spanOfMoleculeAtoms(), {}, molecule);
-      RunningEnergy tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                    system.spanOfFrameworkAtoms(), {}, molecule);
-      RunningEnergy tailEnergyDifference = tailEnergyDifferenceInterMolecule + tailEnergyDifferenceFrameworkMolecule;
-
-      std::optional<RunningEnergy> frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
-          system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
-          system.spanOfFrameworkAtoms(), {}, molecule);
-      std::optional<RunningEnergy> interMolecule = Interactions::computeInterMolecularEnergyDifference(
-          system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), {}, molecule);
-
-      RunningEnergy energyDifferenceFF = frameworkMolecule.value() + interMolecule.value() + energyFourierDifference + tailEnergyDifference;  
+      // We can optimize this later by reusing the calculated energy difference from the CBMC growth and retrace steps. But it's not taking much time anyway, so we can leave it for now.  
 
       // Now we calculate the MBX energy difference.
       // We calculate the system energy difference before and after the CMBC Reinsertion
@@ -180,17 +168,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
       
       // Energy of the system before the insertion of trial molecule
       RunningEnergy oldTotalEnergy = system.runningEnergies;
-
       // MBX energy difference before and after the insertion move old and new configuration 
-      RunningEnergy energyDifferenceMBX{};
       energyDifferenceMBX.mbxEnergy = newTotalEnergy.mbxEnergy - oldTotalEnergy.mbxEnergy;
 
       // The energyDifference for frameworkMoleculeVDW contribution as obtained from forceField
-      energyDifferenceMBX.frameworkMoleculeVDW = frameworkMolecule.frameworkMoleculeVDW;
+      energyDifferenceMBX.frameworkMoleculeVDW = -retraceData.energies.frameworkMoleculeVDW;
+
+      // Compute tail energy difference due to long-range corrections
+      RunningEnergy tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
+                                                                    system.spanOfFrameworkAtoms(), {}, molecule);
       energyDifferenceMBX.tail = tailEnergyDifferenceFrameworkMolecule.tail;
 
       // Add the correction factor, exp(-beta*DeltaDeltaE)
-      Pacc *= std::exp(-system.beta * (energyDifferenceMBX.potentialEnergy() - energyDifferenceFF.potentialEnergy()))
+      Pacc *= std::exp(-system.beta * (energyDifferenceMBX.potentialEnergy() - energyDifferenceFF.potentialEnergy()));
     }
 
     // Check if the new macrostate is within the allowed TMMC range
@@ -213,11 +203,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 
       if (system.useMBX)
       {
-        return {energyDifferenceMBX, double3(Pacc, 1.0 - Pacc, 0.0)};
+        return {-energyDifferenceMBX, double3(Pacc, 1.0 - Pacc, 0.0)};
       }
 
-      return {retraceData.energies - energyFourierDifference - tailEnergyDifference - polarizationDifference,
-              double3(Pacc, 1.0 - Pacc, 0.0)};
+      // return the -energyDifferenceFF here.
+      return {-energyDifferenceFF, double3(Pacc, 1.0 - Pacc, 0.0)};
+      // Below is the original return.
+      // return {retraceData.energies - energyFourierDifference - tailEnergyDifference - polarizationDifference,
+      //         double3(Pacc, 1.0 - Pacc, 0.0)};
     };
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
   }
