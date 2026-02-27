@@ -123,8 +123,9 @@ export struct System
          double heliumVoidFraction, std::optional<Framework> framework, std::vector<Component> components,
          std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
          std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
-         std::optional<std::size_t> sampleMoviesEvery = std::nullopt,
-         std::optional<bool> useMBXCalculator=std::nullopt, std::optional<std::string> mbxFilePath=std::nullopt);
+         std::optional<bool> useMBXCalculator=std::nullopt, std::optional<std::string> mbxFilePath=std::nullopt,
+         std::optional<std::size_t> sampleMoviesEvery = std::nullopt
+         );
 
   System(std::size_t id, double T, std::optional<double> P, double heliumVoidFraction,
          std::optional<Framework> framework, std::vector<Component> components);

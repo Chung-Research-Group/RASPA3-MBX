@@ -126,8 +126,9 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
                std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f, std::vector<Component> c,
                std::vector<std::vector<double3>> initialpositions, std::vector<std::size_t> initialNumberOfMolecules,
                std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities,
-               std::optional<std::size_t> sampleMoviesEvery,
-               std::optional<bool> useMBXCalculator, std::optional<std::string> mbxFilePath)
+               std::optional<bool> useMBXCalculator, std::optional<std::string> mbxFilePath,
+               std::optional<std::size_t> sampleMoviesEvery
+               )
     : systemId(id),
       temperature(T),
       pressure(P.value_or(0.0) / Units::PressureConversionFactor),
