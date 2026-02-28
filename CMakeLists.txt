@@ -91,8 +91,8 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 add_subdirectory(src)
 
 if(BUILD_APP)
-  add_subdirectory(data)
-  add_subdirectory(examples)
+  # add_subdirectory(data)
+  # add_subdirectory(examples)
 
   add_subdirectory(app)
 endif()
@@ -105,7 +105,7 @@ if(BUILD_DOXYGEN)
   add_subdirectory(docs)
 endif()
 
-add_subdirectory(packaging)
+# add_subdirectory(packaging)
 
 if(BUILD_TESTING)
   add_subdirectory(tests)
