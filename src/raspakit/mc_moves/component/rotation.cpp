@@ -92,11 +92,25 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   if (system.useMBX)
   {
 
+    // DO THE FOLLOWING STEPS IN ALL MC MOVES CPP FILES FOR WHICH YOU WANT TO LOG
+    std::vector<double> mbxEnergyLog(7, 0);         // Vector to store energylog values
+
     time_begin = std::chrono::system_clock::now();
+    // Notice that you have to specify the pointer to energylog vector as the last arg of computeMBXEnergy function.
+    // If you donot do that energyLog vector will not be updated (i.e. the default value is nullptr)
     RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(system, components, system.simulationBox, system.framework,
                                                        selectedComponent, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-                                                       trialMolecule.second, true);
+                                                       trialMolecule.second, true, &mbxEnergyLog);
 
+    // Here you can add logging commands
+    std::cerr << "e1b:" << mbxEnergyLog[0] << "\n"
+              << "e2b:" << mbxEnergyLog[1] << "\n"
+              << "e3b:" << mbxEnergyLog[2] << "\n"
+              << "e4b:" << mbxEnergyLog[3] << "\n"
+              << "edisp:" << mbxEnergyLog[4] << "\n"
+              << "eelec_perm:" << mbxEnergyLog[5] << "\n"
+              << "eelec_ind:" << mbxEnergyLog[6] << "\n";
+              
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
