@@ -163,7 +163,8 @@ RunningEnergy Interactions::computeMBXEnergySystem(
         const SimulationBox &simulationBox,
         const std::optional<Framework> &framework,
         std::span<const Atom> frameworkAtoms,
-        std::span<const Atom> moleculeAtoms
+        std::span<const Atom> moleculeAtoms,
+        std::vector<double>* mbxEnergyLog
 ) noexcept
 {
     /***
@@ -226,7 +227,6 @@ RunningEnergy Interactions::computeMBXEnergySystem(
     ***/
     // Framework  --> In RASPA3 sometimes the framework is std::nullopt
     // Need to know MBX behaviour without the framework
-    double eelec_perm_framework = 0.0;
     if (framework.has_value())
     {
         std::vector<double> frameworkCoords(frameworkAtoms.size() * 3);
@@ -306,21 +306,26 @@ RunningEnergy Interactions::computeMBXEnergySystem(
     double energy = e2b + e3b + e4b + edisp + eelec_perm + eelec_ind - system.elecPermFrameworkMBX; 
     // Excluding 1-body energy and the intra-molecular electrostatic energy of the framework
 
-    // std::cerr << "e1b (omitted): " << e1b << std::endl;
-    // std::cerr << "e2b: " << e2b << std::endl;
-    // std::cerr << "e3b: " << e3b << std::endl;
-    // std::cerr << "e4b: " << e4b << std::endl;
-    // std::cerr << "edisp: " << edisp << std::endl;
-    // // std::cerr << "ebuck: " << ebuck << std::endl;
-    // // std::cerr << "elj: " << elj << std::endl;
-    // std::cerr << "eelec_perm: " << eelec_perm << std::endl;
-    // std::cerr << "eelec_ind: " << eelec_ind << std::endl;
-    // std::cerr << "total_e: " << energy << std::endl;
-
+    if (mbxEnergyLog)
+    {
+        if (mbxEnergyLog->size() != 7)
+        {
+            std::cerr << "mbxEnergyLog size mismatch" << "\n";
+        }
+        else{
+            (*mbxEnergyLog)[0] = e1b;
+            (*mbxEnergyLog)[1] = e2b;
+            (*mbxEnergyLog)[2] = e3b;
+            (*mbxEnergyLog)[3] = e4b;
+            (*mbxEnergyLog)[4] = edisp;
+            (*mbxEnergyLog)[5] = (eelec_perm - system.elecPermFrameworkMBX);
+            (*mbxEnergyLog)[6] = eelec_ind;
+        }
+    }
+    
     /***
      * Destroy MBX System object.
     ***/
-
     delete mbx;
 
     // Conversion kcal/mol -> RASPA internal units for energy, using Units module
@@ -450,11 +455,8 @@ RunningEnergy Interactions::computeMBXEnergy(
     ***/
     // Framework  --> In RASPA3 sometimes the framework is std::nullopt
     // Need to know MBX behaviour without the framework
-    double eelec_perm_framework = 0.0;
     if (framework.has_value())
     {
-        // eelec_perm_framework = Interactions::computeFrameworkElecPermMBXEnergy(system, simulationBox, framework, frameworkAtoms);
-
         std::vector<double> frameworkCoords(frameworkAtoms.size() * 3);
         std::vector<double> frameworkCharges(frameworkAtoms.size());
         std::vector<size_t> frameworkIsLocals(frameworkAtoms.size(), 1);
@@ -543,23 +545,11 @@ RunningEnergy Interactions::computeMBXEnergy(
             (*mbxEnergyLog)[2] = e3b;
             (*mbxEnergyLog)[3] = e4b;
             (*mbxEnergyLog)[4] = edisp;
-            (*mbxEnergyLog)[5] = eelec_perm;
+            (*mbxEnergyLog)[5] = (eelec_perm - system.elecPermFrameworkMBX);
             (*mbxEnergyLog)[6] = eelec_ind;
         }
     }
-    // std::cerr << "e1b (omitted): " << e1b << std::endl;
-    // std::cerr << "e2b: " << e2b << std::endl;
-    // std::cerr << "e3b: " << e3b << std::endl;
-    // std::cerr << "e4b: " << e4b << std::endl;
-    // std::cerr << "edisp: " << edisp << std::endl;
-    // // std::cerr << "ebuck: " << ebuck << std::endl;
-    // // std::cerr << "elj: " << elj << std::endl;
-    // std::cerr << "eelec_perm: " << eelec_perm << std::endl;
-    // std::cerr << "eelec_ind: " << eelec_ind << std::endl;
-    // std::cerr << "total_e: " << energy << std::endl;
 
-    // double energy =  mbx->Energy(false); // false means don't calculate forces
-    // std::cerr << "MBX energy: " << energy << "[kcal/mol]" << std::endl;
     /***
      * Destroy MBX System object.
     ***/
