@@ -47,6 +47,7 @@ import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
 import interactions_mbx;
+import units;
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System &system, std::size_t selectedComponent,
@@ -87,11 +88,12 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   std::vector<double3> electricFieldMoleculeNew(molecule_atoms.size());
   std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
 
+  // Energy of the system before the insertion of trial molecule
+  RunningEnergy oldTotalEnergy = system.runningEnergies;
   RunningEnergy energyDifference;
   // Compute MBX Energy
   if (system.useMBX)
   {
-
     // DO THE FOLLOWING STEPS IN ALL MC MOVES CPP FILES FOR WHICH YOU WANT TO LOG
     std::vector<double> mbxEnergyLog(7, 0);         // Vector to store energylog values
 
@@ -102,21 +104,10 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
                                                        selectedComponent, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
                                                        trialMolecule.second, true, &mbxEnergyLog);
 
-    // Here you can add logging commands
-    std::cerr << "e1b:" << mbxEnergyLog[0] << "\n"
-              << "e2b:" << mbxEnergyLog[1] << "\n"
-              << "e3b:" << mbxEnergyLog[2] << "\n"
-              << "e4b:" << mbxEnergyLog[3] << "\n"
-              << "edisp:" << mbxEnergyLog[4] << "\n"
-              << "eelec_perm:" << mbxEnergyLog[5] << "\n"
-              << "eelec_ind:" << mbxEnergyLog[6] << "\n";
-              
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
   
-    // Energy of the system before the insertion of trial molecule
-    RunningEnergy oldTotalEnergy = system.runningEnergies;
     // MBX energy difference before and after the insertion move old and new configuration 
     energyDifference.mbxEnergy = newTotalEnergy.mbxEnergy - oldTotalEnergy.mbxEnergy;
 
@@ -144,6 +135,21 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
     component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
     energyDifference.tail = tailEnergyDifferenceFrameworkMolecule.tail;
+
+    // Here you can add logging commands
+    std::cerr << "rotation" << ", "
+              << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
+              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
+              << (oldTotalEnergy.tail + energyDifference.tail) << ", "
+              << newTotalEnergy.mbxEnergy << ", "
+              << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ", "  // e2b
+              << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ", "  // e3b
+              << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ", "  // e4b
+              << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ", "  // edisp
+              << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ", "  // eelec_perm
+              << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ", "  // eelec_ind
+              << energyDifference.potentialEnergy() << ", "
+              << (std::exp(-system.beta * energyDifference.potentialEnergy())) << "\n";
 
   }
   else
@@ -221,6 +227,19 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
     energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                     ewaldFourierEnergy + polarizationDifference;
 
+    // Here you can add logging commands
+    std::cerr << "rotation" << ", "
+              << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
+              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
+              << (oldTotalEnergy.moleculeMoleculeVDW + energyDifference.moleculeMoleculeVDW) << ", "
+              << (oldTotalEnergy.tail + energyDifference.tail) << ", "
+              << (oldTotalEnergy.frameworkMoleculeCharge + energyDifference.frameworkMoleculeCharge) << ", "
+              << (oldTotalEnergy.moleculeMoleculeCharge + energyDifference.moleculeMoleculeCharge) << ", "
+              << ((oldTotalEnergy.ewald_fourier + energyDifference.ewald_fourier) +
+                 (oldTotalEnergy.ewald_self + energyDifference.ewald_self) +
+                 (oldTotalEnergy.ewald_exclusion + energyDifference.ewald_exclusion)) << ", "
+              << energyDifference.potentialEnergy() << ", "
+              << (std::exp(-system.beta * energyDifference.potentialEnergy())) << "\n";
   }
 
   // apply acceptance/rejection rule
