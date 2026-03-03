@@ -345,7 +345,8 @@ RunningEnergy Interactions::computeMBXEnergy(
         std::span<const Atom> frameworkAtoms,
         std::span<const Atom> moleculeAtoms,
         std::span<const Atom> selectedMoleculeAtoms,
-        bool includeSelectedMoleculeAtoms
+        bool includeSelectedMoleculeAtoms,
+        std::vector<double>* mbxEnergyLog
 ) noexcept
 {
 
@@ -530,6 +531,22 @@ RunningEnergy Interactions::computeMBXEnergy(
     double energy = e2b + e3b + e4b + edisp + eelec_perm + eelec_ind - system.elecPermFrameworkMBX; 
     // Excluding 1-body energy and the intra-molecular electrostatic energy of the framework
 
+    if (mbxEnergyLog)
+    {
+        if (mbxEnergyLog->size() != 7)
+        {
+            std::cerr << "mbxEnergyLog size mismatch" << "\n";
+        }
+        else{
+            (*mbxEnergyLog)[0] = e1b;
+            (*mbxEnergyLog)[1] = e2b;
+            (*mbxEnergyLog)[2] = e3b;
+            (*mbxEnergyLog)[3] = e4b;
+            (*mbxEnergyLog)[4] = edisp;
+            (*mbxEnergyLog)[5] = eelec_perm;
+            (*mbxEnergyLog)[6] = eelec_ind;
+        }
+    }
     // std::cerr << "e1b (omitted): " << e1b << std::endl;
     // std::cerr << "e2b: " << e2b << std::endl;
     // std::cerr << "e3b: " << e3b << std::endl;

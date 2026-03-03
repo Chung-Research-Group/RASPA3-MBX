@@ -64,7 +64,8 @@ RunningEnergy computeMBXEnergy(
         std::span<const Atom> frameworkAtoms,
         std::span<const Atom> moleculeAtoms,
         std::span<const Atom> selectedMoleculeAtoms,
-        bool includeSelectedMoleculeAtoms
+        bool includeSelectedMoleculeAtoms,
+        std::vector<double>* mbxEnergyLog = nullptr
 ) noexcept;
 
 
