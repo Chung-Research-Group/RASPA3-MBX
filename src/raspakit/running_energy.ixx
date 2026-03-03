@@ -184,8 +184,8 @@ export struct RunningEnergy
            frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
            ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
            bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + polarization +
-          //  tail +
-           frameworkMoleculeTail + moleculeMoleculeTail +
+           tail +
+          //  frameworkMoleculeTail + moleculeMoleculeTail +
            mbxEnergy;
   }
 
