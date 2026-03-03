@@ -167,14 +167,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
     // Energy logging
     std::cerr << "insertion_cbmc" << ", "
               << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ", "
-              << (system.runningEnergies.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ", "
-              << (system.runningEnergies.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ", "
-              << (system.runningEnergies.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ", "
-              << (system.runningEnergies.tail + energyDifferenceFF.tail) << ", "
-              << (system.runningEnergies.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ", "
-              << (system.runningEnergies.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ", "
-              << energyFourierDifference.potentialEnergy() << ", "
-              << polarizationDifference.potentialEnergy() << ", "
+              << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ", "
+              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ", "
+              << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ", "
+              << (oldTotalEnergy.tail + energyDifferenceFF.tail) << ", "
+              << (oldTotalEnergy.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ", "
+              << (oldTotalEnergy.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ", "
+              << ((oldTotalEnergy.ewald_fourier + energyDifferenceFF.ewald_fourier) +
+                 (oldTotalEnergy.ewald_self + energyDifferenceFF.ewald_self) +
+                 (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion)) << ", "
+              << energyDifferenceFF.potentialEnergy() << ", "
               << Pacc << "\n";
   }
   else
