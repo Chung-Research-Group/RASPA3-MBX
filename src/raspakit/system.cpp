@@ -190,9 +190,14 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
       }
       this->useMBX = true;
       this->mbxSettingsFilePath = mbxFilePath.value();
-      std::cerr << "Using MBX for energy calculations..." << std::endl; 
+      // std::cerr << "Using MBX for energy calculations..." << std::endl; 
+      std::cerr << "type, total, hg_VDW, hg_tail, mbx_tot, E2b, E3b, E4b, Edisp, Eelec_perm, Eelec_ind, E_diff, Pacc\n"; // Header for MBX energy log
+    }
+    else{
+      std::cerr << "type, total, hg_VDW, gg_VDW, tail, hg_Charge, gg_Charge, E_ewald, E_diff, Pacc\n"; // Header for FF energy log
     }
   }
+  
 
   removeRedundantMoves();
   determineSwappableComponents();
@@ -209,7 +214,7 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
     // Precompute the MBX permanent electrostatic interactions of the framework atoms
     if (useMBX)
     {
-      std::cerr << "Pre-computing MBX intra-molecule permanent electrostatics interactions for framework..." << std::endl;
+      // std::cerr << "Pre-computing MBX intra-molecule permanent electrostatics interactions for framework..." << std::endl;
       preComputeElecPermFrameworkMBX();
     }
 
