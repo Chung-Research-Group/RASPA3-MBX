@@ -138,6 +138,7 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
 
     // Here you can add logging commands
     std::cerr << "rotation" << ", "
+              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.tail + energyDifference.tail) << ", "
@@ -229,6 +230,7 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
 
     // Here you can add logging commands
     std::cerr << "rotation" << ", "
+              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.moleculeMoleculeVDW + energyDifference.moleculeMoleculeVDW) << ", "

@@ -208,6 +208,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   {
     // Energy logging
     std::cerr << "reinsertion" << ", "
+              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ", "
@@ -250,6 +251,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
 
     // Energy logging
     std::cerr << "reinsertion" << ", "
+              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifferenceMBX.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceMBX.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.tail + energyDifferenceMBX.tail) << ", "

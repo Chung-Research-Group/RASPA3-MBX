@@ -122,6 +122,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
       // Energy logging
       std::cerr << "deletion" << ", "
+              << (system.numberOfIntegerMoleculesPerComponent[selectedComponent] - 1) << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.tail + energyDifference.tail) << ", "
@@ -215,6 +216,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
       // Energy logging
       std::cerr << "deletion" << ", "
+              << (system.numberOfIntegerMoleculesPerComponent[selectedComponent] - 1) << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.moleculeMoleculeVDW + energyDifference.moleculeMoleculeVDW) << ", "

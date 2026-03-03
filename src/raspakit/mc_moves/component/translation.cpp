@@ -136,6 +136,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
     
     // Here you can add logging commands
     std::cerr << "translation" << ", "
+              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.tail + energyDifference.tail) << ", "
@@ -227,6 +228,7 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
 
     // Here you can add logging commands
     std::cerr << "translation" << ", "
+              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.moleculeMoleculeVDW + energyDifference.moleculeMoleculeVDW) << ", "

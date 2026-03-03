@@ -166,6 +166,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   {
     // Energy logging
     std::cerr << "insertion_cbmc" << ", "
+              << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ", "
               << (system.runningEnergies.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ", "
               << (system.runningEnergies.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ", "
               << (system.runningEnergies.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ", "
@@ -211,6 +212,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
 
     // Energy logging
     std::cerr << "insertion_cbmc" << ", "
+              << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifferenceMBX.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceMBX.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.tail + energyDifferenceMBX.tail) << ", "

@@ -140,6 +140,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
 
     // Energy logging
     std::cerr << "insertion" << ", "
+              << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.tail + energyDifference.tail) << ", "
@@ -230,6 +231,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
 
     // Energy logging
     std::cerr << "insertion" << ", "
+              << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.moleculeMoleculeVDW + energyDifference.moleculeMoleculeVDW) << ", "

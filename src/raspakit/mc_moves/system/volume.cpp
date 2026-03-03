@@ -108,6 +108,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
       // Energy logging
       std::cerr << "volume" << ", "
+              << numberOfMolecules << ", "
               << newTotalEnergy.potentialEnergy() << ", "
               << newTotalEnergy.frameworkMoleculeVDW << ", "
               << newTotalEnergy.tail << ", "
@@ -170,6 +171,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
     // Energy logging
     std::cerr << "volume" << ", "
+              << numberOfMolecules << ", "
               << newTotalEnergy.potentialEnergy() << ", "
               << newTotalEnergy.frameworkMoleculeVDW << ", "
               << newTotalEnergy.moleculeMoleculeVDW << ", "

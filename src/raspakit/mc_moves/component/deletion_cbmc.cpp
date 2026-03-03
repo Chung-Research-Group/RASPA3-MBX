@@ -158,6 +158,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     {
       // Energy logging
     std::cerr << "deletion_cbmc" << ", "
+              << (system.numberOfIntegerMoleculesPerComponent[selectedComponent] - 1) << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ", "
@@ -204,6 +205,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 
       // Energy logging
       std::cerr << "deletion_cbmc" << ", "
+              << (system.numberOfIntegerMoleculesPerComponent[selectedComponent] - 1) << ", "
               << (oldTotalEnergy.potentialEnergy() + energyDifferenceMBX.potentialEnergy()) << ", "
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceMBX.frameworkMoleculeVDW) << ", "
               << (oldTotalEnergy.tail + energyDifferenceMBX.tail) << ", "
