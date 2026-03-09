@@ -40,6 +40,9 @@ include_directories(${HDF5_INCLUDE_DIRS})
 find_package(OpenCL)
 include_directories(${OpenCL_INCLUDE_DIRS})
 
+include_directories(${MBX_INCLUDES})
+include_directories(${FFTW_INCLUDES})
+
 set(MSVC_WARNINGS /W4 /w14242 /w14254 /w14263 /w14265 /w14287 /we4289 /w14296 /w14311 /w14545 /w14546 /w14547 /w14549 /w14555 /w14619 /w14640 /w14826 /w14826 /w14905 /w14906 /w14928 /permissive-)
 
 set(CLANG_WARNINGS -Wall -Wextra -Wshadow -Wnon-virtual-dtor -Wold-style-cast -Wcast-align -Wunused -Woverloaded-virtual -Wpedantic -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wimplicit-fallthrough -Wno-gnu-anonymous-struct -Wno-error=deprecated-declarations -Wno-error=nan-infinity-disabled -Wno-deprecated-declarations -Wno-nan-infinity-disabled -Wno-unknown-warning-option)
@@ -100,6 +103,8 @@ function(raspa_target_link_libraries target_name)
       ${HDF5_LIBRARIES}
       voro++
       ${TORCH_LIBRARIES}
+      ${MBX_LIBRARY}
+      ${FFTW_LIBRARY}
       OpenMP::OpenMP_CXX
       OpenCL::OpenCL
       ZLIB::ZLIB
@@ -115,6 +120,8 @@ function(raspa_target_link_libraries target_name)
       ${HDF5_LIBRARIES}
       voro++
       ${TORCH_LIBRARIES}
+      ${MBX_LIBRARY}
+      ${FFTW_LIBRARY}
       OpenMP::OpenMP_CXX
       OpenCL::OpenCL
       -nostdlib++
@@ -133,6 +140,8 @@ function(raspa_target_link_libraries target_name)
       ${HDF5_CXX_LIBRARIES}
       voro++
       ${TORCH_LIBRARIES}
+      ${MBX_LIBRARY}
+      ${FFTW_LIBRARY}
       OpenMP::OpenMP_CXX
       OpenCL::OpenCL
       -nostdlib++
@@ -145,6 +154,8 @@ function(raspa_target_link_libraries target_name)
       ${LAPACK_LIBRARIES}
       voro++
       ${TORCH_LIBRARIES}
+      ${MBX_LIBRARY}
+      ${FFTW_LIBRARY}
       $ENV{HOMEBREW_PREFIX}/lib/libhdf5_cpp.a
       $ENV{HOMEBREW_PREFIX}/lib/libhdf5.a
       $ENV{HOMEBREW_PREFIX}/lib/libaec.a
@@ -166,7 +177,6 @@ add_subdirectory(src)
 if(BUILD_APP)
   # add_subdirectory(data)
   # add_subdirectory(examples)
-
   add_subdirectory(app)
 endif()
 
@@ -179,7 +189,6 @@ if(BUILD_DOXYGEN)
 endif()
 
 # add_subdirectory(packaging)
-
 if(BUILD_TESTING)
   add_subdirectory(tests)
 endif()
