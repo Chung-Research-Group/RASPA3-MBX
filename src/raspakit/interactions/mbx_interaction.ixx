@@ -75,8 +75,7 @@ RunningEnergy computeMBXEnergySystem(
         const SimulationBox &box,
         const std::optional<Framework> &framework,
         std::span<const Atom> frameworkAtoms,
-        std::span<const Atom> moleculeAtoms,
-        std::vector<double>* mbxEnergyLog = nullptr
+        std::span<const Atom> moleculeAtoms
 ) noexcept;
 /**
  * \brief Computes the difference in inter-molecular energy due to atom changes.
