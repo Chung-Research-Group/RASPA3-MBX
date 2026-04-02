@@ -125,17 +125,18 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   RunningEnergy energyDifferenceFF = growData->energies + energyFourierDifference + tailEnergyDifference;
 
   // Energy logging
-  std::cerr << "widom_FF" << ", "
-            << (energyDifferenceFF.potentialEnergy()) << ", "
-            << (energyDifferenceFF.frameworkMoleculeVDW) << ", "
-            << (energyDifferenceFF.moleculeMoleculeVDW) << ", "
-            << (energyDifferenceFF.tail) << ", "
-            << (energyDifferenceFF.frameworkMoleculeCharge) << ", "
-            << (energyDifferenceFF.moleculeMoleculeCharge) << ", "
-            << (energyDifferenceFF.ewald_fourier + energyDifferenceFF.ewald_self + energyDifferenceFF.ewald_exclusion) << ", "
-            << newMolecule[0].position.x << ", " << newMolecule[0].position.y << ", " << newMolecule[0].position.z << ", "
-            << newMolecule[1].position.x << ", " << newMolecule[1].position.y << ", " << newMolecule[1].position.z << ", "
-            << newMolecule[2].position.x << ", " << newMolecule[2].position.y << ", " << newMolecule[2].position.z << "\n";
+  std::cerr << "widom_FF" << ","
+            << selectedComponent << ","
+            << (energyDifferenceFF.potentialEnergy()) << ","
+            << (energyDifferenceFF.frameworkMoleculeVDW) << ","
+            << (energyDifferenceFF.moleculeMoleculeVDW) << ","
+            << (energyDifferenceFF.tail) << ","
+            << (energyDifferenceFF.frameworkMoleculeCharge) << ","
+            << (energyDifferenceFF.moleculeMoleculeCharge) << ","
+            << (energyDifferenceFF.ewald_fourier + energyDifferenceFF.ewald_self + energyDifferenceFF.ewald_exclusion) << ","
+            << newMolecule[0].position.x << "," << newMolecule[0].position.y << "," << newMolecule[0].position.z << ","
+            << newMolecule[1].position.x << "," << newMolecule[1].position.y << "," << newMolecule[1].position.z << ","
+            << newMolecule[2].position.x << "," << newMolecule[2].position.y << "," << newMolecule[2].position.z << "\n";
   
   // MBX Calculator
   if (system.useMBX)
@@ -171,33 +172,22 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
     energyDifferenceMBX.tail = tailEnergyDifferenceFrameworkMolecule.tail;
 
     // Energy logging
-    std::cerr << "widom_MBX" << ", "
-              << energyDifferenceMBX.potentialEnergy() << ", "
-              << energyDifferenceMBX.frameworkMoleculeVDW << ", "
-              << energyDifferenceMBX.tail << ", "
-              << energyDifferenceMBX.mbxEnergy << ", "
-              << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ", "  // e2b
-              << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ", "  // e3b
-              << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ", "  // e4b
-              << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ", "  // edisp
-              << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ", "  // eelec_perm
-              << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ", "  // eelec_ind
-              << newMolecule[0].position.x << ", " << newMolecule[0].position.y << ", " << newMolecule[0].position.z << ", "
-              << newMolecule[1].position.x << ", " << newMolecule[1].position.y << ", " << newMolecule[1].position.z << ", "
-              << newMolecule[2].position.x << ", " << newMolecule[2].position.y << ", " << newMolecule[2].position.z << "\n";
-    // std::cerr << "MBX_E " 
-    //           << energyDifferenceMBX.potentialEnergy() 
-    //           << " "
-    //           << "FF_E " 
-    //           << energyDifferenceFF.potentialEnergy() 
-    //           << " "
-    //           << "XYZ_1 " 
-    //           << newMolecule[0].position.x << " " << newMolecule[0].position.y << " " << newMolecule[0].position.z << " "
-    //           << "XYZ_2 " 
-    //           << newMolecule[1].position.x << " " << newMolecule[1].position.y << " " << newMolecule[1].position.z << " "
-    //           << "XYZ_3 " 
-    //           << newMolecule[2].position.x << " " << newMolecule[2].position.y << " " << newMolecule[2].position.z << " "
-    //           << "\n";
+    std::cerr << "widom_MBX" << ","
+              << selectedComponent << ","
+              << energyDifferenceMBX.potentialEnergy() << ","
+              << energyDifferenceMBX.frameworkMoleculeVDW << ","
+              << energyDifferenceMBX.tail << ","
+              << energyDifferenceMBX.mbxEnergy << ","
+              << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ","  // e2b
+              << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ","  // e3b
+              << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ","  // e4b
+              << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ","  // edisp
+              << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ","  // eelec_perm
+              << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ","  // eelec_ind
+              << newMolecule[0].position.x << "," << newMolecule[0].position.y << "," << newMolecule[0].position.z << ","
+              << newMolecule[1].position.x << "," << newMolecule[1].position.y << "," << newMolecule[1].position.z << ","
+              << newMolecule[2].position.x << "," << newMolecule[2].position.y << "," << newMolecule[2].position.z << "\n";
+
 
     double correctionFactorMBX = std::exp(-system.beta * (energyDifferenceMBX.potentialEnergy() - energyDifferenceFF.potentialEnergy()));
 

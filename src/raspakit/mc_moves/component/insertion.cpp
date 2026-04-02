@@ -139,19 +139,20 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     energyDifference.tail = tailEnergyDifferenceFrameworkMolecule.value().tail;
 
     // Energy logging
-    std::cerr << "insertion" << ", "
-              << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ", "
-              << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
-              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
-              << (oldTotalEnergy.tail + energyDifference.tail) << ", "
-              << newTotalEnergy.mbxEnergy << ", "
-              << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ", "  // e2b
-              << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ", "  // e3b
-              << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ", "  // e4b
-              << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ", "  // edisp
-              << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ", "  // eelec_perm
-              << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ", "  // eelec_ind
-              << energyDifference.potentialEnergy() << ", "
+    std::cerr << "insertion" << ","
+              << selectedComponent << ","
+              << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ","
+              << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ","
+              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ","
+              << (oldTotalEnergy.tail + energyDifference.tail) << ","
+              << newTotalEnergy.mbxEnergy << ","
+              << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ","  // e2b
+              << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ","  // e3b
+              << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ","  // e4b
+              << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ","  // edisp
+              << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ","  // eelec_perm
+              << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ","  // eelec_ind
+              << energyDifference.potentialEnergy() << ","
               << preFactor * (std::exp(-system.beta * energyDifference.potentialEnergy())) << "\n";
   }
   else
@@ -230,18 +231,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
                                     energyFourierDifference + tailEnergyDifference + polarizationDifference;
 
     // Energy logging
-    std::cerr << "insertion" << ", "
-              << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ", "
-              << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ", "
-              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ", "
-              << (oldTotalEnergy.moleculeMoleculeVDW + energyDifference.moleculeMoleculeVDW) << ", "
-              << (oldTotalEnergy.tail + energyDifference.tail) << ", "
-              << (oldTotalEnergy.frameworkMoleculeCharge + energyDifference.frameworkMoleculeCharge) << ", "
-              << (oldTotalEnergy.moleculeMoleculeCharge + energyDifference.moleculeMoleculeCharge) << ", "
+    std::cerr << "insertion" << ","
+              << selectedComponent << ","
+              << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ","
+              << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ","
+              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ","
+              << (oldTotalEnergy.moleculeMoleculeVDW + energyDifference.moleculeMoleculeVDW) << ","
+              << (oldTotalEnergy.tail + energyDifference.tail) << ","
+              << (oldTotalEnergy.frameworkMoleculeCharge + energyDifference.frameworkMoleculeCharge) << ","
+              << (oldTotalEnergy.moleculeMoleculeCharge + energyDifference.moleculeMoleculeCharge) << ","
               << ((oldTotalEnergy.ewald_fourier + energyDifference.ewald_fourier) +
                  (oldTotalEnergy.ewald_self + energyDifference.ewald_self) +
-                 (oldTotalEnergy.ewald_exclusion + energyDifference.ewald_exclusion)) << ", "
-              << energyDifference.potentialEnergy() << ", "
+                 (oldTotalEnergy.ewald_exclusion + energyDifference.ewald_exclusion)) << ","
+              << energyDifference.potentialEnergy() << ","
               << (preFactor * (std::exp(-system.beta * energyDifference.potentialEnergy()))) << "\n";
 
   }

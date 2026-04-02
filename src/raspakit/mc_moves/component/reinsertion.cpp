@@ -207,18 +207,19 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   if (!system.useMBX)
   {
     // Energy logging
-    std::cerr << "reinsertion" << ", "
-              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ", "
-              << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ", "
-              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ", "
-              << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ", "
-              << (oldTotalEnergy.tail + energyDifferenceFF.tail) << ", "
-              << (oldTotalEnergy.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ", "
-              << (oldTotalEnergy.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ", "
+    std::cerr << "reinsertion" << ","
+              << selectedComponent << ","
+              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ","
+              << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ","
+              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ","
+              << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ","
+              << (oldTotalEnergy.tail + energyDifferenceFF.tail) << ","
+              << (oldTotalEnergy.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ","
+              << (oldTotalEnergy.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ","
               << ((oldTotalEnergy.ewald_fourier + energyDifferenceFF.ewald_fourier) +
                  (oldTotalEnergy.ewald_self + energyDifferenceFF.ewald_self) +
-                 (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion)) << ", "
-              << energyDifferenceFF.potentialEnergy() << ", "
+                 (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion)) << ","
+              << energyDifferenceFF.potentialEnergy() << ","
               << Pacc << "\n";
   }
   else
@@ -250,19 +251,20 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     Pacc *= std::exp(-system.beta * (energyDifferenceMBX.potentialEnergy() - energyDifferenceFF.potentialEnergy()));
 
     // Energy logging
-    std::cerr << "reinsertion" << ", "
-              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ", "
-              << (oldTotalEnergy.potentialEnergy() + energyDifferenceMBX.potentialEnergy()) << ", "
-              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceMBX.frameworkMoleculeVDW) << ", "
-              << (oldTotalEnergy.tail + energyDifferenceMBX.tail) << ", "
-              << newTotalEnergy.mbxEnergy << ", "
-              << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ", "  // e2b
-              << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ", "  // e3b
-              << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ", "  // e4b
-              << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ", "  // edisp
-              << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ", "  // eelec_perm
-              << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ", "  // eelec_ind
-              << energyDifferenceMBX.potentialEnergy() << ", "
+    std::cerr << "reinsertion" << ","
+              << selectedComponent << ","
+              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ","
+              << (oldTotalEnergy.potentialEnergy() + energyDifferenceMBX.potentialEnergy()) << ","
+              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceMBX.frameworkMoleculeVDW) << ","
+              << (oldTotalEnergy.tail + energyDifferenceMBX.tail) << ","
+              << newTotalEnergy.mbxEnergy << ","
+              << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ","  // e2b
+              << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ","  // e3b
+              << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ","  // e4b
+              << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ","  // edisp
+              << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ","  // eelec_perm
+              << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ","  // eelec_ind
+              << energyDifferenceMBX.potentialEnergy() << ","
               << Pacc << "\n";
   }
 
