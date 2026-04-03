@@ -177,6 +177,7 @@ RunningEnergy Interactions::computeMBXEnergySystem(
     ***/
     // Adding monomers molecules for all the components
     int numAtoms{0};
+    size_t moleculeOffset = 0;
     for (size_t i = 0; i < components.size(); ++i)
     {
         numAtoms = static_cast<int>(components[i].atoms.size());           // Not sure whether MBX can use size_t
@@ -184,19 +185,20 @@ RunningEnergy Interactions::computeMBXEnergySystem(
         std::vector<std::string> atomNames(numAtoms, "none");
         std::string compName = components[i].name;
 
-        // Index of first molecule of the given component.
-        size_t idx_start = system.indexOfFirstMolecule(i);
-        idx_start -= frameworkAtoms.size();                                 // Remove number of framework atoms
+        // // Index of first molecule of the given component.
+        // size_t idx_start = system.indexOfFirstMolecule(i);
+        // idx_start -= frameworkAtoms.size();                                 // Remove number of framework atoms
         
         // Looping over all the molecules of given components
         for (size_t j = 0; j < system.numberOfMoleculesPerComponent[i]; ++j)
         {    
+            size_t moleculeBase = moleculeOffset + j * static_cast<size_t>(numAtoms);
             for(size_t k = 0; k < numAtoms; ++k) 
             {
-                atomCoordinates[k * 3] = moleculeAtoms[idx_start + k + j*numAtoms].position.x;
-                atomCoordinates[k * 3 + 1] = moleculeAtoms[idx_start + k + j*numAtoms].position.y;
-                atomCoordinates[k * 3 + 2] = moleculeAtoms[idx_start + k + j*numAtoms].position.z;
-                atomNames[k] = std::to_string(moleculeAtoms[idx_start + k + j*numAtoms].type);
+                atomCoordinates[k * 3] = moleculeAtoms[moleculeBase + k].position.x;
+                atomCoordinates[k * 3 + 1] = moleculeAtoms[moleculeBase + k].position.y;
+                atomCoordinates[k * 3 + 2] = moleculeAtoms[moleculeBase + k].position.z;
+                atomNames[k] = std::to_string(moleculeAtoms[moleculeBase + k].type);
             }
 
             size_t islocal = 1;
@@ -207,6 +209,7 @@ RunningEnergy Interactions::computeMBXEnergySystem(
 
             cumulativeTagIndex += numAtoms;
         }
+        moleculeOffset += static_cast<size_t>(numAtoms) * system.numberOfMoleculesPerComponent[i];
     }
     /***
     * MBX Miscellaneous settings.
@@ -348,7 +351,31 @@ RunningEnergy Interactions::computeMBXEnergy(
     * Adding molecule monomers.
     ***/
     // Adding monomers molecules for all the components except the selectedComponents's selectedMolecule
+    bool excludeSelectedMolecule = false;
+    size_t selectedMoleculeId = 0;
+    if (!selectedMoleculeAtoms.empty())
+    {
+        selectedMoleculeId = static_cast<size_t>(selectedMoleculeAtoms.front().moleculeId);
+        excludeSelectedMolecule = (static_cast<size_t>(selectedMoleculeAtoms.front().componentId) == selectedComponent);
+        for (const Atom &atom : selectedMoleculeAtoms)
+        {
+            if (static_cast<size_t>(atom.componentId) != selectedComponent ||
+                static_cast<size_t>(atom.moleculeId) != selectedMoleculeId)
+            {
+                excludeSelectedMolecule = false;
+                break;
+            }
+        }
+        if (excludeSelectedMolecule &&
+            selectedMoleculeId >= system.numberOfMoleculesPerComponent[selectedComponent])
+        {
+            // Trial insertion molecule: not present in moleculeAtoms yet.
+            excludeSelectedMolecule = false;
+        }
+    }
+
     int numAtoms{0};
+    size_t moleculeOffset = 0;
     for (size_t i = 0; i < components.size(); ++i)
     {
         numAtoms = static_cast<int>(components[i].atoms.size());           // Not sure whether MBX can use size_t
@@ -356,31 +383,34 @@ RunningEnergy Interactions::computeMBXEnergy(
         std::vector<std::string> atomNames(numAtoms, "none");
         std::string compName = components[i].name;
 
-        // Index of first molecule of the given component.
-        size_t idx_start = system.indexOfFirstMolecule(i);
-        idx_start -= frameworkAtoms.size();                                 // Remove number of framework atoms
-        bool keepMolecule{false};
+        // // Index of first molecule of the given component.
+        // size_t idx_start = system.indexOfFirstMolecule(i);
+        // idx_start -= frameworkAtoms.size();                                 // Remove number of framework atoms
+        // bool keepMolecule{false};
         
         // Looping over all the molecules of given components
         for (size_t j = 0; j < system.numberOfMoleculesPerComponent[i]; ++j)
         {   
-            for (const Atom &atom : selectedMoleculeAtoms)
+            // for (const Atom &atom : selectedMoleculeAtoms)
+            // {
+            //     if ( (j == static_cast<size_t>(atom.moleculeId)) && (selectedComponent == static_cast<size_t>(atom.componentId)) ) 
+            //     {
+            //         keepMolecule = false;
+            //         break;
+            //     }
+            //     else { keepMolecule = true;}
+            // }
+            // if ( keepMolecule )
+            bool keepMolecule = !(excludeSelectedMolecule && i == selectedComponent && j == selectedMoleculeId);
+            if (keepMolecule)
             {
-                if ( (j == static_cast<size_t>(atom.moleculeId)) && (selectedComponent == static_cast<size_t>(atom.componentId)) ) 
-                {
-                    keepMolecule = false;
-                    break;
-                }
-                else { keepMolecule = true;}
-            }
-            if ( keepMolecule )
-            {
+                size_t moleculeBase = moleculeOffset + j * static_cast<size_t>(numAtoms);
                 for(size_t k = 0; k < numAtoms; ++k) 
                 {
-                    atomCoordinates[k * 3] = moleculeAtoms[idx_start + k + j*numAtoms].position.x;
-                    atomCoordinates[k * 3 + 1] = moleculeAtoms[idx_start + k + j*numAtoms].position.y;
-                    atomCoordinates[k * 3 + 2] = moleculeAtoms[idx_start + k + j*numAtoms].position.z;
-                    atomNames[k] = std::to_string(moleculeAtoms[idx_start + k + j*numAtoms].type);
+                    atomCoordinates[k * 3] = moleculeAtoms[moleculeBase + k].position.x;
+                    atomCoordinates[k * 3 + 1] = moleculeAtoms[moleculeBase + k].position.y;
+                    atomCoordinates[k * 3 + 2] = moleculeAtoms[moleculeBase + k].position.z;
+                    atomNames[k] = std::to_string(moleculeAtoms[moleculeBase + k].type);
                 }
 
                 // This decides weather this guest molecule is a real molecule or a ghost molecule
@@ -395,6 +425,7 @@ RunningEnergy Interactions::computeMBXEnergy(
                 cumulativeTagIndex += numAtoms;
             }
         }
+        moleculeOffset += static_cast<size_t>(numAtoms) * system.numberOfMoleculesPerComponent[i];
     }
     if (includeSelectedMoleculeAtoms)
     {
