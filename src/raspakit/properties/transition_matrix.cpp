@@ -33,19 +33,6 @@ import std;
 import archive;
 import double3;
 
-void TransitionMatrix::initialize()
-{
-  if (!doTMMC) return;
-
-  cmatrix.resize(maxMacrostate - minMacrostate + 1);
-  bias.resize(maxMacrostate - minMacrostate + 1);
-  std::fill(bias.begin(), bias.end(), 1.0);
-  lnpi.resize(maxMacrostate - minMacrostate + 1);
-  forward_lnpi.resize(maxMacrostate - minMacrostate + 1);
-  reverse_lnpi.resize(maxMacrostate - minMacrostate + 1);
-  histogram.resize(maxMacrostate - minMacrostate + 1);
-}
-
 // C(No -> Nn) += p(o -> n)
 // C(No -> No) += 1 − p(o -> n)
 //
@@ -56,17 +43,13 @@ void TransitionMatrix::initialize()
 // deletion overlap-detected: double3(0.0, 1.0, 0.0)
 void TransitionMatrix::updateMatrix(double3 Pacc, std::size_t oldN)
 {
-  if (!doTMMC) return;
-
+  numberOfUpdates++;
   Pacc.clamp(0.0, 1.0);
-
   cmatrix[oldN - minMacrostate] += Pacc;
 };
 
 void TransitionMatrix::updateHistogram(std::size_t N)
 {
-  if (!doTMMC) return;
-
   if ((N > maxMacrostate) || (N < minMacrostate)) return;
   histogram[N - minMacrostate]++;
 }
@@ -74,20 +57,17 @@ void TransitionMatrix::updateHistogram(std::size_t N)
 // return the biasing Factor
 double TransitionMatrix::biasFactor(std::size_t newN, std::size_t oldN)
 {
-  if (!doTMMC || !useBias || !useTMBias) return 1.0;
-
+  if (!useBias || newN > maxMacrostate) return 1.0;
   double TMMCBias = bias[newN - minMacrostate] - bias[oldN - minMacrostate];
   return std::exp(TMMCBias);
 };
 
 // From Vince Shen's pseudo code//
-void TransitionMatrix::adjustBias()
+void TransitionMatrix::adjustBias(std::size_t currentCycle)
 {
-  if (!doTMMC || !useBias || !useTMBias) return;
+  if ((currentCycle % sampleTMMCEvery != 0) || currentCycle == 0) return;
 
-  if ((numberOfSteps % updateTMEvery != 0) || numberOfSteps == 0) return;
-
-  numberOfUpdates++;
+  numberOfComputes++;
 
   // get the lowest and highest visited states in terms of loading
   std::size_t minVisitedN = static_cast<std::size_t>(std::distance(
@@ -147,16 +127,15 @@ void TransitionMatrix::adjustBias()
     lnpi[i] += normalFactor;  // Zhao's note: mind the sign
     bias[i] = -lnpi[i];
   }
-
-  writeStatistics();
 };
 
 // Clear Collection matrix stats (used after initialization cycles)
 void TransitionMatrix::clearCMatrix()
 {
-  if (!doTMMC || !rezeroAfterInitialization) return;
+  if (!rezeroAfterInitialization) return;
 
-  numberOfSteps = 0;
+  numberOfUpdates = 0;
+  numberOfComputes = 0;
   double3 temp = {0.0, 0.0, 0.0};
   std::fill(cmatrix.begin(), cmatrix.end(), temp);
   std::fill(histogram.begin(), histogram.end(), 0);
@@ -164,8 +143,10 @@ void TransitionMatrix::clearCMatrix()
   std::fill(bias.begin(), bias.end(), 1.0);
 };
 
-void TransitionMatrix::writeStatistics()
+void TransitionMatrix::writeStatistics(std::size_t currentCycle)
 {
+  if ((currentCycle % writeTMMCEvery != 0) || currentCycle == 0) return;
+
   std::ofstream textTMMCFile{};
   std::filesystem::path cwd = std::filesystem::current_path();
 
@@ -177,28 +158,25 @@ void TransitionMatrix::writeStatistics()
   std::filesystem::create_directories(directoryName);
   textTMMCFile = std::ofstream(fileName, std::ios::out);
 
-  if (doTMMC)
+  std::print(textTMMCFile, "# performed: {} steps\n", numberOfUpdates);
+  std::print(textTMMCFile, "# collection matrix updated: {} times\n", numberOfComputes);
+  std::print(textTMMCFile, "# minimum microstate: {}\n", minMacrostate);
+  std::print(textTMMCFile, "# maximum microstate: {}\n", maxMacrostate);
+  std::print(textTMMCFile, "# column 1: N\n");
+  std::print(textTMMCFile, "# column 2: CM[-1]\n");
+  std::print(textTMMCFile, "# column 3: CM[ 0]0\n");
+  std::print(textTMMCFile, "# column 4: CM[+1]\n");
+  std::print(textTMMCFile, "# column 5: bias\n");
+  std::print(textTMMCFile, "# column 6: lnpi\n");
+  std::print(textTMMCFile, "# column 7: forward lnpi\n");
+  std::print(textTMMCFile, "# column 8: reverse lnpi\n");
+  std::print(textTMMCFile, "# column 9: histogram\n");
+  std::print(textTMMCFile, "N CM[-1] CM[0] CM[1] bias lnpi Forward_lnpi Reverse_lnpi histogram\n");
+  for (std::size_t j = minMacrostate; j < maxMacrostate + 1; j++)
   {
-    std::print(textTMMCFile, "# performed: {} steps\n", numberOfSteps);
-    std::print(textTMMCFile, "# collection matrix updated: {} times\n", numberOfUpdates);
-    std::print(textTMMCFile, "# minimum microstate: {}\n", minMacrostate);
-    std::print(textTMMCFile, "# maximum microstate: {}\n", maxMacrostate);
-    std::print(textTMMCFile, "# column 1: N\n");
-    std::print(textTMMCFile, "# column 2: CM[-1]\n");
-    std::print(textTMMCFile, "# column 3: CM[ 0]0\n");
-    std::print(textTMMCFile, "# column 4: CM[+1]\n");
-    std::print(textTMMCFile, "# column 5: bias\n");
-    std::print(textTMMCFile, "# column 6: lnpi\n");
-    std::print(textTMMCFile, "# column 7: forward lnpi\n");
-    std::print(textTMMCFile, "# column 8: reverse lnpi\n");
-    std::print(textTMMCFile, "# column 9: histogram\n");
-    std::print(textTMMCFile, "N CM[-1] CM[0] CM[1] bias lnpi Forward_lnpi Reverse_lnpi histogram\n");
-    for (std::size_t j = minMacrostate; j < maxMacrostate + 1; j++)
-    {
-      std::size_t newj = j - minMacrostate;
-      std::print(textTMMCFile, "{} {} {} {} {} {} {} {} {}\n", j, cmatrix[newj].x, cmatrix[newj].y, cmatrix[newj].z,
-                 bias[newj], lnpi[newj], forward_lnpi[newj], reverse_lnpi[newj], histogram[newj]);
-    }
+    std::size_t newj = j - minMacrostate;
+    std::print(textTMMCFile, "{} {:8.5f} {:8.5f} {:8.5f} {} {} {} {} {}\n", j, cmatrix[newj].x, cmatrix[newj].y,
+               cmatrix[newj].z, bias[newj], lnpi[newj], forward_lnpi[newj], reverse_lnpi[newj], histogram[newj]);
   }
 };
 
@@ -213,15 +191,18 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Transi
   archive << m.reverse_lnpi;
   archive << m.histogram;
 
-  archive << m.numberOfSteps;
   archive << m.minMacrostate;
   archive << m.maxMacrostate;
-  archive << m.updateTMEvery;
-  archive << m.numberOfUpdates;
+  archive << m.numberOfStates;
 
-  archive << m.doTMMC;
+  archive << m.sampleTMMCEvery;
+  archive << m.writeTMMCEvery;
+  archive << m.subSampling;
   archive << m.useBias;
-  archive << m.useTMBias;
+
+  archive << m.numberOfUpdates;
+  archive << m.numberOfComputes;
+
   archive << m.rejectOutofBound;
   archive << m.rezeroAfterInitialization;
 
@@ -250,15 +231,18 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMa
   archive >> m.reverse_lnpi;
   archive >> m.histogram;
 
-  archive >> m.numberOfSteps;
   archive >> m.minMacrostate;
   archive >> m.maxMacrostate;
-  archive >> m.updateTMEvery;
-  archive >> m.numberOfUpdates;
+  archive >> m.numberOfStates;
 
-  archive >> m.doTMMC;
+  archive >> m.sampleTMMCEvery;
+  archive >> m.writeTMMCEvery;
+  archive >> m.subSampling;
   archive >> m.useBias;
-  archive >> m.useTMBias;
+
+  archive >> m.numberOfUpdates;
+  archive >> m.numberOfComputes;
+
   archive >> m.rejectOutofBound;
   archive >> m.rezeroAfterInitialization;
 

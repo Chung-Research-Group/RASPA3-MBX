@@ -66,6 +66,7 @@ import intra_molecular_potentials;
 import connectivity_table;
 import json;
 import cbmc_move_statistics;
+import transition_matrix;
 
 /**
  * \brief Represents a component within the simulation system.
@@ -235,6 +236,10 @@ export struct Component
 
   double lnPartitionFunction{0};  ///< Natural logarithm of the partition function [-].
 
+  std::size_t minMacrostate;  ///< Used for TMMC
+  std::size_t maxMacrostate;  ///< Used for TMMC
+  bool doTMMC;                ///< Whether to use TMMC
+
   MultiSiteIsotherm isotherm{};            ///< Isotherm information for the component.
   double massTransferCoefficient{0.0};     ///< Mass transfer coefficient [1/s].
   double axialDispersionCoefficient{0.0};  ///< Axial dispersion coefficient [m²/s].
@@ -383,8 +388,8 @@ export struct Component
 
   std::vector<VanDerWaalsPotential> readVanDerWaalsPotentials(
       const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
-  std::vector<CoulombPotential> readCoulombPotentials(
-      const ForceField &forceField, const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+  std::vector<CoulombPotential> readCoulombPotentials(const ForceField &forceField,
+                                                      const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
 
   std::vector<std::vector<std::size_t>> readPartialReinsertionFixedAtoms(
       const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);

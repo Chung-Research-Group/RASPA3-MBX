@@ -74,10 +74,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // Attempt to grow a new molecule using CBMC
   time_begin = std::chrono::system_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, component, system.hasExternalField, system.forceField, system.simulationBox, 
-      system.interpolationGrids, system.externalFieldInterpolationGrid,
-      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
-      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule, 1.0, false, false);
+      random, component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+      system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+      system.spanOfMoleculeAtoms(), system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
+      selectedMolecule, 1.0, false, false);
   time_end = std::chrono::system_clock::now();
 
   // Update CPU time statistics for the non-Ewald part of the move
@@ -154,19 +154,32 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   double Pacc = preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight;
 
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
-  double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
+  double biasTransitionMatrix = system.getTMMCBiasFactor(selectedComponent, true);
+
+  // Check if TMMC is enabled and macrostate limit is not exceeded
+  if (system.doTMMC)
+  {
+    std::size_t newN = oldN + 1;
+    std::pair<std::size_t, std::size_t> minmax = system.getTMMCMinMax(selectedComponent);
+
+    if (newN > minmax.second)
+    {
+      return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
+    }
+  }
 
   // Energy of the system before the insertion of trial molecule
   RunningEnergy oldTotalEnergy = system.runningEnergies;
-  
+
   // No need to recalculate all the energy again. growData includes all energies except for fourier and tail.
-  RunningEnergy energyDifferenceFF = growData->energies + energyFourierDifference + tailEnergyDifference + polarizationDifference;
+  RunningEnergy energyDifferenceFF =
+      growData->energies + energyFourierDifference + tailEnergyDifference + polarizationDifference;
   RunningEnergy energyDifferenceMBX;
   if (!system.useMBX)
   {
     // Energy logging
-    std::cerr << "insertion_cbmc" << ","
-              << selectedComponent << ","
+#if DEBUG
+    std::cerr << "insertion_cbmc" << "," << selectedComponent << ","
               << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ","
               << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ","
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ","
@@ -175,70 +188,59 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
               << (oldTotalEnergy.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ","
               << (oldTotalEnergy.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ","
               << ((oldTotalEnergy.ewald_fourier + energyDifferenceFF.ewald_fourier) +
-                 (oldTotalEnergy.ewald_self + energyDifferenceFF.ewald_self) +
-                 (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion)) << ","
-              << energyDifferenceFF.potentialEnergy() << ","
-              << Pacc << "\n";
+                  (oldTotalEnergy.ewald_self + energyDifferenceFF.ewald_self) +
+                  (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion))
+              << "," << energyDifferenceFF.potentialEnergy() << "," << Pacc << "\n";
+#endif
   }
   else
   {
-    // Compute the total energy difference from FF. Now it just calculates everything all again, no matter it has been calculated before or not. 
-    // We can optimize this later by reusing the calculated energy difference from the CBMC growth and retrace steps. But it's not taking much time anyway, so we can leave it for now.
-    
+    // Compute the total energy difference from FF. Now it just calculates everything all again, no matter it has been
+    // calculated before or not. We can optimize this later by reusing the calculated energy difference from the CBMC
+    // growth and retrace steps. But it's not taking much time anyway, so we can leave it for now.
+
     // Now we calculate the MBX energy difference.
-    std::vector<double> mbxEnergyLog(7, 0);         // Vector to store energylog values
+    std::vector<double> mbxEnergyLog(7, 0);  // Vector to store energylog values
 
     // We calculate the system energy difference before and after the CMBC Reinsertion
     time_begin = std::chrono::system_clock::now();
-    RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(system, system.components, system.simulationBox, system.framework,
-                                                    selectedComponent, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-                                                    newMolecule, true, &mbxEnergyLog);
-    
+    RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(
+        system, system.components, system.simulationBox, system.framework, selectedComponent,
+        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), newMolecule, true, &mbxEnergyLog);
+
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
-    
-    
-    // MBX energy difference before and after the insertion move old and new configuration 
+
+    // MBX energy difference before and after the insertion move old and new configuration
     energyDifferenceMBX.mbxEnergy = newTotalEnergy.mbxEnergy - oldTotalEnergy.mbxEnergy;
 
     // The energyDifference for frameworkMoleculeVDW contribution as obtained from forceField
     energyDifferenceMBX.frameworkMoleculeVDW = growData->energies.frameworkMoleculeVDW;
 
     // Compute tail energy difference due to long-range corrections
-    RunningEnergy tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                  system.spanOfFrameworkAtoms(), newMolecule, {});
+    RunningEnergy tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(
+        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), newMolecule, {});
     energyDifferenceMBX.tail = tailEnergyDifferenceFrameworkMolecule.tail;
 
     // Add the correction factor, exp(-beta*DeltaDeltaE)
     Pacc *= std::exp(-system.beta * (energyDifferenceMBX.potentialEnergy() - energyDifferenceFF.potentialEnergy()));
 
     // Energy logging
-    std::cerr << "insertion_cbmc" << ","
-              << selectedComponent << ","
+#if DEBUG
+    std::cerr << "insertion_cbmc" << "," << selectedComponent << ","
               << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ","
               << (oldTotalEnergy.potentialEnergy() + energyDifferenceMBX.potentialEnergy()) << ","
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceMBX.frameworkMoleculeVDW) << ","
-              << (oldTotalEnergy.tail + energyDifferenceMBX.tail) << ","
-              << newTotalEnergy.mbxEnergy << ","
+              << (oldTotalEnergy.tail + energyDifferenceMBX.tail) << "," << newTotalEnergy.mbxEnergy << ","
               << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ","  // e2b
               << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ","  // e3b
               << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ","  // e4b
               << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ","  // edisp
               << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ","  // eelec_perm
               << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ","  // eelec_ind
-              << energyDifferenceMBX.potentialEnergy() << ","
-              << Pacc << "\n";
-  }
-
-  // Check if TMMC is enabled and macrostate limit is not exceeded
-  if (system.tmmc.doTMMC)
-  {
-    std::size_t newN = oldN + 1;
-    if (newN > system.tmmc.maxMacrostate)
-    {
-      return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
-    }
+              << energyDifferenceMBX.potentialEnergy() << "," << Pacc << "\n";
+#endif
   }
 
   // Apply acceptance/rejection criterion

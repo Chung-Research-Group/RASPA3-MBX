@@ -154,7 +154,6 @@ void MonteCarloTransitionMatrix::createOutputFiles()
 
 void MonteCarloTransitionMatrix::performCycle()
 {
-  std::size_t N{0uz};
   std::size_t totalNumberOfMolecules{0uz};
   std::size_t totalNumberOfComponents{0uz};
   std::size_t numberOfStepsPerCycle{0uz};
@@ -162,7 +161,7 @@ void MonteCarloTransitionMatrix::performCycle()
   totalNumberOfMolecules = std::transform_reduce(
       systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
       [](const System& system) { return system.numberOfMolecules(); });
-  totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
+  totalNumberOfComponents = systems.front().numberOfAdsorbateComponents();
 
   numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
 
@@ -186,18 +185,13 @@ void MonteCarloTransitionMatrix::performCycle()
         MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
                                                   fractionalMoleculeSystem);
 
-        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-        selectedSystem.tmmc.updateHistogram(N);
-        selectedSystem.tmmc.numberOfSteps++;
+        selectedSystem.updateTMMCHistogram();
         break;
       case SimulationStage::Equilibration:
         MC_Moves::performRandomMoveEquilibration(random, selectedSystem, selectedSecondSystem, selectedComponent,
                                                  fractionalMoleculeSystem);
 
-        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-        selectedSystem.tmmc.updateHistogram(N);
-        selectedSystem.tmmc.numberOfSteps++;
-        selectedSystem.tmmc.adjustBias();
+        selectedSystem.updateTMMCHistogram();
 
         selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
@@ -209,10 +203,7 @@ void MonteCarloTransitionMatrix::performCycle()
         MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
                                               fractionalMoleculeSystem, estimation.currentBin);
 
-        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-        selectedSystem.tmmc.updateHistogram(N);
-        selectedSystem.tmmc.numberOfSteps++;
-        selectedSystem.tmmc.adjustBias();
+        selectedSystem.updateTMMCHistogram();
 
         numberOfSteps++;
         break;
@@ -278,8 +269,6 @@ void MonteCarloTransitionMatrix::initialize()
 
   for (System& system : systems)
   {
-    system.tmmc.initialize();
-
     system.precomputeTotalRigidEnergy();
     system.runningEnergies = system.computeTotalEnergies();
 
@@ -352,8 +341,6 @@ void MonteCarloTransitionMatrix::equilibrate()
 
     system.runningEnergies = system.computeTotalEnergies();
 
-    system.tmmc.numberOfSteps = 0;
-
     for (Component& component : system.components)
     {
       component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
@@ -415,6 +402,12 @@ void MonteCarloTransitionMatrix::equilibrate()
       }
     }
 
+    for (System& system : systems)
+    {
+      system.updateTMMCBias(currentCycle);
+      system.writeTMMCStatistics(currentCycle);
+    }
+
     t2 = std::chrono::system_clock::now();
 
     totalEquilibrationSimulationTime += (t2 - t1);
@@ -436,9 +429,9 @@ void MonteCarloTransitionMatrix::production()
   {
     std::ostream stream(streams[system.systemId].rdbuf());
 
-    system.runningEnergies = system.computeTotalEnergies();
+    if (system.tmmcnd.has_value()) system.tmmcnd->startProduction();
 
-    system.tmmc.numberOfSteps = 0;
+    system.runningEnergies = system.computeTotalEnergies();
 
     system.mc_moves_statistics.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
@@ -519,6 +512,12 @@ void MonteCarloTransitionMatrix::production()
       }
     }
 
+    for (System& system : systems)
+    {
+      system.updateTMMCBias(currentCycle);
+      system.writeTMMCStatistics(currentCycle);
+    }
+
     if (currentCycle % writeBinaryRestartEvery == 0uz)
     {
       // write restart
@@ -538,12 +537,6 @@ void MonteCarloTransitionMatrix::production()
     totalSimulationTime += (t2 - t1);
 
   continueProductionStage:;
-  }
-
-  // Write the collection matrix
-  for (System& system : systems)
-  {
-    system.tmmc.writeStatistics();
   }
 }
 

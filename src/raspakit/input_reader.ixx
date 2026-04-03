@@ -142,6 +142,12 @@ export struct InputReader
   std::size_t rescaleWangLandauEvery{5000};     ///< Interval for rescaling in Wang-Landau sampling.
   std::size_t optimizeMCMovesEvery{5000};       ///< Interval for optimizing Monte Carlo moves.
   std::size_t writeEvery{100};                  ///< Interval for writing simulation data.
+
+  std::size_t sampleTMMCEvery{1000};
+  std::size_t writeTMMCEvery{1000};
+  std::size_t subsampleTMMC{1};
+  bool useTMMCBias{true};
+
   bool restartFromBinary{false};  ///< Flag to indicate if the simulation should restart from a binary file.
   std::string restartFromBinaryFileName{"restart_data.bin"};  ///< Filename of the binary restart-file
 

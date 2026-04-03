@@ -110,6 +110,7 @@ export struct MonteCarloTransitionMatrix
   std::vector<System> systems;              ///< Vector of systems to simulate.
   RandomNumber random;                      ///< Random number generator.
   std::size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located
+  bool useNdimensional;
 
   std::vector<std::ofstream> streams;            ///< Output streams for writing data.
   std::vector<std::string> outputJsonFileNames;  ///< Filenames for output JSON files.

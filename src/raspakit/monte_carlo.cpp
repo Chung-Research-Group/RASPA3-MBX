@@ -13,6 +13,7 @@ module;
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <ios>
 #include <iostream>
 #include <map>
@@ -27,7 +28,6 @@ module;
 #include <tuple>
 #include <utility>
 #include <vector>
-#include <functional>
 #endif
 
 module monte_carlo;
@@ -259,7 +259,7 @@ void MonteCarlo::performCycle()
   totalNumberOfMolecules = std::transform_reduce(
       systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
       [](const System& system) { return system.numberOfMolecules(); });
-  totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
+  totalNumberOfComponents = systems.front().numberOfAdsorbateComponents();
 
   numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
 
@@ -350,11 +350,10 @@ void MonteCarlo::initialize(std::function<void()> call_back_function)
         }
       }
 
-      if(call_back_function)
+      if (call_back_function)
       {
         call_back_function();
       }
-       
     }
 
     if (currentCycle % optimizeMCMovesEvery == 0uz)
@@ -440,9 +439,8 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function)
           std::print(stream, "{}", system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
           std::flush(stream);
         }
-
       }
-      if(call_back_function)
+      if (call_back_function)
       {
         call_back_function();
       }
@@ -613,7 +611,7 @@ void MonteCarlo::production(std::function<void()> call_back_function)
           std::flush(stream);
         }
       }
-      if(call_back_function)
+      if (call_back_function)
       {
         call_back_function();
       }

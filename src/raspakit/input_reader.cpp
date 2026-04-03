@@ -56,6 +56,7 @@ import mc_moves_move_types;
 import reaction;
 import reactions;
 import transition_matrix;
+import transition_matrix_nd;
 import property_conventional_rdf;
 import property_rdf;
 import property_density_grid;
@@ -225,7 +226,6 @@ void InputReader::parseFitting([[maybe_unused]] const nlohmann::basic_json<nlohm
 void InputReader::parseMixturePrediction([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
 }
-
 
 void InputReader::parseBreakthrough(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
@@ -417,6 +417,26 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   if (parsed_data.contains("OptimizeMCMovesEvery") && parsed_data["OptimizeMCMovesEvery"].is_number_unsigned())
   {
     optimizeMCMovesEvery = parsed_data["OptimizeMCMovesEvery"].get<std::size_t>();
+  }
+
+  if (parsed_data.contains("SampleTMMCEvery") && parsed_data["SampleTMMCEvery"].is_number_unsigned())
+  {
+    sampleTMMCEvery = parsed_data["SampleTMMCEvery"].get<std::size_t>();
+  }
+
+  if (parsed_data.contains("WriteTMMCEvery") && parsed_data["WriteTMMCEvery"].is_number_unsigned())
+  {
+    writeTMMCEvery = parsed_data["WriteTMMCEvery"].get<std::size_t>();
+  }
+
+  if (parsed_data.contains("SubsampleTMMC") && parsed_data["SubsampleTMMC"].is_number_unsigned())
+  {
+    subsampleTMMC = parsed_data["SubsampleTMMC"].get<std::size_t>();
+  }
+
+  if (parsed_data.contains("UseTMMCBias") && parsed_data["UseTMMCBias"].is_boolean())
+  {
+    useTMMCBias = parsed_data["UseTMMCBias"].get<bool>();
   }
 
   if (parsed_data.contains("ThreadingType") && parsed_data["ThreadingType"].is_string())
@@ -725,6 +745,35 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (item.contains("MinMacrostate") && item["MinMacrostate"].is_number_unsigned())
+      {
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].minMacrostate = item["MinMacrostate"].get<std::size_t>();
+          jsonComponents[i][componentId].doTMMC = true;
+
+          if (!item.contains("MaxMacrostate"))
+          {
+            throw std::runtime_error(std::format("Error: Component {} is set for TMMC, but MaxMacrostate is not set\n",
+                                                 jsonComponents[i][componentId].name));
+          }
+        }
+      }
+
+      if (item.contains("MaxMacrostate") && item["MaxMacrostate"].is_number_unsigned())
+      {
+        for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
+        {
+          jsonComponents[i][componentId].maxMacrostate = item["MaxMacrostate"].get<std::size_t>();
+          jsonComponents[i][componentId].doTMMC = true;
+          if (!item.contains("MinMacrostate"))
+          {
+            throw std::runtime_error(std::format("Error: Component {} is set for TMMC, but MinMacrostate is not set\n",
+                                                 jsonComponents[i][componentId].name));
+          }
+        }
+      }
+
       if (item.contains("BlockingPockets") && item.contains("BlockingPockets"))
       {
         for (auto& [_, block_pockets_item] : item["BlockingPockets"].items())
@@ -973,7 +1022,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       // MBX options parsing
       std::optional<bool> useMBXCalculator{std::nullopt};
       std::optional<std::string> mbxFilePath{std::nullopt};
-      
+
       if (value.contains("UseMBX"))
       {
         if (!value["UseMBX"].is_boolean())
@@ -983,18 +1032,19 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                           "type-bool (true/false)\n"));
         }
         useMBXCalculator = value["UseMBX"].get<bool>();
-        
+
         if (useMBXCalculator.value())
         {
           if (value.contains("MBXSettingsFile") && value["MBXSettingsFile"].is_string())
           {
             mbxFilePath = value["MBXSettingsFile"].get<std::string>();
-            
+
             // Test whether the given file exists
             std::ifstream MBXFile(mbxFilePath.value());
             if (!MBXFile.is_open())
             {
-              throw std::runtime_error(std::format("[Input reader]: Failed to read the MBX Settings File. Please provide a valid filename!\n"));   
+              throw std::runtime_error(std::format(
+                  "[Input reader]: Failed to read the MBX Settings File. Please provide a valid filename!\n"));
             }
             MBXFile.close();
           }
@@ -1105,11 +1155,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                                                                    jsonNumberOfUnitCells, useChargesFrom)};
 
         // create system
-        systems[systemId] =
-            System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
-                   jsonFrameworkComponents, jsonComponents[systemId], jsonRestartFilePositions[systemId],
-                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities,
-                   useMBXCalculator, mbxFilePath);
+        systems[systemId] = System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
+                                   jsonFrameworkComponents, jsonComponents[systemId],
+                                   jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId],
+                                   jsonNumberOfBlocks, mc_moves_probabilities, useMBXCalculator, mbxFilePath);
       }
       else if (caseInSensStringCompare(typeString, "Box"))
       {
@@ -1139,32 +1188,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           simulationBox = restart_simulation_box.value();
         }
 
-        systems[systemId] = System(systemId, forceFields[systemId].value(), simulationBox, T, P, 1.0, {},
-                                   jsonComponents[systemId], jsonRestartFilePositions[systemId],
-                                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities,
-                                   useMBXCalculator, mbxFilePath);
+        systems[systemId] =
+            System(systemId, forceFields[systemId].value(), simulationBox, T, P, 1.0, {}, jsonComponents[systemId],
+                   jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks,
+                   mc_moves_probabilities, useMBXCalculator, mbxFilePath);
       }
       else
       {
         throw std::runtime_error(
             std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
-      }
-
-      if (value.contains("MacroStateUseBias") && value["MacroStateUseBias"].is_boolean())
-      {
-        systems[systemId].tmmc.useBias = value["MacroStateUseBias"].get<bool>();
-      }
-
-      if (value.contains("MacroStateMinimumNumberOfMolecules") &&
-          value["MacroStateMinimumNumberOfMolecules"].is_number_unsigned())
-      {
-        systems[systemId].tmmc.minMacrostate = value["MacroStateMinimumNumberOfMolecules"].get<std::size_t>();
-      }
-
-      if (value.contains("MacroStateMaximumNumberOfMolecules") &&
-          value["MacroStateMaximumNumberOfMolecules"].is_number_unsigned())
-      {
-        systems[systemId].tmmc.maxMacrostate = value["MacroStateMaximumNumberOfMolecules"].get<std::size_t>();
       }
 
       if (value.contains("ExternalField") && value["ExternalField"].is_boolean())
@@ -1431,7 +1463,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             }
           }
 
-          
           PropertyDensityGrid::Binning binning = PropertyDensityGrid::Binning::Standard;
           if (value.contains("DensityGridBinning") && value["DensityGridBinning"].is_string())
           {
@@ -1446,12 +1477,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             }
             else
             {
-              throw std::runtime_error(std::format("Error: DensityGridBinning must be 'Standard' or 'Equitable', got '{}'",
-                                                   binningString));
+              throw std::runtime_error(
+                  std::format("Error: DensityGridBinning must be 'Standard' or 'Equitable', got '{}'", binningString));
             }
           }
 
-systems[systemId].propertyDensityGrid = PropertyDensityGrid(
+          systems[systemId].propertyDensityGrid = PropertyDensityGrid(
               systems[systemId].framework ? 1 : 0, systems[systemId].components.size(), densityGridSize,
               sampleDensityGridEvery, writeDensityGridEvery, densityGridPseudoAtomsList, norm, binning);
         }
@@ -1535,9 +1566,7 @@ systems[systemId].propertyDensityGrid = PropertyDensityGrid(
   {
     for (std::size_t i = 0uz; i < systems.size(); ++i)
     {
-      systems[i].tmmc.doTMMC = true;
-      systems[i].tmmc.useBias = true;
-      systems[i].tmmc.useTMBias = true;
+      systems[i].doTMMC = true;
     }
   }
 
@@ -1548,14 +1577,14 @@ systems[systemId].propertyDensityGrid = PropertyDensityGrid(
   {
     for (std::size_t reactionId = 0uz; const Reaction& reaction : systems[i].reactions.list)
     {
-      if (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents() ||
-          (reaction.productStoichiometry.size() != systems[i].numerOfAdsorbateComponents()))
+      if (reaction.productStoichiometry.size() != systems[i].numberOfAdsorbateComponents() ||
+          (reaction.productStoichiometry.size() != systems[i].numberOfAdsorbateComponents()))
       {
         throw std::runtime_error(
             std::format("Error [Reaction {}]: mismatch Stoichiometry ({} given not equal"
                         "to twice the number of components {})\n",
                         reactionId, reaction.productStoichiometry.size() + reaction.reactantStoichiometry.size(),
-                        2uz * systems[i].numerOfAdsorbateComponents()));
+                        2uz * systems[i].numberOfAdsorbateComponents()));
       }
 
       ++reactionId;
@@ -1637,28 +1666,57 @@ systems[systemId].propertyDensityGrid = PropertyDensityGrid(
 
   for (std::size_t i = 0uz; i < systems.size(); ++i)
   {
-    if (systems[i].tmmc.doTMMC)
+    if (systems[i].doTMMC)
     {
-      if (systems[i].numerOfAdsorbateComponents() > 1)
+      std::size_t numberOfTMMCComponents = 0;
+      for (auto& comp : systems[i].components)
       {
-        throw std::runtime_error("Error: Multiple components for TMMC not yet implemented.\n");
-      }
-
-      // check initial number of molecules is in the range of the TMMC macrostates
-      for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
-      {
-        if (systems[i].components[j].type == Component::Type::Adsorbate)
+        if (comp.doTMMC)
         {
-          std::size_t numberOfMolecules = systems[i].initialNumberOfMolecules[j];
-          if (numberOfMolecules < systems[i].tmmc.minMacrostate || numberOfMolecules > systems[i].tmmc.maxMacrostate)
+          numberOfTMMCComponents++;
+
+          // check initial number of molecules is in the range of the TMMC macrostates
+          std::size_t numberOfMolecules = systems[i].initialNumberOfMolecules[comp.componentId];
+          if (numberOfMolecules < comp.minMacrostate || numberOfMolecules > comp.maxMacrostate)
           {
             throw std::runtime_error(
-                std::format("Error: Molecules created ({}) need to fit into the TMMC macrostate "
-                            "range ({}-{})\n",
-                            numberOfMolecules, systems[i].tmmc.minMacrostate, systems[i].tmmc.maxMacrostate));
+                std::format("Error: Molecules created of {} ({}) need to fit into the TMMC macrostate range ({}-{})\n",
+                            comp.name, numberOfMolecules, comp.minMacrostate, comp.maxMacrostate));
           }
         }
       }
+      // if (numberOfTMMCComponents > 1)
+      // {
+      std::vector<std::size_t> minMacrostate;
+      std::vector<std::size_t> maxMacrostate;
+      std::vector<std::size_t> componentIds;
+      for (auto& comp : systems[i].components)
+      {
+        if (comp.doTMMC)
+        {
+          minMacrostate.push_back(comp.minMacrostate);
+          maxMacrostate.push_back(comp.maxMacrostate);
+          componentIds.push_back(comp.componentId);
+        }
+      }
+      systems[i].tmmcnd = TransitionMatrixMultidimensional(minMacrostate, maxMacrostate, componentIds, sampleTMMCEvery,
+                                                           writeTMMCEvery, useTMMCBias);
+      // }
+      // else if (numberOfTMMCComponents == 1)
+      // {
+      //   for (auto& comp : systems[i].components)
+      //   {
+      //     if (comp.doTMMC)
+      //     {
+      //       systems[i].tmmc = TransitionMatrix(comp.minMacrostate, comp.maxMacrostate, comp.componentId,
+      //                                          sampleTMMCEvery, writeTMMCEvery, subsampleTMMC, useTMMCBias);
+      //     }
+      //   }
+      // }
+      // else
+      // {
+      //   throw std::runtime_error("Error: TMMC simulation is being requested, but no components are set for TMMC.");
+      // }
     }
   }
 }
@@ -1680,6 +1738,10 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "ThreadingType",
     "NumberOfThreads",
     "Components",
+    "SampleTMMCEvery",
+    "WriteTMMCEvery",
+    "SubsampleTMMC",
+    "UseTMMCBias",
     "Systems"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::systemOptions = {
@@ -1750,9 +1812,6 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "WriteLammpsDataEvery",
     "Ensemble",
     "TimeStep",
-    "MacroStateUseBias",
-    "MacroStateMinimumNumberOfMolecules",
-    "MacroStateMaximumNumberOfMolecules",
     "RestartFileName",
     "UseMBX",
     "MBXSettingsFile"};
@@ -1783,6 +1842,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::compon
     "MolFraction",
     "ThermodynamicIntegration",
     "LambdaBiasFileName",
+    "MinMacrostate",
+    "MaxMacrostate",
     "BlockingPockets"};
 
 void InputReader::validateInput(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)

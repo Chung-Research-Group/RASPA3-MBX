@@ -136,8 +136,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Compute external field energy contribution
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> externalFieldDifference = Interactions::computeExternalFieldEnergyDifference(
-        system.hasExternalField, system.forceField, system.simulationBox, 
-        system.externalFieldInterpolationGrid, fractionalMolecule, oldFractionalMolecule);
+        system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+        fractionalMolecule, oldFractionalMolecule);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Insertion-ExternalField"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-ExternalField"] += (time_end - time_begin);
@@ -209,11 +209,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
     time_begin = std::chrono::system_clock::now();
     std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-        random, component, system.hasExternalField, system.forceField, system.simulationBox, 
-        system.interpolationGrids, system.externalFieldInterpolationGrid,
-        system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
-        cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, newMolecule, newLambda,
-        system.components[selectedComponent].lambdaGC.computeDUdlambda, true);
+        random, component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+        system.spanOfMoleculeAtoms(), system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
+        newMolecule, newLambda, system.components[selectedComponent].lambdaGC.computeDUdlambda, true);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Insertion-NonEwald"] += (time_end - time_begin);
@@ -272,12 +271,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                   std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm);
 
     // Retrieve bias from transition matrix
-    double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
+    double biasTransitionMatrix = system.getTMMCBiasFactor(selectedComponent, true);
 
-    if (system.tmmc.doTMMC)
+    if (system.doTMMC)
     {
       std::size_t newN = oldN + 1;
-      if (newN > system.tmmc.maxMacrostate)
+      std::pair<std::size_t, std::size_t> minmax = system.getTMMCMinMax(selectedComponent);
+
+      if (newN > minmax.second)
       {
         return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
       }
@@ -350,8 +351,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       time_begin = std::chrono::system_clock::now();
       ChainRetraceData retraceData = CBMC::retraceMoleculeSwapDeletion(
           random, component, system.hasExternalField, system.forceField, system.simulationBox,
-          system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-          system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, fractionalMolecule);
+          system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
+          system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType, cutOffFrameworkVDW,
+          cutOffMoleculeVDW, cutOffCoulomb, fractionalMolecule);
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Deletion-NonEwald"] += (time_end - time_begin);
@@ -421,9 +423,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       // Compute external field energy contribution
       time_begin = std::chrono::system_clock::now();
       std::optional<RunningEnergy> externalFieldDifference = Interactions::computeExternalFieldEnergyDifference(
-          system.hasExternalField, system.forceField, system.simulationBox, 
-          system.externalFieldInterpolationGrid, newFractionalMolecule,
-          savedFractionalMolecule);
+          system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+          newFractionalMolecule, savedFractionalMolecule);
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move]["Deletion-ExternalField"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Deletion-ExternalField"] += (time_end - time_begin);
@@ -508,12 +509,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                     std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm);
 
       // Retrieve bias from transition matrix
-      double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
+      double biasTransitionMatrix = system.getTMMCBiasFactor(selectedComponent, false);
 
-      if (system.tmmc.doTMMC)
+      if (system.doTMMC)
       {
         std::size_t newN = oldN - 1;
-        if (newN < system.tmmc.minMacrostate)
+        std::pair<std::size_t, std::size_t> minmax = system.getTMMCMinMax(selectedComponent);
+
+        if (newN < minmax.first)
         {
           return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
         }
@@ -577,8 +580,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     // Compute external field energy difference
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> externalFieldEnergyDifference = Interactions::computeExternalFieldEnergyDifference(
-        system.hasExternalField, system.forceField, system.simulationBox, 
-        system.externalFieldInterpolationGrid, trialPositions, molecule);
+        system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+        trialPositions, molecule);
     time_end = std::chrono::system_clock::now();
     if (insertionDisabled || deletionDisabled)
     {

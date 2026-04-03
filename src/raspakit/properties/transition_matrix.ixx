@@ -32,7 +32,33 @@ import double3;
  */
 export struct TransitionMatrix
 {
-  std::uint64_t versionNumber{1};  ///< Version number for serialization compatibility.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization compatibility.
+
+  TransitionMatrix() = default;
+
+  TransitionMatrix(std::size_t minMacrostate, std::size_t maxMacrostate, std::size_t componentId,
+                   std::size_t sampleTMMCEvery, std::size_t writeTMMCEvery, std::size_t subSampling, bool useBias)
+      : minMacrostate(minMacrostate),
+        maxMacrostate(maxMacrostate),
+        componentId(componentId),
+        sampleTMMCEvery(sampleTMMCEvery),
+        writeTMMCEvery(writeTMMCEvery),
+        subSampling(subSampling),
+        useBias(useBias)
+  {
+    if (subSampling != 1)
+    {
+      throw std::runtime_error("Error: TMMC subsampling not yet implemented.");
+    }
+    numberOfStates = static_cast<std::size_t>((maxMacrostate - minMacrostate) / static_cast<double>(subSampling)) + 1;
+    cmatrix.resize(numberOfStates);
+    bias.resize(numberOfStates);
+    lnpi.resize(numberOfStates);
+    forward_lnpi.resize(numberOfStates);
+    reverse_lnpi.resize(numberOfStates);
+    histogram.resize(numberOfStates);
+    std::fill(bias.begin(), bias.end(), 1.0);
+  }
 
   bool operator==(TransitionMatrix const &) const = default;
 
@@ -43,15 +69,19 @@ export struct TransitionMatrix
   std::vector<double> reverse_lnpi;    ///< Reverse ln(pi) for debugging purposes.
   std::vector<std::size_t> histogram;  ///< Histogram of macrostate visits.
 
-  std::size_t numberOfSteps = {0};        ///< Number of steps performed in the TMMC simulation.
-  std::size_t minMacrostate = {0};        ///< Minimum macrostate value.
-  std::size_t maxMacrostate = {100};      ///< Maximum macrostate value.
-  std::size_t updateTMEvery = {1000000};  ///< Number of steps between bias updates.
-  std::size_t numberOfUpdates = {0};      ///< Number of times the bias has been updated.
+  std::size_t minMacrostate;  ///< Minimum macrostate value.
+  std::size_t maxMacrostate;  ///< Maximum macrostate value.
+  std::size_t componentId;
+  std::size_t numberOfStates;
 
-  bool doTMMC = {false};                     ///< Flag indicating whether to perform TMMC simulation.
-  bool useBias = {false};                    ///< Flag indicating whether to use bias for changing macrostates.
-  bool useTMBias = {true};                   ///< Flag indicating whether to use Transition Matrix bias.
+  std::size_t sampleTMMCEvery{1000};  ///< Number of steps between bias updates.
+  std::size_t writeTMMCEvery{1000};
+  std::size_t subSampling;
+  bool useBias{true};
+
+  std::size_t numberOfUpdates{0};   ///< Number of times the bias has been updated.
+  std::size_t numberOfComputes{0};  ///< Number of times the bias has been updated.
+
   bool rejectOutofBound = {true};            ///< Flag indicating whether to reject moves outside macrostate bounds.
   bool rezeroAfterInitialization = {false};  ///< Flag indicating whether to reset statistics after initialization.
 
@@ -107,7 +137,7 @@ export struct TransitionMatrix
    * (lnpi) using the current state of the collection matrix and histogram. This method
    * recalculates biases to improve sampling efficiency.
    */
-  void adjustBias();
+  void adjustBias(std::size_t currentCycle);
 
   /**
    * \brief Clears the collection matrix and resets counters.
@@ -123,7 +153,7 @@ export struct TransitionMatrix
    * Outputs the current state of the collection matrix, bias factors, probability
    * distributions, and histogram data to a text file for analysis and debugging.
    */
-  void writeStatistics();
+  void writeStatistics(std::size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const TransitionMatrix &m);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMatrix &m);

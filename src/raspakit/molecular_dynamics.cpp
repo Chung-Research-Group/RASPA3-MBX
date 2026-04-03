@@ -210,7 +210,7 @@ void MolecularDynamics::initialize()
     totalNumberOfMolecules = std::transform_reduce(
         systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
         [](const System& system) { return system.numberOfMolecules(); });
-    totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
+    totalNumberOfComponents = systems.front().numberOfAdsorbateComponents();
 
     numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
 

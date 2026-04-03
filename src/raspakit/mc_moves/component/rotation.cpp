@@ -80,10 +80,10 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   {
     return std::nullopt;
   }
-  
+
   // Update move construction statistics
   component.mc_moves_statistics.addConstructed(move, selectedDirection);
-  
+
   // These variables needed to be declared here, since they will be used in both cases at the end.
   std::vector<double3> electricFieldMoleculeNew(molecule_atoms.size());
   std::vector<double3> electricFieldMoleculeOld(molecule_atoms.size());
@@ -95,26 +95,26 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
   if (system.useMBX)
   {
     // DO THE FOLLOWING STEPS IN ALL MC MOVES CPP FILES FOR WHICH YOU WANT TO LOG
-    std::vector<double> mbxEnergyLog(7, 0);         // Vector to store energylog values
+    std::vector<double> mbxEnergyLog(7, 0);  // Vector to store energylog values
 
     time_begin = std::chrono::system_clock::now();
     // Notice that you have to specify the pointer to energylog vector as the last arg of computeMBXEnergy function.
     // If you donot do that energyLog vector will not be updated (i.e. the default value is nullptr)
-    RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(system, components, system.simulationBox, system.framework,
-                                                       selectedComponent, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-                                                       trialMolecule.second, true, &mbxEnergyLog);
+    RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(
+        system, components, system.simulationBox, system.framework, selectedComponent, system.spanOfFrameworkAtoms(),
+        system.spanOfMoleculeAtoms(), trialMolecule.second, true, &mbxEnergyLog);
 
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
-  
-    // MBX energy difference before and after the insertion move old and new configuration 
+
+    // MBX energy difference before and after the insertion move old and new configuration
     energyDifference.mbxEnergy = newTotalEnergy.mbxEnergy - oldTotalEnergy.mbxEnergy;
 
     // compute framework-molecule energy contribution
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> frameworkMolecule;
-    
+
     frameworkMolecule = Interactions::computeFrameworkMoleculeEnergyDifference(
         system.forceField, system.simulationBox, system.interpolationGrids, system.framework,
         system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
@@ -124,26 +124,24 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
     system.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
     if (!frameworkMolecule.has_value()) return std::nullopt;
 
-    energyDifference.frameworkMoleculeVDW = frameworkMolecule.value().frameworkMoleculeVDW; 
+    energyDifference.frameworkMoleculeVDW = frameworkMolecule.value().frameworkMoleculeVDW;
 
     // compute framework-molecule tail energy contribution
     time_begin = std::chrono::system_clock::now();
-    RunningEnergy tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfFrameworkAtoms(), trialMolecule.second,
-                                                              molecule_atoms);
+    RunningEnergy tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(
+        system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, molecule_atoms);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
     energyDifference.tail = tailEnergyDifferenceFrameworkMolecule.tail;
 
     // Here you can add logging commands
-    std::cerr << "rotation" << ","
-              << selectedComponent << ","
+#if DEBUG
+    std::cerr << "rotation" << "," << selectedComponent << ","
               << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ","
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ","
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ","
-              << (oldTotalEnergy.tail + energyDifference.tail) << ","
-              << newTotalEnergy.mbxEnergy << ","
+              << (oldTotalEnergy.tail + energyDifference.tail) << "," << newTotalEnergy.mbxEnergy << ","
               << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ","  // e2b
               << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ","  // e3b
               << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ","  // e4b
@@ -152,7 +150,7 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
               << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ","  // eelec_ind
               << energyDifference.potentialEnergy() << ","
               << (std::exp(-system.beta * energyDifference.potentialEnergy())) << "\n";
-
+#endif
   }
   else
   {
@@ -160,8 +158,8 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
     // compute external field energy contribution
     time_begin = std::chrono::system_clock::now();
     std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-        system.hasExternalField, system.forceField, system.simulationBox, 
-        system.externalFieldInterpolationGrid, trialMolecule.second, molecule_atoms);
+        system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+        trialMolecule.second, molecule_atoms);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["ExternalField-Molecule"] += (time_end - time_begin);
@@ -227,11 +225,11 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
 
     // get the total difference in energy
     energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
-                                    ewaldFourierEnergy + polarizationDifference;
+                       ewaldFourierEnergy + polarizationDifference;
 
     // Here you can add logging commands
-    std::cerr << "rotation" << ","
-              << selectedComponent << ","
+#if DEBUG
+    std::cerr << "rotation" << "," << selectedComponent << ","
               << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ","
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ","
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ","
@@ -240,10 +238,11 @@ std::optional<RunningEnergy> MC_Moves::rotationMove(RandomNumber &random, System
               << (oldTotalEnergy.frameworkMoleculeCharge + energyDifference.frameworkMoleculeCharge) << ","
               << (oldTotalEnergy.moleculeMoleculeCharge + energyDifference.moleculeMoleculeCharge) << ","
               << ((oldTotalEnergy.ewald_fourier + energyDifference.ewald_fourier) +
-                 (oldTotalEnergy.ewald_self + energyDifference.ewald_self) +
-                 (oldTotalEnergy.ewald_exclusion + energyDifference.ewald_exclusion)) << ","
-              << energyDifference.potentialEnergy() << ","
+                  (oldTotalEnergy.ewald_self + energyDifference.ewald_self) +
+                  (oldTotalEnergy.ewald_exclusion + energyDifference.ewald_exclusion))
+              << "," << energyDifference.potentialEnergy() << ","
               << (std::exp(-system.beta * energyDifference.potentialEnergy())) << "\n";
+#endif
   }
 
   // apply acceptance/rejection rule

@@ -77,6 +77,7 @@ import mc_moves_cputime;
 import reaction;
 import reactions;
 import transition_matrix;
+import transition_matrix_nd;
 import equation_of_states;
 import thermostat;
 import json;
@@ -123,9 +124,8 @@ export struct System
          double heliumVoidFraction, std::optional<Framework> framework, std::vector<Component> components,
          std::vector<std::vector<double3>> initialPositions, std::vector<std::size_t> initialNumberOfMolecules,
          std::size_t numberOfBlocks, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
-         std::optional<bool> useMBXCalculator=std::nullopt, std::optional<std::string> mbxFilePath=std::nullopt,
-         std::optional<std::size_t> sampleMoviesEvery = std::nullopt
-         );
+         std::optional<bool> useMBXCalculator = std::nullopt, std::optional<std::string> mbxFilePath = std::nullopt,
+         std::optional<std::size_t> sampleMoviesEvery = std::nullopt);
 
   System(std::size_t id, double T, std::optional<double> P, double heliumVoidFraction,
          std::optional<Framework> framework, std::vector<Component> components);
@@ -180,13 +180,14 @@ export struct System
   std::vector<double> idealGasEnergiesPerComponent{};
 
   ForceField forceField;
-  bool hasExternalField{ true };
+  bool hasExternalField{true};
 
   // MBX related settings
-  bool useMBX{false};                         // flag for enabling MBX energy calculations
-  std::string mbxSettingsFilePath{"None"};    // path of the MBX setting JSON file
-  // stores intra-molecular permanent electrostatic interactions of the framework atoms (charge-charge interactions) calculated by MBX. 
-  double elecPermFrameworkMBX{0.0};              
+  bool useMBX{false};                       // flag for enabling MBX energy calculations
+  std::string mbxSettingsFilePath{"None"};  // path of the MBX setting JSON file
+  // stores intra-molecular permanent electrostatic interactions of the framework atoms (charge-charge interactions)
+  // calculated by MBX.
+  double elecPermFrameworkMBX{0.0};
   void preComputeElecPermFrameworkMBX();
 
   std::vector<std::vector<std::size_t>> numberOfPseudoAtoms;
@@ -245,7 +246,10 @@ export struct System
   MCMoveCpuTime mc_moves_cputime;
 
   Reactions reactions;
-  TransitionMatrix tmmc;
+
+  bool doTMMC;
+  std::optional<TransitionMatrix> tmmc;
+  std::optional<TransitionMatrixMultidimensional> tmmcnd;
 
   // property measurements
   PropertyEnergy averageEnergies;
@@ -330,7 +334,7 @@ export struct System
   {
     return std::size_t(random.uniform() * static_cast<double>(components.size()));
   }
-  std::size_t numerOfAdsorbateComponents() { return components.size(); }
+  std::size_t numberOfAdsorbateComponents() { return components.size(); }
   std::size_t randomMoleculeOfComponent(RandomNumber &random, std::size_t selectedComponent);
   std::size_t randomIntegerMoleculeOfComponent(RandomNumber &random, std::size_t selectedComponent);
 
@@ -392,6 +396,13 @@ export struct System
   void computeNumberOfPseudoAtoms();
   void optimizeMCMoves();
 
+  void updateTMMCMatrix(double3 Pacc, std::vector<std::size_t> oldN, std::size_t selectedComponent);
+  void updateTMMCHistogram();
+  void updateTMMCBias(std::size_t currentCycle);
+  void writeTMMCStatistics(std::size_t currentCycle);
+  double getTMMCBiasFactor(std::size_t selectedComponent, bool insert);
+  std::pair<std::size_t, std::size_t> getTMMCMinMax(std::size_t selectedComponent);
+
   std::string writeOutputHeader() const;
   std::string writeNumberOfPseudoAtoms() const;
   std::string writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const;
@@ -431,7 +442,7 @@ export struct System
 
   void writeComponentFittingStatus(std::ostream &stream, const std::vector<std::pair<double, double>> &rawData) const;
 
-  void createExternalFieldInterpolationGrid(std::ostream& stream);
+  void createExternalFieldInterpolationGrid(std::ostream &stream);
   void createFrameworkInterpolationGrids(std::ostream &stream);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const System &s);

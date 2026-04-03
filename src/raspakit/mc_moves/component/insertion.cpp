@@ -103,11 +103,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     // Energy of the system after the insertion of new trial molecule.
     // MBX will crash if the newly inserted atoms overlap the exisiting atoms. We have not added the check for that
     // as the check has already been placed in interMolecule and frameworkMolecule FF based calculation.
-    std::vector<double> mbxEnergyLog(7, 0);         // Vector to store energylog values
+    std::vector<double> mbxEnergyLog(7, 0);  // Vector to store energylog values
 
-    RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(system, system.components, system.simulationBox, system.framework,
-                                                       selectedComponent, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-                                                       trialMolecule.second, true, &mbxEnergyLog);
+    RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(
+        system, system.components, system.simulationBox, system.framework, selectedComponent,
+        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), trialMolecule.second, true, &mbxEnergyLog);
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
@@ -125,12 +125,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     component.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Framework-Molecule"] += (time_end - time_begin);
 
-    energyDifference.frameworkMoleculeVDW = frameworkMolecule.value().frameworkMoleculeVDW; 
-    
+    energyDifference.frameworkMoleculeVDW = frameworkMolecule.value().frameworkMoleculeVDW;
+
     // compute framework-molecule tail energy contribution
     time_begin = std::chrono::system_clock::now();
-    std::optional<RunningEnergy> tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
-                                                              system.spanOfFrameworkAtoms(), trialMolecule.second, {});
+    std::optional<RunningEnergy> tailEnergyDifferenceFrameworkMolecule =
+        Interactions::computeFrameworkMoleculeTailEnergyDifference(
+            system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, {});
     if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
@@ -139,13 +140,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     energyDifference.tail = tailEnergyDifferenceFrameworkMolecule.value().tail;
 
     // Energy logging
-    std::cerr << "insertion" << ","
-              << selectedComponent << ","
+#if DEBUG
+    std::cerr << "insertion" << "," << selectedComponent << ","
               << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ","
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ","
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ","
-              << (oldTotalEnergy.tail + energyDifference.tail) << ","
-              << newTotalEnergy.mbxEnergy << ","
+              << (oldTotalEnergy.tail + energyDifference.tail) << "," << newTotalEnergy.mbxEnergy << ","
               << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ","  // e2b
               << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ","  // e3b
               << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ","  // e4b
@@ -154,14 +154,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
               << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ","  // eelec_ind
               << energyDifference.potentialEnergy() << ","
               << preFactor * (std::exp(-system.beta * energyDifference.potentialEnergy())) << "\n";
+#endif
   }
   else
   {
-    
     // compute external field energy contribution
     std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
-        system.hasExternalField, system.forceField, system.simulationBox, 
-        system.externalFieldInterpolationGrid, trialMolecule.second, {});
+        system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+        trialMolecule.second, {});
     if (!externalFieldMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
 
     // compute framework-molecule energy contribution
@@ -209,8 +209,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     // Compute tail energy difference and update CPU time statistics.
     time_begin = std::chrono::system_clock::now();
     RunningEnergy tailEnergyDifference =
-        Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
-                                                                system.spanOfMoleculeAtoms(), trialMolecule.second, {}) +
+        Interactions::computeInterMolecularTailEnergyDifference(
+            system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), trialMolecule.second, {}) +
         Interactions::computeFrameworkMoleculeTailEnergyDifference(
             system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, {});
     time_end = std::chrono::system_clock::now();
@@ -228,11 +228,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
 
     // get the total difference in energy
     energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
-                                    energyFourierDifference + tailEnergyDifference + polarizationDifference;
+                       energyFourierDifference + tailEnergyDifference + polarizationDifference;
 
     // Energy logging
-    std::cerr << "insertion" << ","
-              << selectedComponent << ","
+#if DEBUG
+    std::cerr << "insertion" << "," << selectedComponent << ","
               << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ","
               << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ","
               << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ","
@@ -241,22 +241,24 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
               << (oldTotalEnergy.frameworkMoleculeCharge + energyDifference.frameworkMoleculeCharge) << ","
               << (oldTotalEnergy.moleculeMoleculeCharge + energyDifference.moleculeMoleculeCharge) << ","
               << ((oldTotalEnergy.ewald_fourier + energyDifference.ewald_fourier) +
-                 (oldTotalEnergy.ewald_self + energyDifference.ewald_self) +
-                 (oldTotalEnergy.ewald_exclusion + energyDifference.ewald_exclusion)) << ","
-              << energyDifference.potentialEnergy() << ","
+                  (oldTotalEnergy.ewald_self + energyDifference.ewald_self) +
+                  (oldTotalEnergy.ewald_exclusion + energyDifference.ewald_exclusion))
+              << "," << energyDifference.potentialEnergy() << ","
               << (preFactor * (std::exp(-system.beta * energyDifference.potentialEnergy()))) << "\n";
-
+#endif
   }
 
   double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
-  double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
+  double biasTransitionMatrix = system.getTMMCBiasFactor(selectedComponent, true);
 
   // Calculate acceptance probability and bias from the transition matrix.
-  if (system.tmmc.doTMMC)
+  if (system.doTMMC)
   {
     std::size_t newN = oldN + 1;
-    if (newN > system.tmmc.maxMacrostate)
+    std::pair<std::size_t, std::size_t> minmax = system.getTMMCMinMax(selectedComponent);
+
+    if (newN > minmax.second)
     {
       return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
     }
