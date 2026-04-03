@@ -1,0 +1,156 @@
+{
+    "PseudoAtoms" : [
+        {
+            "name" : "Zn",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "Zn",
+            "print_as" : "Zn",
+            "mass" : 65.39,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "H",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "H",
+            "print_as" : "H",
+            "mass" : 1.008,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "C",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "C",
+            "print_as" : "C",
+            "mass" : 12.011,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "N",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "N",
+            "print_as" : "N",
+            "mass" : 14.007,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "O",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "O",
+            "print_as" : "O",
+            "mass" : 15.999,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "Cco2",
+            "framework" : false,
+            "print_to_output" : true,
+            "element" : "C",
+            "print_as" : "C",
+            "mass" : 12.0,
+            "charge" :  0.700,
+            "source": "TraPPE"
+        },
+        {
+            "name" : "Oco2",
+            "framework" : false,
+            "print_to_output" : true,
+            "element" : "O",
+            "print_as" : "O",
+            "mass" : 15.9949,
+            "charge" :  -0.350,
+            "source": "TraPPE"
+        },
+        {
+            "name" : "Hw",
+            "framework" : false,
+            "print_to_output" : true,
+            "element" : "H",
+            "print_as" : "H",
+            "mass" : 1.008,
+            "charge" :  0.336,
+            "source": "spc"
+        },
+        {
+            "name" : "Ow",
+            "framework" : false,
+            "print_to_output" : true,
+            "element" : "O",
+            "print_as" : "O",
+            "mass" : 15.9949,
+            "charge" :  -0.672,
+            "source": "spc"
+        }
+    ],
+    "SelfInteractions" : [
+        {
+            "name" : "Zn",
+            "type" : "lennard-jones",    
+            "parameters" : [27.68, 4.04],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "H",
+            "type" : "lennard-jones",    
+            "parameters" : [7.65, 2.85],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "C",
+            "type" : "lennard-jones",    
+            "parameters" : [47.86, 3.47],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "N",
+            "type" : "lennard-jones",    
+            "parameters" : [38.95, 3.26],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "O",
+            "type" : "lennard-jones",    
+            "parameters" : [48.16, 3.03],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "Cco2",
+            "type" : "lennard-jones",    
+            "parameters" : [27.0, 2.800],
+            "source": "TraPPE"
+        },
+        {
+            "name" : "Oco2",
+            "type" : "lennard-jones",    
+            "parameters" : [79.0, 3.050],
+            "source": "TraPPE"
+        },
+        {
+            "name" : "Hw",
+            "type" : "lennard-jones",    
+            "parameters" : [0.000, 0.000],
+            "source": "spc."
+        },
+        {
+            "name" : "Ow",
+            "type" : "lennard-jones",    
+            "parameters" : [135.0, 3.176],
+            "source": "spc"
+        }
+    ],
+    "MixingRule" : "Lorentz-Berthelot",
+    "CutOffFrameworkVDW" : 10.0,
+    "CutOffMoleculeVDW" : 10.0,
+    "CutOffCoulomb" : 10.0,
+    "TruncationMethod" : "shifted",
+    "TailCorrections" : false,
+    "UseInterpolationGrids" : ["Cco2", "Oco2", "Hw", "Ow"],
+    "SpacingVDWGrid" : 0.15,
+    "SpacingCoulombGrid" : 0.15,
+    "NumberOfGridTestPoints" : 100000,
+    "InterpolationScheme" : 3
+}

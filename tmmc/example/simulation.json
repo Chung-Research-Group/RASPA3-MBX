@@ -1,0 +1,41 @@
+{
+    "SimulationType": "MonteCarloTransitionMatrix",
+    "NumberOfCycles": 200000,
+    "NumberOfInitializationCycles": 10000,
+    "NumberOfEquilibrationCycles": 50000,
+    "PrintEvery": 100,
+    "ForceField": ".",
+    "Systems": [
+        {
+            "Type": "Framework",
+            "Name": "CALF-20",
+            "NumberOfUnitCells": [
+                3,
+                3,
+                3
+            ],
+            "ExternalTemperature": 295.0,
+            "ExternalPressure": 5000.0,
+            "UseChargesFrom": "CIF_File",
+            "ChargeMethod": "Ewald",
+            "OutputPDBMovie": true,
+            "SampleMovieEvery": 50,
+            "UseMBX": true,
+            "MBXSettingsFile": "mbx.json"
+        }
+    ],
+    "Components": [
+        {
+            "Name": "h2o",
+            "FugacityCoefficient": 1.0,
+            "TranslationProbability": 1.0,
+            "RotationProbability": 1.0,
+            "ReinsertionProbability": 1.0,
+            "SwapProbability": 1.0,
+            "CreateNumberofMolecules": 0,
+            "CreateNumberOfMolecules": 0,
+            "MinMacrostate": 0,
+            "MaxMacrostate": 30
+        }
+    ]
+}
