@@ -1539,7 +1539,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId].numberOfHybridMCSteps = value["HybridMCMoveNumberOfSteps"].get<std::size_t>();
         if (value.contains("TimeStep") && value["TimeStep"].is_number_float())
         {
-          systems[systemId].mc_moves_statistics.setMaxChange(MoveTypes::HybridMC, value["Timestep"].get<double>());
+          systems[systemId].mc_moves_statistics.setMaxChange(MoveTypes::HybridMC, value["TimeStep"].get<double>());
         }
       }
 

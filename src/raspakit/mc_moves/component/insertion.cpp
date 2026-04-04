@@ -99,6 +99,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
 
   if (system.useMBX)
   {
+    std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
+        system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid,
+        trialMolecule.second, {});
+    if (!externalFieldMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+
     time_begin = std::chrono::system_clock::now();
     // Energy of the system after the insertion of new trial molecule.
     // MBX will crash if the newly inserted atoms overlap the exisiting atoms. We have not added the check for that
@@ -113,6 +118,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
 
     energyDifference.mbxEnergy = newTotalEnergy.mbxEnergy - oldTotalEnergy.mbxEnergy;
+    energyDifference.externalFieldVDW = externalFieldMolecule.value().externalFieldVDW;
+    energyDifference.externalFieldCharge = externalFieldMolecule.value().externalFieldCharge;
 
     // Compute framework-molecule energy contribution
     time_begin = std::chrono::system_clock::now();
@@ -132,7 +139,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     std::optional<RunningEnergy> tailEnergyDifferenceFrameworkMolecule =
         Interactions::computeFrameworkMoleculeTailEnergyDifference(
             system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), trialMolecule.second, {});
-    if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    if (!tailEnergyDifferenceFrameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
     time_end = std::chrono::system_clock::now();
     component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
     system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
@@ -266,7 +273,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   // Check if the new macrostate exceeds the maximum allowed; reject if true.
 
   // apply acceptance/rejection rule
-  if (random.uniform() < biasTransitionMatrix * Pacc)
+  double randomAccNumber = random.uniform();
+  if (randomAccNumber < biasTransitionMatrix * Pacc)
   {
     component.mc_moves_statistics.addAccepted(move, 0);
 

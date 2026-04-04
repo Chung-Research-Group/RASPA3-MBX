@@ -191,6 +191,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 
       // Now we calculate the MBX energy difference.
       std::vector<double> mbxEnergyLog(7, 0);  // Vector to store energylog values
+      // Recompute old MBX energy from the current configuration to avoid relying on possibly drifted bookkeeping.
+      RunningEnergy oldMBXTotalEnergy = Interactions::computeMBXEnergy(
+          system, system.components, system.simulationBox, system.framework, selectedComponent,
+          system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), {}, false);
+
       // We calculate the system energy difference before and after the CMBC Reinsertion
       time_begin = std::chrono::system_clock::now();
       RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(
@@ -202,7 +207,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
       system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
 
       // MBX energy difference before and after the insertion move old and new configuration
-      energyDifferenceMBX.mbxEnergy = newTotalEnergy.mbxEnergy - oldTotalEnergy.mbxEnergy;
+      energyDifferenceMBX.mbxEnergy = newTotalEnergy.mbxEnergy - oldMBXTotalEnergy.mbxEnergy;
 
       // The energyDifference for frameworkMoleculeVDW contribution as obtained from forceField
       energyDifferenceMBX.frameworkMoleculeVDW = -retraceData.energies.frameworkMoleculeVDW;
@@ -214,6 +219,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 
       // Add the correction factor, exp(-beta*DeltaDeltaE)
       Pacc *= std::exp(-system.beta * (energyDifferenceMBX.potentialEnergy() - energyDifferenceFF.potentialEnergy()));
+      energyDifferenceMBX.ewald_fourier = energyFourierDifference.ewald_fourier;
+      energyDifferenceMBX.ewald_self = energyFourierDifference.ewald_self;
+      energyDifferenceMBX.ewald_exclusion = energyFourierDifference.ewald_exclusion;
 
       // Energy logging
 #if DEBUG

@@ -80,6 +80,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
     if (system.useMBX)
     {
+      // Compute external field energy contribution
+      std::optional<RunningEnergy> externalFieldMolecule = Interactions::computeExternalFieldEnergyDifference(
+          system.hasExternalField, system.forceField, system.simulationBox, system.externalFieldInterpolationGrid, {},
+          molecule);
+      if (!externalFieldMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+
       time_begin = std::chrono::system_clock::now();
       // Energy of the system after the insertion of new trial molecule.
       std::vector<double> mbxEnergyLog(7, 0);  // Vector to store energylog values
@@ -93,6 +99,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
       system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
 
       energyDifference.mbxEnergy = newTotalEnergy.mbxEnergy - oldTotalEnergy.mbxEnergy;
+      energyDifference.externalFieldVDW = externalFieldMolecule.value().externalFieldVDW;
+      energyDifference.externalFieldCharge = externalFieldMolecule.value().externalFieldCharge;
 
       // Compute framework-molecule energy contribution
       time_begin = std::chrono::system_clock::now();
@@ -112,7 +120,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
       std::optional<RunningEnergy> tailEnergyDifferenceFrameworkMolecule =
           Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
                                                                      system.spanOfFrameworkAtoms(), {}, molecule);
-      if (!frameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
+      if (!tailEnergyDifferenceFrameworkMolecule.has_value()) return {std::nullopt, double3(0.0, 1.0, 0.0)};
       time_end = std::chrono::system_clock::now();
       component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
       system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
@@ -250,7 +258,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     }
 
     // Apply acceptance/rejection rule
-    if (random.uniform() < biasTransitionMatrix * Pacc)
+    double randomAccNumber = random.uniform();
+    if (randomAccNumber < biasTransitionMatrix * Pacc)
     {
       // Move accepted; update acceptance statistics
       component.mc_moves_statistics.addAccepted(move, 1);
