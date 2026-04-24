@@ -2270,10 +2270,14 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     RunningEnergy mbx = Interactions::computeMBXEnergySystem(*this, components, simulationBox, framework,
                                                                frameworkAtomPositions, moleculeAtomPositions);
     pressureInfo.first.mbxEnergy = mbx.mbxEnergy;
+
+    // Turning off classical terms
+    pressureInfo.first.turnOffClassicalTerms();
   }
 
   pressureInfo.first.sumTotal();
 
+  // Pressure tensor calculation does not incorporate MBX yet and is purely FF based.
   double pressureTailCorrection = 0.0;
   double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
   for (std::vector<Atom>::iterator it1 = atomData.begin(); it1 != atomData.end(); ++it1)

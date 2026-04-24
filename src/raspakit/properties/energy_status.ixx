@@ -165,6 +165,13 @@ export struct EnergyStatus
     } 
   }
 
+  void turnOffClassicalTerms()
+  {
+    polarizationEnergy = Potentials::EnergyFactor(0.0, 0.0);
+    std::fill(intraComponentEnergies.begin(), intraComponentEnergies.end(), EnergyIntra());
+    std::fill(interComponentEnergies.begin(), interComponentEnergies.end(), EnergyInter());
+  }
+  
   std::string printEnergyStatus(const std::vector<Component>& components, const std::string& label);
 
   inline EnergyStatus& operator+=(const EnergyStatus& b)
