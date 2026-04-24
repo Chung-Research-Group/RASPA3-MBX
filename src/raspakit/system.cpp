@@ -189,20 +189,22 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
       }
       this->useMBX = true;
       this->mbxSettingsFilePath = mbxFilePath.value();
-      // std::cerr << "Using MBX for energy calculations..." << std::endl;
 
-#if DEBUG
-      std::cerr
-          << "type,component,N,total,hg_VDW,hg_tail,mbx_tot,E2b,E3b,E4b,Edisp,Eelec_perm,Eelec_ind,E_diff,Pacc\n";  // Header for MBX energy log
-#endif
+      // Enable MBX in currentEnergyStatus
+      this->currentEnergyStatus.useMBX = true;
+
+      #if DEBUG
+            std::cerr
+                << "type,component,N,total,hg_VDW,hg_tail,mbx_tot,E2b,E3b,E4b,Edisp,Eelec_perm,Eelec_ind,E_diff,Pacc\n";  // Header for MBX energy log
+      #endif
     }
     else
     {
-#if DEBUG
-      std::cerr
-          << "type,component,N,total,hg_VDW,gg_VDW,tail,hg_Charge,gg_Charge,E_ewald,E_diff,Pacc\n";  // Header for FF
-// energy log
-#endif
+      #if DEBUG
+            std::cerr
+                << "type,component,N,total,hg_VDW,gg_VDW,tail,hg_Charge,gg_Charge,E_ewald,E_diff,Pacc\n";  // Header for FF
+      // energy log
+      #endif
     }
   }
 
@@ -1407,6 +1409,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
   return stream.str();
 }
 
+// MBX terms incorporated
 std::string System::writeProductionStatusReportMC(const std::string& statusLine) const
 {
   std::ostringstream stream;
@@ -1580,12 +1583,18 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
              Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.polarizationEnergy.energy,
              conv * energyData.first.polarizationEnergy.energy, conv * energyData.second.polarizationEnergy.energy,
              Units::displayedUnitOfEnergyString);
-
+  std::print(stream, "MBX\n");
+  std::print(stream, "MBX energy{}     {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.mbxEnergy,
+             conv * energyData.first.mbxEnergy, conv * energyData.second.mbxEnergy,
+             Units::displayedUnitOfEnergyString);
+             
   std::print(stream, "\n");
 
   return stream.str();
 }
 
+// MBX terms not incorporated
 std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const
 {
   std::ostringstream stream;
@@ -2250,6 +2259,17 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   {
     RunningEnergy e = computePolarizationEnergy();
     pressureInfo.first.polarizationEnergy = Potentials::EnergyFactor(e.polarization, 0.0);
+  }
+
+  if (useMBX)
+  {
+    // Enable useMBX in pressureInfo.first EnergyStatus
+    pressureInfo.first.useMBX = true;
+
+    // Calculate mbxEnergy for the current configuration of the system and update pressureInfo.first EnergyStatus
+    RunningEnergy mbx = Interactions::computeMBXEnergySystem(*this, components, simulationBox, framework,
+                                                               frameworkAtomPositions, moleculeAtomPositions);
+    pressureInfo.first.mbxEnergy = mbx.mbxEnergy;
   }
 
   pressureInfo.first.sumTotal();

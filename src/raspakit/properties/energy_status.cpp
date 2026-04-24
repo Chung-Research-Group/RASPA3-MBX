@@ -37,6 +37,8 @@ import energy_status_inter;
 import energy_factor;
 import json;
 
+// This function might need to be changed such that only MBX terms are non-zero when useMBX is enabled. 
+// For now, this function is not being used anywhere. We can work on this later.
 std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &components, const std::string &label)
 {
   std::ostringstream stream;
@@ -70,6 +72,8 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
   std::print(stream, "    rotational kinetic energy:               {: .6e} [{}/-]\n", conv * rotationalKineticEnergy,
              Units::displayedUnitOfEnergyString);
   std::print(stream, "    Nose-Hoover energy:                      {: .6e} [{}/-]\n", conv * noseHooverEnergy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    MBX energy:                              {: .6e} [{}/-]\n", conv * mbxEnergy,
              Units::displayedUnitOfEnergyString);
 
   for (std::size_t i = 0; i < components.size(); ++i)
@@ -149,6 +153,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
   archive << e.translationalKineticEnergy;
   archive << e.rotationalKineticEnergy;
   archive << e.noseHooverEnergy;
+  archive << e.mbxEnergy;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -185,6 +190,7 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyStatus
   archive >> e.translationalKineticEnergy;
   archive >> e.rotationalKineticEnergy;
   archive >> e.noseHooverEnergy;
+  archive >> e.mbxEnergy;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
