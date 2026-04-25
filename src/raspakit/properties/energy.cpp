@@ -761,6 +761,17 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
 
   double prefactor = Units::EnergyToKelvin;
 
+  std::print(stream, "MBX:\n");
+  std::print(stream, "-------------------------------------------------------------------------------\n\n");
+  std::print(stream, "    MBX energy{}\n", Units::displayedUnitOfEnergyConversionString);
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  for (std::size_t i = 0; i < bookKeepingEnergyStatus.size(); ++i)
+  {
+    EnergyStatus blockAverage = averagedEnergy(i);
+    std::print(stream, "        Block[ {:2d}] {: .6e}\n", i, prefactor * blockAverage.mbxEnergy);
+  }
+  std::print(stream, "\n");
+  
   std::print(stream, "Kinetic Energies:\n");
   std::print(stream, "-------------------------------------------------------------------------------\n\n");
   std::print(stream, "    Translational Kinetic energy{}\n", Units::displayedUnitOfEnergyConversionString);
