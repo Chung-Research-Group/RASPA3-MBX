@@ -108,7 +108,7 @@ export struct EnergyStatus
     frameworkMoleculeEnergy.zero();
     interEnergy.zero();
 
-    if !(useMBX)
+    if ( ! useMBX )
     {
       for (std::size_t i = 0; i < this->intraComponentEnergies.size(); ++i)
       {
