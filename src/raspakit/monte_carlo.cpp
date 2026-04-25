@@ -593,6 +593,13 @@ void MonteCarlo::production(std::function<void()> call_back_function)
 
         system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+
+        #if DEBUG
+          // Drift check
+          RunningEnergy recomputedEnergies = system.computeTotalEnergies();
+          // RunningEnergy drift = system.runningEnergies - recomputedEnergies;
+          std::cerr << system.runningEnergies.printMCDiff(recomputedEnergies) << '\n';
+        #endif
       }
     }
 
