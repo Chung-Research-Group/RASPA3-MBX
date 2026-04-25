@@ -1584,7 +1584,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
              conv * energyData.first.polarizationEnergy.energy, conv * energyData.second.polarizationEnergy.energy,
              Units::displayedUnitOfEnergyString);
   std::print(stream, "MBX\n");
-  std::print(stream, "MBX energy{}     {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
+  std::print(stream, "    MBX energy{}      {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
              Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.mbxEnergy,
              conv * energyData.first.mbxEnergy, conv * energyData.second.mbxEnergy,
              Units::displayedUnitOfEnergyString);
@@ -2267,6 +2267,8 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     pressureInfo.first.useMBX = true;
 
     // Calculate mbxEnergy for the current configuration of the system and update pressureInfo.first EnergyStatus
+    std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
+    std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
     RunningEnergy mbx = Interactions::computeMBXEnergySystem(*this, components, simulationBox, framework,
                                                                frameworkAtomPositions, moleculeAtomPositions);
     pressureInfo.first.mbxEnergy = mbx.mbxEnergy;
