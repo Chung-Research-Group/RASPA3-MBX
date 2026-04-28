@@ -1685,38 +1685,38 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
         }
       }
-      // if (numberOfTMMCComponents > 1)
-      // {
-      std::vector<std::size_t> minMacrostate;
-      std::vector<std::size_t> maxMacrostate;
-      std::vector<std::size_t> componentIds;
-      for (auto& comp : systems[i].components)
+      if (numberOfTMMCComponents > 1)
       {
-        if (comp.doTMMC)
+        std::vector<std::size_t> minMacrostate;
+        std::vector<std::size_t> maxMacrostate;
+        std::vector<std::size_t> componentIds;
+        for (auto& comp : systems[i].components)
         {
-          minMacrostate.push_back(comp.minMacrostate);
-          maxMacrostate.push_back(comp.maxMacrostate);
-          componentIds.push_back(comp.componentId);
+          if (comp.doTMMC)
+          {
+            minMacrostate.push_back(comp.minMacrostate);
+            maxMacrostate.push_back(comp.maxMacrostate);
+            componentIds.push_back(comp.componentId);
+          }
+        }
+        systems[i].tmmcnd = TransitionMatrixMultidimensional(minMacrostate, maxMacrostate, componentIds,
+                                                             sampleTMMCEvery, writeTMMCEvery, useTMMCBias);
+      }
+      else if (numberOfTMMCComponents == 1)
+      {
+        for (auto& comp : systems[i].components)
+        {
+          if (comp.doTMMC)
+          {
+            systems[i].tmmc = TransitionMatrix(comp.minMacrostate, comp.maxMacrostate, comp.componentId,
+                                               sampleTMMCEvery, writeTMMCEvery, subsampleTMMC, useTMMCBias);
+          }
         }
       }
-      systems[i].tmmcnd = TransitionMatrixMultidimensional(minMacrostate, maxMacrostate, componentIds, sampleTMMCEvery,
-                                                           writeTMMCEvery, useTMMCBias);
-      // }
-      // else if (numberOfTMMCComponents == 1)
-      // {
-      //   for (auto& comp : systems[i].components)
-      //   {
-      //     if (comp.doTMMC)
-      //     {
-      //       systems[i].tmmc = TransitionMatrix(comp.minMacrostate, comp.maxMacrostate, comp.componentId,
-      //                                          sampleTMMCEvery, writeTMMCEvery, subsampleTMMC, useTMMCBias);
-      //     }
-      //   }
-      // }
-      // else
-      // {
-      //   throw std::runtime_error("Error: TMMC simulation is being requested, but no components are set for TMMC.");
-      // }
+      else
+      {
+        throw std::runtime_error("Error: TMMC simulation is being requested, but no components are set for TMMC.");
+      }
     }
   }
 }
