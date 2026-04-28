@@ -1,22 +1,10 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <complex>
-#include <cstddef>
-#include <span>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
 import std;
-#endif
 
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -37,7 +25,7 @@ import energy_status;
 /*
 TEST(electrostatic_polarization, Test_2_CO2_in_ITQ_29_2x2x2)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
 
   forceField.computePolarization = true;
   forceField.omitInterPolarization = false;
@@ -49,7 +37,7 @@ TEST(electrostatic_polarization, Test_2_CO2_in_ITQ_29_2x2x2)
   Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
   Component c = TestFactories::makeCO2(forceField, 0, true);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {2}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   spanOfMoleculeAtoms[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);

@@ -1,24 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <iostream>
-#include <optional>
-#include <span>
-#include <vector>
-#endif
-
 module integrators;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import molecule;
 import atom;
@@ -31,7 +15,7 @@ import integrators_cputime;
 import interpolation_energy_grid;
 
 RunningEnergy Integrators::velocityVerlet(
-    std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, const std::vector<Component> components,
+    std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, const std::vector<Component> &components,
     double dt, std::optional<Thermostat>& thermostat, std::span<Atom> frameworkAtomPositions,
     const ForceField& forceField, const SimulationBox& simulationBox, std::vector<std::complex<double>>& eik_x,
     std::vector<std::complex<double>>& eik_y, std::vector<std::complex<double>>& eik_z,
@@ -39,14 +23,14 @@ RunningEnergy Integrators::velocityVerlet(
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
     std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
-    const std::vector<std::size_t> numberOfMoleculesPerComponent)
+    const std::vector<std::size_t> &numberOfMoleculesPerComponent)
 {
   // apply thermo for temperature control
   if (thermostat.has_value())
   {
     // Adjust velocities using Nose-Hoover thermostat
-    double UKineticTranslation = Integrators::computeTranslationalKineticEnergy(moleculeData);
-    double UKineticRotation = Integrators::computeRotationalKineticEnergy(moleculeData, components);
+    double UKineticTranslation = computeTranslationalKineticEnergy(moleculeData);
+    double UKineticRotation = computeRotationalKineticEnergy(moleculeData, components);
     std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
     scaleVelocities(moleculeData, scaling);
   }

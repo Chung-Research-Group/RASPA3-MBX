@@ -1,25 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <unordered_map>
-#include <vector>
-#include <string>
-#pragma push_macro("__SSE3__")
-#undef __SSE3__
-#include <random>
-#pragma pop_macro("__SSE3__")
-#endif
-
 export module mc_moves_probabilities;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import randomnumbers;
@@ -43,17 +26,17 @@ export struct MCMoveProbabilities
                       double hybridMCProbability = 0.0);
 
   // use .at such that access is const
-  double getProbability(const MoveTypes &move) const { return probabilities.at(move); };
-  void setProbability(const MoveTypes &move, double probability) { probabilities[move] = probability; };
+  double getProbability(const Move::Types &move) const { return probabilities[std::to_underlying(move)]; };
+  void setProbability(const Move::Types &move, double probability) { probabilities[std::to_underlying(move)] = probability; };
 
-  const std::unordered_map<MoveTypes, double> normalizedMap() const;
+  const std::vector<double> normalizedMap() const;
   void removeRedundantMoves();
-  MoveTypes sample(RandomNumber &random);
+  Move::Types sample(RandomNumber &random);
 
   void join(const MCMoveProbabilities &other);
 
   // vector of unnormalized probabilities (not necessary due to std::discrete_distribution)
-  std::unordered_map<MoveTypes, double> probabilities{};
+  std::vector<double> probabilities{};
 
   std::string repr();
 

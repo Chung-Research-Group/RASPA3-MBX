@@ -1,9 +1,7 @@
-# CMakeLists.txt
-# cmake_minimum_required(VERSION 4.0.3)
+cmake_minimum_required(VERSION 4.3.0)
 
-cmake_minimum_required(VERSION 3.29)
-# set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD d0edc3af-4c50-42ea-a356-e2862fe7a444)
-# set(CMAKE_CXX_MODULE_STD 1)
+set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set the version of C++ for the project
@@ -18,25 +16,19 @@ endif()
 set(CMAKE_CXX_EXTENSIONS OFF)
 
 project(raspa3
-  VERSION 3.0.21
+  VERSION 3.0.26
   DESCRIPTION ""
   HOMEPAGE_URL "https://github.com/iraspa/raspa3"
   LANGUAGES C CXX)
 
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-add_definitions(-DUSE_LEGACY_HEADERS -DVERSION=${PROJECT_VERSION})
+add_definitions(-DVERSION=${PROJECT_VERSION})
 
-# add_definitions(-DUSE_STD_IMPORT -DVERSION=${PROJECT_VERSION})
-
-# add_definitions( -DUSE_PRECOMPILED_HEADERS -DVERSION=${PROJECT_VERSION})
-# add_definitions(-DVERSION=${PROJECT_VERSION})
 find_package(ZLIB)
 find_package(BLAS REQUIRED)
 find_package(LAPACK)
 find_package(OpenMP)
-find_package(HDF5 REQUIRED COMPONENTS CXX)
-include_directories(${HDF5_INCLUDE_DIRS})
 find_package(OpenCL)
 include_directories(${OpenCL_INCLUDE_DIRS})
 
@@ -66,11 +58,6 @@ if(BUILD_LIBTORCH)
   )
 endif()
 
-include(FetchContent)
-FetchContent_Declare(voro++
-  GIT_REPOSITORY https://github.com/chr1shr/voro.git
-  EXCLUDE_FROM_ALL)
-FetchContent_MakeAvailable(voro++)
 
 if(BUILD_TESTING)
   enable_testing()
@@ -78,29 +65,48 @@ if(BUILD_TESTING)
   include(FetchContent)
   FetchContent_Declare(googletest
     GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.16.0
+    GIT_TAG v1.17.0
     EXCLUDE_FROM_ALL)
 
   # For Windows: Prevent overriding the parent project's compiler/linker settings
   set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
   FetchContent_MakeAvailable(googletest)
-
   include(GoogleTest)
 
   include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
   include_directories(${gmock_SOURCE_DIR}/include ${gmock_SOURCE_DIR})
 endif()
 
+
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
+
+include(FetchContent)
+
+FetchContent_Declare(voro++
+  GIT_REPOSITORY https://github.com/chr1shr/voro.git
+  EXCLUDE_FROM_ALL)
+FetchContent_MakeAvailable(voro++)
+
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
+set(BUILD_STATIC_LIBS ON CACHE BOOL "Build static libraries" FORCE)
+set(HDF5_BUILD_CPP_LIB ON CACHE BOOL "Build static libraries" FORCE)
+set(HDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16 OFF CACHE BOOL "Build static libraries" FORCE)
+FetchContent_Declare(hdf5
+  GIT_REPOSITORY https://github.com/HDFGroup/hdf5.git
+    GIT_TAG 2.1.1
+  EXCLUDE_FROM_ALL)
+FetchContent_MakeAvailable(hdf5)
+set(HDF5_INCLUDE_DIRS "$<BUILD_INTERFACE:${hdf5_SOURCE_DIR}/src/;${hdf5_SOURCE_DIR}/src/H5FDsubfiling;${hdf5_SOURCE_DIR}/c++/src;${hdf5_BINARY_DIR};${hdf5_BINARY_DIR}/src>")
+include_directories(${HDF5_INCLUDE_DIRS})
 
 function(raspa_target_link_libraries target_name)
   if(CONDA)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
       libs::raspakit
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
-      ${HDF5_LIBRARIES}
+      hdf5-static;hdf5_tools-static;hdf5_hl-static;hdf5_cpp-static;hdf5_hl_cpp-static
       voro++
       ${TORCH_LIBRARIES}
       ${MBX_LIBRARY}
@@ -110,14 +116,13 @@ function(raspa_target_link_libraries target_name)
       ZLIB::ZLIB
       -lpthread)
   elseif(LINUX)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
       libs::raspakit
       -static-libgcc
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
-      ${HDF5_CXX_LIBRARIES}
-      ${HDF5_LIBRARIES}
+      hdf5-static;hdf5_tools-static;hdf5_hl-static;hdf5_cpp-static;hdf5_hl_cpp-static
       voro++
       ${TORCH_LIBRARIES}
       ${MBX_LIBRARY}
@@ -127,17 +132,18 @@ function(raspa_target_link_libraries target_name)
       -nostdlib++
       -l:libc++.a
       -l:libc++abi.a
+      -l:libunwind.a
       -lm
       -ldl
       ${ZLIB_LIBRARIES}
       -lpthread)
   elseif(WIN32)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
       libs::raspakit
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
-      ${HDF5_CXX_LIBRARIES}
+      ${HDF5_LIBRARIES_TO_EXPORT}
       voro++
       ${TORCH_LIBRARIES}
       ${MBX_LIBRARY}
@@ -147,19 +153,16 @@ function(raspa_target_link_libraries target_name)
       -nostdlib++
       ${ZLIB_LIBRARIES})
   elseif(APPLE)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
       libs::raspakit
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
       voro++
+      hdf5-static;hdf5_tools-static;hdf5_hl-static;hdf5_cpp-static;hdf5_hl_cpp-static
       ${TORCH_LIBRARIES}
       ${MBX_LIBRARY}
       ${FFTW_LIBRARY}
-      $ENV{HOMEBREW_PREFIX}/lib/libhdf5_cpp.a
-      $ENV{HOMEBREW_PREFIX}/lib/libhdf5.a
-      $ENV{HOMEBREW_PREFIX}/lib/libaec.a
-      $ENV{HOMEBREW_PREFIX}/lib/libsz.a
       $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
       OpenCL::OpenCL
       ${ZLIB_LIBRARIES}
@@ -171,6 +174,8 @@ function(raspa_target_link_libraries target_name)
       -lpthread)
   endif()
 endfunction()
+
+
 
 add_subdirectory(src)
 
@@ -189,6 +194,7 @@ if(BUILD_DOXYGEN)
 endif()
 
 # add_subdirectory(packaging)
+
 if(BUILD_TESTING)
   add_subdirectory(tests)
 endif()

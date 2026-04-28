@@ -1,25 +1,12 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>
 
-#include <algorithm>
-#include <complex>
-#include <cstddef>
-#include <span>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
-#include <gmock/gmock.h>
 import std;
-#endif
 
 import int3;
 import double3;
 import double3x3;
 import simd_quatd;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -42,14 +29,14 @@ import interpolation_energy_grid;
 
 TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-  Component c = TestFactories::makeCO2(forceField, 0, true);
-  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(5.93355, 7.93355, 5.93355 + 1.149);
@@ -115,14 +102,14 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2)
 
 TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-  Component c = TestFactories::makeCO2(forceField, 0, true);
-  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(7.200346017629, 5.547320950450, 2.554032891860);
@@ -188,14 +175,14 @@ TEST(rigid_gradient, Test_2_CO2_in_ITQ_29_2x2x2_no_symmetry)
 
 TEST(rigid_gradient, Test_2_H2O_in_ITQ_29_2x2x2_no_symmetry)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-  Component c = TestFactories::makeWater(forceField, 0, true);
-  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
+  Component c = Component::makeWater(forceField, 0, true);
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   atomData[0].position = double3(2.672476355982, 4.866114600102, 3.294027041381);

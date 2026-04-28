@@ -1,28 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <future>
-#include <iostream>
-#include <numbers>
-#include <optional>
-#include <span>
-#include <thread>
-#include <tuple>
-#include <vector>
-#endif
-
 module interactions_internal;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import energy_status;
 import potential_energy_vdw;
@@ -49,12 +29,12 @@ import units;
 import threadpool;
 
 RunningEnergy Interactions::computeIntraMolecularEnergy(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Molecule> moleculeData,
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials, std::span<const Molecule> moleculeData,
     std::span<const Atom> moleculeAtoms) noexcept
 {
   RunningEnergy energy{};
 
-  for (const Molecule &molecule : moleculeData)
+  for (const Molecule& molecule : moleculeData)
   {
     std::span<const Atom> atom_molecule_span = {&moleculeAtoms[molecule.atomIndex], molecule.numberOfAtoms};
     energy += intraMolecularPotentials.computeInternalEnergies(atom_molecule_span);
@@ -64,12 +44,12 @@ RunningEnergy Interactions::computeIntraMolecularEnergy(
 }
 
 RunningEnergy Interactions::computeIntraMolecularBondEnergy(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Molecule> moleculeData,
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials, std::span<const Molecule> moleculeData,
     std::span<const Atom> moleculeAtoms) noexcept
 {
   RunningEnergy energy{};
 
-  for (const Molecule &molecule : moleculeData)
+  for (const Molecule& molecule : moleculeData)
   {
     std::span<const Atom> atom_molecule_span = {&moleculeAtoms[molecule.atomIndex], molecule.numberOfAtoms};
     energy += intraMolecularPotentials.computeInternalBondEnergies(atom_molecule_span);
@@ -79,12 +59,12 @@ RunningEnergy Interactions::computeIntraMolecularBondEnergy(
 }
 
 RunningEnergy Interactions::computeIntraMolecularBendEnergy(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Molecule> moleculeData,
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials, std::span<const Molecule> moleculeData,
     std::span<const Atom> moleculeAtoms) noexcept
 {
   RunningEnergy energy{};
 
-  for (const Molecule &molecule : moleculeData)
+  for (const Molecule& molecule : moleculeData)
   {
     std::span<const Atom> atom_molecule_span = {&moleculeAtoms[molecule.atomIndex], molecule.numberOfAtoms};
     energy += intraMolecularPotentials.computeInternalBendEnergies(atom_molecule_span);
@@ -94,13 +74,13 @@ RunningEnergy Interactions::computeIntraMolecularBendEnergy(
 }
 
 std::pair<double, double3x3> Interactions::computeIntraMolecularBondStrainDerivative(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Molecule> moleculeData,
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials, std::span<const Molecule> moleculeData,
     const std::span<Atom> atoms)
 {
   double energy{};
   double3x3 strain_dervative{};
 
-  for (const Molecule &molecule : moleculeData)
+  for (const Molecule& molecule : moleculeData)
   {
     std::span<Atom> atom_molecule_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
     auto [intra_energy, intra_strain_dervative] =
@@ -114,12 +94,12 @@ std::pair<double, double3x3> Interactions::computeIntraMolecularBondStrainDeriva
 }
 
 std::pair<double, double3x3> Interactions::computeIntraMolecularBondStrainDerivative(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, const std::span<Atom> atoms)
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials, const std::span<Atom> atoms)
 {
   double bond_energy{};
   double3x3 bond_strain_derivative_tensor{};
 
-  for (const BondPotential &bond_potential : intraMolecularPotentials.bonds)
+  for (const BondPotential& bond_potential : intraMolecularPotentials.bonds)
   {
     std::size_t A = bond_potential.identifiers[0];
     std::size_t B = bond_potential.identifiers[1];
@@ -141,13 +121,13 @@ std::pair<double, double3x3> Interactions::computeIntraMolecularBondStrainDeriva
 }
 
 std::pair<double, double3x3> Interactions::computeIntraMolecularBendStrainDerivative(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Molecule> moleculeData,
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials, std::span<const Molecule> moleculeData,
     const std::span<Atom> atoms)
 {
   double energy{};
   double3x3 strain_dervative{};
 
-  for (const Molecule &molecule : moleculeData)
+  for (const Molecule& molecule : moleculeData)
   {
     std::span<Atom> atom_molecule_span = {&atoms[molecule.atomIndex], molecule.numberOfAtoms};
     auto [intra_energy, intra_strain_dervative] =
@@ -161,12 +141,12 @@ std::pair<double, double3x3> Interactions::computeIntraMolecularBendStrainDeriva
 }
 
 std::pair<double, double3x3> Interactions::computeIntraMolecularBendStrainDerivative(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, const std::span<Atom> atoms)
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials, const std::span<Atom> atoms)
 {
   double bend_energy{};
   double3x3 bend_strain_derivative_tensor{};
 
-  for (const BendPotential &bend_potential : intraMolecularPotentials.bends)
+  for (const BendPotential& bend_potential : intraMolecularPotentials.bends)
   {
     std::size_t A = bend_potential.identifiers[0];
     std::size_t B = bend_potential.identifiers[1];

@@ -1,30 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <iomanip>
-#include <iostream>
-#include <numbers>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 module mc_moves_random_rotation;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import component;
 import atom;
@@ -57,7 +35,7 @@ std::optional<RunningEnergy> MC_Moves::randomRotationMove(RandomNumber &random, 
 {
   double3 angle{};
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::RandomRotation;
+  Move::Types move = Move::Types::RandomRotation;
   Component &component = system.components[selectedComponent];
 
   std::array<double3, 3> axes{double3(1.0, 0.0, 0.0), double3(0.0, 1.0, 0.0), double3(0.0, 0.0, 1.0)};

@@ -1,35 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <numbers>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <vector>
-#pragma push_macro("__SSE3__")
-#undef __SSE3__
-#include <random>
-#pragma pop_macro("__SSE3__")
-#endif
-
 module property_energy;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import stringutils;
@@ -48,7 +21,7 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
 {
   std::ostringstream stream;
 
-  std::pair<EnergyStatus, EnergyStatus> computedAverage = averageEnergy();
+  std::pair<EnergyStatus, EnergyStatus> computedAverage = result();
 
   std::print(stream, "Energy averages and statistics:\n");
   std::print(stream, "===============================================================================\n\n");
@@ -846,7 +819,7 @@ nlohmann::json PropertyEnergy::jsonAveragesStatistics(bool externalField, std::o
 {
   nlohmann::json status;
 
-  std::pair<EnergyStatus, EnergyStatus> computedAverage = averageEnergy();
+  std::pair<EnergyStatus, EnergyStatus> computedAverage = result();
   std::vector<EnergyStatus> blockEnergies = blockEnergy();
 
   for (std::size_t k = 0; k < components.size(); k++)
@@ -959,6 +932,15 @@ nlohmann::json PropertyEnergy::jsonAveragesStatistics(bool externalField, std::o
   status["totalEnergy"]["confidence"] = prefactor * computedAverage.second.totalEnergy.energy;
 
   return status;
+}
+
+std::string PropertyEnergy::repr() const
+{
+  std::ostringstream stream;
+
+  std::print("{}\n", bookKeepingEnergyStatus[0].first.repr());
+
+  return stream.str();
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnergy &e)

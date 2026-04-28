@@ -1,27 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <chrono>
-#include <cmath>
-#include <cstddef>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#endif
-
 module mc_moves_gibbs_swap_cfcmc;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import randomnumbers;
 import running_energy;
@@ -54,7 +35,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     [[maybe_unused]] std::size_t& fractionalMoleculeSystem)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::GibbsSwapCFCMC;
+  Move::Types move = Move::Types::GibbsSwapCFCMC;
   Component& componentA = systemA.components[selectedComponent];
   Component& componentB = systemB.components[selectedComponent];
 
@@ -412,6 +393,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
         atom.groupId = std::uint8_t{1};
       }
 
+      systemA.updateMoleculeAtomInformation();
+      systemB.updateMoleculeAtomInformation();
+
       Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
 
       return std::make_pair(energyDifferenceA, energyDifferenceB);
@@ -443,7 +427,7 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
     std::swap_ranges(fractionalMoleculeA.begin(), fractionalMoleculeA.end(), fractionalMoleculeB.begin());
 
     std::pair<Molecule, std::vector<Atom>> trialMolecule =
-        componentB.equilibratedMoleculeRandomInBox(random, systemB.simulationBox);
+        componentB.equilibratedMoleculeRandomInBox(random, selectedComponent, systemB.simulationBox);
 
     // std::copy(trialMolecule.second.begin(), trialMolecule.second.end(), fractionalMoleculeB.begin());
     std::transform(fractionalMoleculeB.begin(), fractionalMoleculeB.end(), trialMolecule.second.begin(),
@@ -585,6 +569,9 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsSwapMove_C
 
       std::swap(systemA.containsTheFractionalMolecule, systemB.containsTheFractionalMolecule);
       std::swap(componentA.lambdaGC.currentBin, componentB.lambdaGC.currentBin);
+
+      systemA.updateMoleculeAtomInformation();
+      systemB.updateMoleculeAtomInformation();
 
       return std::make_pair(energyDifferenceA, energyDifferenceB);
     }

@@ -1,39 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <filesystem>
-#include <fstream>
-#include <ios>
-#include <iostream>
-#include <map>
-#include <numeric>
-#include <optional>
-#include <print>
-#include <ranges>
-#include <source_location>
-#include <span>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
-#endif
-
 module monte_carlo_transition_matrix;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import hardware_info;
@@ -43,9 +12,9 @@ import randomnumbers;
 import input_reader;
 import component;
 import averages;
-import loadings;
+import loading_data;
 import units;
-import enthalpy_of_adsorption;
+import enthalpy_of_adsorption_data;
 import simulationbox;
 import forcefield;
 import sample_movies;
@@ -141,14 +110,16 @@ continueProductionStage:
 void MonteCarloTransitionMatrix::createOutputFiles()
 {
   std::filesystem::create_directories("output");
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
     std::string fileNameString =
-        std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system.systemId);
+        std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system_id);
     streams.emplace_back(fileNameString, std::ios::out);
     fileNameString =
-        std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system.systemId);
+        std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
     outputJsonFileNames.emplace_back(fileNameString);
+
+    ++system_id;
   }
 }
 
@@ -224,18 +195,20 @@ void MonteCarloTransitionMatrix::initialize()
 
   createOutputFiles();
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
     // switch the fractional molecule on in the first system, and off in all others
-    if (system.systemId == 0uz)
+    if (system_id == 0uz)
       system.containsTheFractionalMolecule = true;
     else
       system.containsTheFractionalMolecule = false;
+
+    ++system_id;
   }
 
-  for (const System& system : systems)
+  for (std::size_t system_id{0}; const System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
 
     std::print(stream, "{}", system.writeOutputHeader());
     std::print(stream, "Random seed: {}\n\n", random.seed);
@@ -250,33 +223,37 @@ void MonteCarloTransitionMatrix::initialize()
 #ifdef VERSION
 #define QUOTE(str) #str
 #define EXPAND_AND_QUOTE(str) QUOTE(str)
-    outputJsons[system.systemId]["version"] = EXPAND_AND_QUOTE(VERSION);
+    outputJsons[system_id]["version"] = EXPAND_AND_QUOTE(VERSION);
 #endif
 
-    outputJsons[system.systemId]["seed"] = random.seed;
-    outputJsons[system.systemId]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
-    outputJsons[system.systemId]["initialization"]["units"] = Units::jsonStatus();
-    outputJsons[system.systemId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
-    outputJsons[system.systemId]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
-    outputJsons[system.systemId]["initialization"]["forceField"]["pseudoAtoms"] =
+    outputJsons[system_id]["seed"] = random.seed;
+    outputJsons[system_id]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
+    outputJsons[system_id]["initialization"]["units"] = Units::jsonStatus();
+    outputJsons[system_id]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+    outputJsons[system_id]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
+    outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] =
         system.forceField.jsonPseudoAtomStatus();
-    outputJsons[system.systemId]["initialization"]["components"] = system.jsonComponentStatus();
-    outputJsons[system.systemId]["initialization"]["reactions"] = system.reactions.jsonStatus();
+    outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
+    outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
 
-    std::ofstream json(outputJsonFileNames[system.systemId]);
-    json << outputJsons[system.systemId].dump(4);
+    std::ofstream json(outputJsonFileNames[system_id]);
+    json << outputJsons[system_id].dump(4);
+
+    ++system_id;
   }
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
     system.precomputeTotalRigidEnergy();
     system.runningEnergies = system.computeTotalEnergies();
 
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
     stream << system.runningEnergies.printMC("Recomputed from scratch");
     std::print(stream, "\n\n\n\n");
 
-    system.writeRestartFile();
+    system.writeRestartFile(system_id);
+
+    ++system_id;
   };
 
   for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
@@ -287,14 +264,16 @@ void MonteCarloTransitionMatrix::initialize()
 
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (std::size_t system_id{0}; System& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
+        std::ostream stream(streams[system_id].rdbuf());
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
         std::flush(stream);
+
+        ++system_id;
       }
     }
 
@@ -335,9 +314,9 @@ void MonteCarloTransitionMatrix::equilibrate()
   if (simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
   simulationStage = SimulationStage::Equilibration;
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
 
     system.runningEnergies = system.computeTotalEnergies();
 
@@ -347,6 +326,8 @@ void MonteCarloTransitionMatrix::equilibrate()
                                              system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
     }
+
+    ++system_id;
   };
 
   for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
@@ -357,14 +338,16 @@ void MonteCarloTransitionMatrix::equilibrate()
 
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (std::size_t system_id{0}; System& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
+        std::ostream stream(streams[system_id].rdbuf());
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::print(stream, "{}", system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
         std::flush(stream);
+
+        ++system_id;
       }
     }
 
@@ -425,9 +408,9 @@ void MonteCarloTransitionMatrix::production()
   if (simulationStage == SimulationStage::Production) goto continueProductionStage;
   simulationStage = SimulationStage::Production;
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
 
     if (system.tmmcnd.has_value()) system.tmmcnd->startProduction();
 
@@ -445,7 +428,9 @@ void MonteCarloTransitionMatrix::production()
                                              system.containsTheFractionalMolecule);
       component.lambdaGC.clear();
     }
-  };
+
+    ++system_id;
+  }
 
   minBias = std::numeric_limits<double>::max();
   for (System& system : systems)
@@ -474,9 +459,10 @@ void MonteCarloTransitionMatrix::production()
 
     performCycle();
 
-    for (System& system : systems)
+    for (std::size_t system_id{0}; System& system : systems)
     {
-      system.sampleProperties(estimation.currentBin, currentCycle);
+      system.sampleProperties(system_id, estimation.currentBin, currentCycle);
+
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {
         std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
@@ -488,19 +474,23 @@ void MonteCarloTransitionMatrix::production()
         system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
         system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
       }
+
+      ++system_id;
     }
 
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (std::size_t system_id{0}; System& system : systems)
       {
-        std::ostream stream(streams[system.systemId].rdbuf());
+        std::ostream stream(streams[system_id].rdbuf());
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfCycles)};
         std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
         std::flush(stream);
+
+        ++system_id;
       }
     }
 
@@ -554,9 +544,9 @@ void MonteCarloTransitionMatrix::output()
     }
   }
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
 
     RunningEnergy recomputedEnergies = system.computeTotalEnergies();
     RunningEnergy drift = system.runningEnergies - recomputedEnergies;
@@ -579,10 +569,11 @@ void MonteCarloTransitionMatrix::output()
     std::print(stream, "Production run CPU timings of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");
 
-    for (const Component& component : system.components)
+    for (std::size_t componentId{0}; const Component& component : system.components)
     {
       std::print(stream, "{}",
-                 component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
+                 component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
+      ++componentId;
     }
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
 
@@ -597,33 +588,35 @@ void MonteCarloTransitionMatrix::output()
     std::print(stream, "\n\n");
 
     // json statistics
-    outputJsons[system.systemId]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
-    outputJsons[system.systemId]["output"]["recomputedEnergies"] = recomputedEnergies.jsonMC();
-    outputJsons[system.systemId]["output"]["drift"] = drift.jsonMC();
+    outputJsons[system_id]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
+    outputJsons[system_id]["output"]["recomputedEnergies"] = recomputedEnergies.jsonMC();
+    outputJsons[system_id]["output"]["drift"] = drift.jsonMC();
 
-    outputJsons[system.systemId]["output"]["MCMoveStatistics"]["system"] = system.jsonMCMoveStatistics();
+    outputJsons[system_id]["output"]["MCMoveStatistics"]["system"] = system.jsonMCMoveStatistics();
     // outputJsons[system.systemId]["output"]["MCMoveStatistics"]["summedOverAllSystems"] =
     //    countTotal.jsonAllSystemStatistics(numberOfSteps);
 
-    outputJsons[system.systemId]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
+    outputJsons[system_id]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
         total.jsonOverallMCMoveCPUTimeStatistics(totalProductionSimulationTime);
-    outputJsons[system.systemId]["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["total"] = totalSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["system"] =
+    outputJsons[system_id]["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["total"] = totalSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["system"] =
         system.mc_moves_cputime.jsonSystemMCMoveCPUTimeStatistics();
 
     for (const Component& component : system.components)
     {
       // outputJsons[system.systemId]["output"]["MCMoveStatistics"][component.name]["percentage"] =
       //     component.mc_moves_statistics.jsonMCMoveStatistics(numberOfSteps);
-      outputJsons[system.systemId]["output"]["cpuTimings"][component.name] =
+      outputJsons[system_id]["output"]["cpuTimings"][component.name] =
           component.mc_moves_cputime.jsonComponentMCMoveCPUTimeStatistics();
     }
 
-    std::ofstream json(outputJsonFileNames[system.systemId]);
-    json << outputJsons[system.systemId].dump(4);
+    std::ofstream json(outputJsonFileNames[system_id]);
+    json << outputJsons[system_id].dump(4);
+
+    ++system_id;
   }
 }
 

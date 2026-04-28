@@ -1,32 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <chrono>
-#include <cstddef>
-#include <cstdint>
-#include <format>
-#include <fstream>
-#include <map>
-#include <optional>
-#include <ostream>
-#include <print>
-#include <span>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module component;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import archive;
@@ -42,8 +18,7 @@ import forcefield;
 import property_lambda_probability_histogram;
 import simulationbox;
 import property_widom;
-import isotherm;
-import multi_site_isotherm;
+import property_gibbs_widom;
 import move_statistics;
 import mc_moves_move_types;
 import mc_moves_probabilities;
@@ -141,7 +116,7 @@ export struct Component
    *
    * \throws std::runtime_error If the component file cannot be read or parsed.
    */
-  Component(Component::Type type, std::size_t currentComponent, const ForceField &forceField,
+  Component(Component::Type type, std::size_t componentId, const ForceField &forceField,
             const std::string &componentName, std::optional<const std::string> fileName, std::size_t numberOfBlocks,
             std::size_t numberOfLambdaBins, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
             std::optional<double> fugacityCoefficient = std::nullopt,
@@ -152,7 +127,6 @@ export struct Component
    *
    * Initializes a Component with specified physical properties and molecular structure.
    *
-   * \param componentId The unique identifier for the component.
    * \param forceField The force field used for defining atom properties.
    * \param componentName The name of the component.
    * \param T_c The critical temperature of the component.
@@ -167,24 +141,21 @@ export struct Component
    *
    * \throws std::runtime_error If pseudo-atoms are not recognized or data is invalid.
    */
-  Component(std::size_t componentId, const ForceField &forceField, std::string componentName, double T_c, double P_c,
+  Component(const ForceField &forceField, std::string componentName, double T_c, double P_c,
             double w, std::vector<Atom> definedAtoms, const ConnectivityTable &connectivityTable,
             const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::size_t numberOfBlocks,
-            std::size_t numberOfLambdaBins, const MCMoveProbabilities &systemProbabilities = MCMoveProbabilities(),
+            std::size_t numberOfLambdaBins, const MCMoveProbabilities &particleProbabilities = MCMoveProbabilities(),
             std::optional<double> fugacityCoefficient = std::nullopt,
-            bool thermodynamicIntegration = false) noexcept(false);
+            bool thermodynamicIntegration = false, std::vector<double4> blockingPockets = {}) noexcept(false);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   Type type{0};          ///< Type of the component (Adsorbate or Cation).
   GrowType growType{0};  ///< Growth type of the component.
 
-  std::size_t componentId{0};                 ///< Unique identifier for the component.
   std::string name{};                         ///< Name of the component.
   std::optional<std::string> filenameData{};  ///< Optional filename containing component data.
   std::string filename{};                     ///< Filename associated with the component.
-
-  std::vector<double4> blockingPockets{};  ///< List of blocking pockets defined by position and radius.
 
   bool rigid{true};                             ///< Flag indicating if the component is rigid.
   std::size_t translationalDegreesOfFreedom{};  ///< Number of translational degrees of freedom.
@@ -232,7 +203,10 @@ export struct Component
 
   std::vector<CBMCMoveStatistics> cbmc_moves_statistics;
 
-  PropertyWidom averageRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
+  PropertyWidom averageRosenbluthWeights;            ///< Average Rosenbluth weights for Widom insertion.
+  PropertyGibbsWidom averageGibbsRosenbluthWeights;  ///< Average Rosenbluth weights for Widom insertion.
+  
+  std::vector<double4> blockingPockets{};  ///< List of blocking pockets defined by position and radius.
 
   double lnPartitionFunction{0};  ///< Natural logarithm of the partition function [-].
 
@@ -240,14 +214,14 @@ export struct Component
   std::size_t maxMacrostate;  ///< Used for TMMC
   bool doTMMC;                ///< Whether to use TMMC
 
-  MultiSiteIsotherm isotherm{};            ///< Isotherm information for the component.
-  double massTransferCoefficient{0.0};     ///< Mass transfer coefficient [1/s].
-  double axialDispersionCoefficient{0.0};  ///< Axial dispersion coefficient [m²/s].
-  bool isCarrierGas{false};                ///< Flag indicating if the component is a carrier gas.
+  //MultiSiteIsotherm isotherm{};            ///< Isotherm information for the component.
+  //double massTransferCoefficient{0.0};     ///< Mass transfer coefficient [1/s].
+  //double axialDispersionCoefficient{0.0};  ///< Axial dispersion coefficient [m²/s].
+  //bool isCarrierGas{false};                ///< Flag indicating if the component is a carrier gas.
 
-  std::size_t columnPressure{0};  ///< Column index for pressure data.
-  std::size_t columnLoading{1};   ///< Column index for loading data.
-  std::size_t columnError{2};     ///< Column index for error data.
+  //std::size_t columnPressure{0};  ///< Column index for pressure data.
+  //std::size_t columnLoading{1};   ///< Column index for loading data.
+  //std::size_t columnError{2};     ///< Column index for error data.
 
   /**
    * \brief Enumeration of pressure scaling types.
@@ -270,7 +244,7 @@ export struct Component
    *
    * \throws std::runtime_error If the file cannot be found, opened, or parsed correctly.
    */
-  void readComponent(const ForceField &forceField, const std::string &fileName);
+  void readComponent(std::size_t componentId, const ForceField &forceField, const std::string &fileName);
 
   /**
    * \brief Generates a string representing the component's current status.
@@ -280,16 +254,8 @@ export struct Component
    * \param forceField The force field used for interpreting atom types.
    * \return A string detailing the component's status.
    */
-  std::string printStatus(const ForceField &forceField, double inputPressure) const;
+  std::string printStatus(std::size_t componentId, const ForceField &forceField, double inputPressure) const;
 
-  /**
-   * \brief Generates a string representing the breakthrough status of the component.
-   *
-   * Compiles breakthrough-related properties and parameters of the component into a formatted string.
-   *
-   * \return A string detailing the breakthrough status of the component.
-   */
-  std::string printBreakthroughStatus() const;
 
   /**
    * \brief Serializes the component's status to JSON.
@@ -347,7 +313,7 @@ export struct Component
    * \param simulationBox The simulation box within which to place the molecule.
    * \return A pair containing the equilibrated molecule and its corresponding atoms.
    */
-  std::pair<Molecule, std::vector<Atom>> equilibratedMoleculeRandomInBox(RandomNumber &random,
+  std::pair<Molecule, std::vector<Atom>> equilibratedMoleculeRandomInBox(RandomNumber &random, std::size_t componentId,
                                                                          const SimulationBox &simulationBox) const;
 
   /**
@@ -405,6 +371,11 @@ export struct Component
    * \return A string representing the Component.
    */
   std::string repr() const;
+
+  static Component makeMethane(const ForceField &forceField, std::size_t id = 0);
+  static Component makeCO2(const ForceField &forceField, std::size_t id = 0, bool useCharges = true);
+  static Component makeWater(const ForceField &forceField, std::size_t id = 0, bool useCharges = true);
+  static Component makeIon(const ForceField &forceField, std::size_t id, std::string_view name, std::size_t type, double q);
 };
 
 /**

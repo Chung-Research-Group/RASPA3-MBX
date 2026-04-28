@@ -1,28 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <iomanip>
-#include <iostream>
-#include <optional>
-#include <print>
-#include <span>
-#include <tuple>
-#include <type_traits>
-#include <vector>
-#endif
-
 module cbmc_interactions;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import atom;
 import molecule;
@@ -69,12 +49,6 @@ bool CBMC::insideBlockedPockets(const std::optional<Framework> &framework, const
     }
   }
   return false;
-}
-
-inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3> &lhs,
-                                                   const std::pair<EnergyStatus, double3x3> &rhs)
-{
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
 
 [[nodiscard]] const std::vector<std::pair<Atom, RunningEnergy>> CBMC::computeExternalNonOverlappingEnergies(

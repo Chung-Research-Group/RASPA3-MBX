@@ -1,27 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <iterator>
-#include <map>
-#include <string>
-#include <unordered_set>
-#include <vector>
-#include <ranges>
-#endif
-
 module skspacegroup;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import int3x3;
@@ -46,7 +27,8 @@ import skseitzintegermatrix;
 import skintegersymmetryoperationset;
 
 // https://stackoverflow.com/questions/66897068/can-trim-of-a-string-be-done-inplace-with-c20-ranges
-std::string simplified(const std::string &a)
+/*
+inline std::string simplified(const std::string &a)
 {
   std::string s = a;
   auto not_space = [](unsigned char c){ return !std::isspace(c); };
@@ -63,9 +45,24 @@ std::string simplified(const std::string &a)
         std::ranges::find_if(s, not_space));
 
     return s;
+}*/
+
+inline std::string simplified(const std::string &a)
+{
+  std::string s = a;
+
+  s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+
+  return s;
 }
 
-std::string toLower(const std::string &a)
+inline std::string toLower(const std::string &a)
 {
   std::string data = a;
   std::transform(data.begin(), data.end(), data.begin(),

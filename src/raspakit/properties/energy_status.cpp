@@ -1,32 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <type_traits>
-#include <vector>
-#endif
-
 module energy_status;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import stringutils;
@@ -129,6 +105,45 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
     }
   }
   std::print(stream, "\n");
+  return stream.str();
+}
+
+
+std::string EnergyStatus::repr() const
+{
+  std::ostringstream stream;
+
+  double conv = Units::EnergyToKelvin;
+  std::print(stream, "Energy status\n");
+  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "Total potential energy:  {: .6e}\n", conv * totalEnergy.energy);
+  std::print(stream, "    framework-molecule Van der Waals:        {: .6e} [{}]\n",
+             conv * frameworkMoleculeEnergy.VanDerWaals.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    framework-molecule Van der Waals (Tail): {: .6e} [{}]\n",
+             conv * frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    framework-molecule Coulombic Real:       {: .6e} [{}]\n",
+             conv * frameworkMoleculeEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    framework-molecule Coulombic Fourier:    {: .6e} [{}]\n",
+             conv * frameworkMoleculeEnergy.CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    molecule-molecule  Van der Waals:        {: .6e} [{}]\n",
+             conv * interEnergy.VanDerWaals.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    molecule-molecule  Van der Waals (Tail): {: .6e} [{}]\n",
+             conv * interEnergy.VanDerWaalsTailCorrection.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    molecule-molecule  Coulombic Real:       {: .6e} [{}/-]\n",
+             conv * interEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    molecule-molecule  Coulombic Fourier:    {: .6e} [{}/-]\n",
+             conv * interEnergy.CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    polarization:                            {: .6e} [{}/-]\n", conv * polarizationEnergy.energy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    dU/dlambda:                              {: .6e} [{}/-]\n", conv * totalEnergy.dUdlambda,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    translational kinetic energy:            {: .6e} [{}/-]\n", conv * translationalKineticEnergy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    rotational kinetic energy:               {: .6e} [{}/-]\n", conv * rotationalKineticEnergy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Nose-Hoover energy:                      {: .6e} [{}/-]\n", conv * noseHooverEnergy,
+             Units::displayedUnitOfEnergyString);
+
   return stream.str();
 }
 

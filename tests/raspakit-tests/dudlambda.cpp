@@ -1,23 +1,10 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <complex>
-#include <cstddef>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
 import std;
-#endif
 
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -36,11 +23,11 @@ import interactions_ewald;
 
 TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component na = TestFactories::makeIon(forceField, 0, "Na", 6, 0.0);
-  Component cl = TestFactories::makeIon(forceField, 1, "Cl", 7, 0.0);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component na = Component::makeIon(forceField, 0, "Na", 6, 0.0);
+  Component cl = Component::makeIon(forceField, 1, "Cl", 7, 0.0);
   System system =
-      System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
@@ -105,11 +92,11 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_VDW)
 
 TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component na = TestFactories::makeIon(forceField, 0, "Na", 6, 0.0);
-  Component cl = TestFactories::makeIon(forceField, 1, "Cl", 7, 0.0);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component na = Component::makeIon(forceField, 0, "Na", 6, 0.0);
+  Component cl = Component::makeIon(forceField, 1, "Cl", 7, 0.0);
   System system =
-      System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);
 
   std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
 
@@ -176,11 +163,11 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Coulomb)
 
 TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component na = TestFactories::makeIon(forceField, 0, "Na", 6, 0.0);
-  Component cl = TestFactories::makeIon(forceField, 1, "Cl", 7, 0.0);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component na = Component::makeIon(forceField, 0, "Na", 6, 0.0);
+  Component cl = Component::makeIon(forceField, 1, "Cl", 7, 0.0);
   System system =
-      System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {na, cl}, {}, {20, 20}, 5);
 
   std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
 
@@ -247,9 +234,9 @@ TEST(dudlambda, Test_20_Na_Cl_in_Box_25x25x25_Fourier)
 
 TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component c = TestFactories::makeCO2(forceField, 0, true);
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component c = Component::makeCO2(forceField, 0, true);
+  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
 
   std::fill(system.forceField.data.begin(), system.forceField.data.end(), VDWParameters(0.0, 1.0));
 
@@ -305,10 +292,10 @@ TEST(dudlambda, Test_20_CO2_in_Box_25x25x25_Fourier)
 
 TEST(dudlambda, Test_2_CO2_in_MFI_2x2x2_VDW)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component c = TestFactories::makeCO2(forceField, 0, false);
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component c = Component::makeCO2(forceField, 0, false);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
@@ -360,10 +347,10 @@ TEST(dudlambda, Test_2_CO2_in_MFI_2x2x2_VDW)
 
 TEST(dudlambda, Test_2_CO2_in_MFI_2x2x2_Coulomb)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component c = TestFactories::makeCO2(forceField, 0, true);
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component c = Component::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());
@@ -415,10 +402,10 @@ TEST(dudlambda, Test_2_CO2_in_MFI_2x2x2_Coulomb)
 
 TEST(dudlambda, Test_2_CO2_in_MFI_2x2x2_Ewald)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component c = TestFactories::makeCO2(forceField, 0, true);
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component c = Component::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> spanOfMoleculeAtoms = system.spanOfMoleculeAtoms();
   std::vector<Atom> atomData = std::vector<Atom>(spanOfMoleculeAtoms.begin(), spanOfMoleculeAtoms.end());

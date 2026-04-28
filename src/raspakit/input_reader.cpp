@@ -1,37 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <cstdlib>
-#include <exception>
-#include <filesystem>
-#include <fstream>
-#include <functional>
-#include <ios>
-#include <iostream>
-#include <iterator>
-#include <map>
-#include <numbers>
-#include <optional>
-#include <print>
-#include <set>
-#include <sstream>
-#include <streambuf>
-#include <vector>
-#endif
-
 module input_reader;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import stringutils;
@@ -48,9 +19,6 @@ import double4;
 import units;
 import sample_movies;
 import threadpool;
-import isotherm;
-import multi_site_isotherm;
-import pressure_range;
 import mc_moves_probabilities;
 import mc_moves_move_types;
 import reaction;
@@ -62,10 +30,13 @@ import property_rdf;
 import property_density_grid;
 import property_energy_histogram;
 import property_number_of_molecules_histogram;
+import property_volume_evolution;
+import property_number_of_molecules_evolution;
 import property_msd;
 import property_vacf;
 import write_lammps_data;
 import thermostat;
+import cif_reader;
 
 int3 parseInt3(const std::string& item, auto json)
 {
@@ -227,107 +198,7 @@ void InputReader::parseMixturePrediction([[maybe_unused]] const nlohmann::basic_
 {
 }
 
-void InputReader::parseBreakthrough(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
-{
-  // count number of systems
-  if (!parsed_data.contains("Systems"))
-  {
-    throw std::runtime_error(
-        std::format("[Input reader]: no system defined with keyword 'Systems' and value of array-type\n"));
-  }
-  std::size_t jsonNumberOfSystems = parsed_data["Systems"].size();
-  if (jsonNumberOfSystems == 0)
-  {
-    throw std::runtime_error(std::format("[Input reader]: keyword 'Systems' has empty value of array-type\n"));
-  }
-
-  systems = std::vector<System>(jsonNumberOfSystems);
-
-  // count number of components
-  std::size_t jsonNumberOfComponents{};
-  if (parsed_data.contains("Components"))
-  {
-    jsonNumberOfComponents = parsed_data["Components"].size();
-  }
-
-  // pre-allocate the vector of vector (jsonNumberOfSystems x jsonNumberOfComponents), i.e. for each system a list of
-  // components
-  std::vector<std::vector<Component>> jsonComponents(jsonNumberOfSystems,
-                                                     std::vector<Component>(jsonNumberOfComponents));
-
-  // Parse component options
-  for (std::size_t componentId = 0; auto& [_, item] : parsed_data["Components"].items())
-  {
-    Component component{};
-
-    if (!item.contains("Name"))
-    {
-      throw std::runtime_error(
-          std::format("[Input reader]: component must have a key 'Name' with a value of string-type'\n"));
-    }
-    component.name = item["Name"].get<std::string>();
-
-    // construct Component
-    for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
-    {
-      jsonComponents[i][componentId] = component;
-    }
-
-    componentId++;
-  }
-
-  for (std::size_t systemId = 0; auto& [key, value] : parsed_data["Systems"].items())
-  {
-    if (!value.contains("Type"))
-    {
-      throw std::runtime_error(std::format("[Input reader]: system must have a key 'Type' with value 'Framework'\n"));
-    }
-    std::string typeString = value["Type"].get<std::string>();
-
-    if (caseInSensStringCompare(typeString, "Framework"))
-    {
-      Framework framework{};
-
-      // Parse framework options
-      if (!value.contains("Name"))
-      {
-        throw std::runtime_error(
-            std::format("[Input reader]: framework must have a key 'Name' with a value of string-type'\n"));
-      }
-
-      framework.name = value["Name"].get<std::string>();
-
-      double heliumVoidFraction{1.0};
-      if (value.contains("HeliumVoidFraction"))
-      {
-        heliumVoidFraction = value["HeliumVoidFraction"].get<double>();
-      }
-
-      if (!value.contains("ExternalTemperature"))
-      {
-        throw std::runtime_error(
-            std::format("[Input reader]: framework must have a key 'ExternalTemperature' with a value of "
-                        "floating-point-type'\n"));
-      }
-      double T = value["ExternalTemperature"].get<double>();
-
-      std::optional<double> P{};
-      if (value.contains("ExternalPressure"))
-      {
-        P = value["ExternalPressure"].get<double>();
-      }
-      if (value.contains("ChemicalPotential"))
-      {
-        P = std::exp(value["ChemicalPotential"].get<double>() / (Units::KB * T));
-      }
-
-      // create system
-      systems[systemId] = System(systemId, T, P, heliumVoidFraction, {framework}, jsonComponents[systemId]);
-    }
-
-    systemId++;
-  }
-}
+void InputReader::parseBreakthrough([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data) {}
 
 void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
@@ -525,7 +396,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double translationProbability = item["TranslationProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::Translation, translationProbability);
+          move_probabilities[i].setProbability(Move::Types::Translation, translationProbability);
         }
       }
 
@@ -534,7 +405,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double randomTranslationProbability = item["RandomTranslationProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::RandomTranslation, randomTranslationProbability);
+          move_probabilities[i].setProbability(Move::Types::RandomTranslation, randomTranslationProbability);
         }
       }
 
@@ -543,7 +414,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double rotationProbability = item["RotationProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::Rotation, rotationProbability);
+          move_probabilities[i].setProbability(Move::Types::Rotation, rotationProbability);
         }
       }
 
@@ -552,7 +423,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double randomRotationProbability = item["RandomRotationProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::RandomRotation, randomRotationProbability);
+          move_probabilities[i].setProbability(Move::Types::RandomRotation, randomRotationProbability);
         }
       }
 
@@ -561,7 +432,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double reinsertionCBMCProbability = item["ReinsertionProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::ReinsertionCBMC, reinsertionCBMCProbability);
+          move_probabilities[i].setProbability(Move::Types::ReinsertionCBMC, reinsertionCBMCProbability);
         }
       }
 
@@ -570,7 +441,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double partial_reinsertion_CBMC_probability = item["PartialReinsertionProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::PartialReinsertionCBMC, partial_reinsertion_CBMC_probability);
+          move_probabilities[i].setProbability(Move::Types::PartialReinsertionCBMC,
+                                               partial_reinsertion_CBMC_probability);
         }
       }
 
@@ -579,7 +451,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double swapProbability = item["SwapConventionalProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::Swap, swapProbability);
+          move_probabilities[i].setProbability(Move::Types::Swap, swapProbability);
         }
       }
 
@@ -588,7 +460,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double swapCBMCProbability = item["SwapProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::SwapCBMC, swapCBMCProbability);
+          move_probabilities[i].setProbability(Move::Types::SwapCBMC, swapCBMCProbability);
         }
       }
 
@@ -597,7 +469,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double swapCFCMCProbability = item["CFCMC_SwapProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::SwapCFCMC, swapCFCMCProbability);
+          move_probabilities[i].setProbability(Move::Types::SwapCFCMC, swapCFCMCProbability);
         }
       }
 
@@ -606,7 +478,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double swapCBCFCMCProbability = item["CFCMC_CBMC_SwapProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::SwapCBCFCMC, swapCBCFCMCProbability);
+          move_probabilities[i].setProbability(Move::Types::SwapCBCFCMC, swapCBCFCMCProbability);
         }
       }
 
@@ -615,7 +487,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double gibbsSwapCFCMCProbability = item["Gibbs_CFCMC_SwapProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::GibbsSwapCFCMC, gibbsSwapCFCMCProbability);
+          move_probabilities[i].setProbability(Move::Types::GibbsSwapCFCMC, gibbsSwapCFCMCProbability);
         }
       }
 
@@ -624,7 +496,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double gibbsSwapCBMCProbability = item["GibbsSwapProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::GibbsSwapCBMC, gibbsSwapCBMCProbability);
+          move_probabilities[i].setProbability(Move::Types::GibbsSwapCBMC, gibbsSwapCBMCProbability);
         }
       }
 
@@ -633,7 +505,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double widomProbability = item["WidomProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::Widom, widomProbability);
+          move_probabilities[i].setProbability(Move::Types::Widom, widomProbability);
         }
       }
 
@@ -642,7 +514,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double widomCFCMCProbability = item["CFCMC_WidomProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::WidomCFCMC, widomCFCMCProbability);
+          move_probabilities[i].setProbability(Move::Types::WidomCFCMC, widomCFCMCProbability);
         }
       }
 
@@ -651,7 +523,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         double widomCBCFCMCProbability = item["CFCMC_CBMC_WidomProbability"].get<double>();
         for (std::size_t i = 0; i < move_probabilities.size(); ++i)
         {
-          move_probabilities[i].setProbability(MoveTypes::WidomCBCFCMC, widomCBCFCMCProbability);
+          move_probabilities[i].setProbability(Move::Types::WidomCBCFCMC, widomCBCFCMCProbability);
         }
       }
 
@@ -971,45 +843,45 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
-      Framework::UseChargesFrom useChargesFrom{Framework::UseChargesFrom::PseudoAtoms};
+      CIFReader::UseChargesFrom useChargesFrom{CIFReader::UseChargesFrom::PseudoAtoms};
       if (value.contains("UseChargesFrom") && value["UseChargesFrom"].is_string())
       {
         std::string useChargesFromString = value["UseChargesFrom"].get<std::string>();
 
         if (caseInSensStringCompare(useChargesFromString, "PsuedoAtoms"))
         {
-          useChargesFrom = Framework::UseChargesFrom::PseudoAtoms;
+          useChargesFrom = CIFReader::UseChargesFrom::PseudoAtoms;
         }
         if (caseInSensStringCompare(useChargesFromString, "CIF_File"))
         {
-          useChargesFrom = Framework::UseChargesFrom::CIF_File;
+          useChargesFrom = CIFReader::UseChargesFrom::CIF_File;
         }
         if (caseInSensStringCompare(useChargesFromString, "ChargeEquilibration"))
         {
-          useChargesFrom = Framework::UseChargesFrom::ChargeEquilibration;
+          useChargesFrom = CIFReader::UseChargesFrom::ChargeEquilibration;
         }
       }
 
       if (value.contains("VolumeMoveProbability") && value["VolumeMoveProbability"].is_number_float())
       {
-        mc_moves_probabilities.setProbability(MoveTypes::VolumeChange, value["VolumeMoveProbability"].get<double>());
+        mc_moves_probabilities.setProbability(Move::Types::VolumeChange, value["VolumeMoveProbability"].get<double>());
       }
 
       if (value.contains("GibbsVolumeMoveProbability") && value["GibbsVolumeMoveProbability"].is_number_float())
       {
-        mc_moves_probabilities.setProbability(MoveTypes::GibbsVolume,
+        mc_moves_probabilities.setProbability(Move::Types::GibbsVolume,
                                               value["GibbsVolumeMoveProbability"].get<double>());
       }
 
       if (value.contains("ParallelTemperingSwapProbability") &&
           value["ParallelTemperingSwapProbability"].is_number_float())
       {
-        mc_moves_probabilities.setProbability(MoveTypes::ParallelTempering,
+        mc_moves_probabilities.setProbability(Move::Types::ParallelTempering,
                                               value["ParallelTemperingSwapProbability"].get<double>());
       }
       if (value.contains("HybridMCProbability") && value["HybridMCProbability"].is_number_float())
       {
-        mc_moves_probabilities.setProbability(MoveTypes::HybridMC, value["HybridMCProbability"].get<double>());
+        mc_moves_probabilities.setProbability(Move::Types::HybridMC, value["HybridMCProbability"].get<double>());
       }
 
       if (!value.contains("Type"))
@@ -1019,10 +891,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
       std::string typeString = value["Type"].get<std::string>();
 
-      // MBX options parsing
-      std::optional<bool> useMBXCalculator{std::nullopt};
-      std::optional<std::string> mbxFilePath{std::nullopt};
-
       if (value.contains("UseMBX"))
       {
         if (!value["UseMBX"].is_boolean())
@@ -1031,9 +899,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               std::format("[Input reader]: system key 'UseMBX' must have a value of "
                           "type-bool (true/false)\n"));
         }
-        useMBXCalculator = value["UseMBX"].get<bool>();
+        useMBX = value["UseMBX"].get<bool>();
 
-        if (useMBXCalculator.value())
+        if (useMBX.value())
         {
           if (value.contains("MBXSettingsFile") && value["MBXSettingsFile"].is_string())
           {
@@ -1077,6 +945,12 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       if (value.contains("ChemicalPotential"))
       {
         P = std::exp(value["ChemicalPotential"].get<double>() / (Units::KB * T));
+      }
+
+      bool hasExternalField = false;
+      if (value.contains("ExternalField") && value["ExternalField"].is_boolean())
+      {
+        hasExternalField = value["ExternalField"].get<bool>();
       }
 
       std::optional<SimulationBox> restart_simulation_box{};
@@ -1150,15 +1024,34 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
         }
 
-        std::optional<Framework> jsonFrameworkComponents{Framework(0, forceFields[systemId].value(),
-                                                                   frameworkNameString, frameworkNameString,
-                                                                   jsonNumberOfUnitCells, useChargesFrom)};
+        const std::string file_content = readFileContent(frameworkNameString, ".cif");
 
-        // create system
-        systems[systemId] = System(systemId, forceFields[systemId].value(), std::nullopt, T, P, heliumVoidFraction,
-                                   jsonFrameworkComponents, jsonComponents[systemId],
-                                   jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId],
-                                   jsonNumberOfBlocks, mc_moves_probabilities, useMBXCalculator, mbxFilePath);
+        if (const auto cif = CIFReader::readCIFString(file_content, forceFields[systemId].value(), useChargesFrom);
+            cif.has_value())
+        {
+          auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
+          Framework framework =
+              Framework(forceFields[systemId].value(), frameworkNameString, simulation_box, space_group_hall_symbol,
+                        defined_atoms, fractional_atoms_unit_cell, jsonNumberOfUnitCells);
+
+          std::optional<Framework> jsonFrameworkComponents{framework};
+
+          // create system
+          systems[systemId] = System(forceFields[systemId].value(), std::nullopt, hasExternalField, T, P,
+                                     heliumVoidFraction, jsonFrameworkComponents, jsonComponents[systemId],
+                                     jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId],
+                                     jsonNumberOfBlocks, mc_moves_probabilities, useMBX, mbxFilePath);
+        }
+        else if (cif.error() == CIFReader::ParseError::invalidInput)
+        {
+          std::print("Invalid input\n");
+          std::exit(-1);
+        }
+        else if (cif.error() == CIFReader::ParseError::invalidForceField)
+        {
+          std::print("not all atoms defined in CIF-file\n");
+          std::exit(-1);
+        }
       }
       else if (caseInSensStringCompare(typeString, "Box"))
       {
@@ -1176,7 +1069,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         boxAngles = boxAngles * (std::numbers::pi / 180.0);
 
-        // create system
         if (!forceFields[systemId].has_value())
         {
           throw std::runtime_error(std::format("[Input reader]: No forcefield specified or found'\n"));
@@ -1189,19 +1081,14 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
 
         systems[systemId] =
-            System(systemId, forceFields[systemId].value(), simulationBox, T, P, 1.0, {}, jsonComponents[systemId],
-                   jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks,
-                   mc_moves_probabilities, useMBXCalculator, mbxFilePath);
+            System(forceFields[systemId].value(), simulationBox, hasExternalField, T, P, 1.0, {},
+                   jsonComponents[systemId], jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId],
+                   jsonNumberOfBlocks, mc_moves_probabilities, useMBX, mbxFilePath);
       }
       else
       {
         throw std::runtime_error(
             std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
-      }
-
-      if (value.contains("ExternalField") && value["ExternalField"].is_boolean())
-      {
-        systems[systemId].hasExternalField = value["ExternalField"].get<bool>();
       }
 
       if (value.contains("ComputeEnergyHistogram") && value["ComputeEnergyHistogram"].is_boolean())
@@ -1282,6 +1169,55 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               jsonNumberOfBlocks, {minimumRangeNumberOfMoleculesHistogram, maximumRangeNumberOfMoleculesHistogram},
               systems[systemId].components.size(), sampleNumberOfMoleculesHistogramEvery,
               writeNumberOfMoleculesHistogramEvery);
+        }
+      }
+
+      if (value.contains("ComputeNumberOfMoleculesEvolution") &&
+          value["ComputeNumberOfMoleculesEvolution"].is_boolean())
+      {
+        if (value["ComputeNumberOfMoleculesEvolution"].get<bool>())
+        {
+          std::size_t sample_number_of_molecules_every{1};
+          if (value.contains("SampleNumberOfMoleculesEvolutionEvery") &&
+              value["SampleNumberOfMoleculesEvolutionEvery"].is_number_unsigned())
+          {
+            sample_number_of_molecules_every = value["SampleNumberOfMoleculesEvolutionEvery"].get<std::size_t>();
+          }
+
+          std::size_t write_number_of_molecules_evolution_every{5000};
+          if (value.contains("WriteNumberOfMoleculesEvolutionEvery") &&
+              value["WriteNumberOfMoleculesEvolutionEvery"].is_number_unsigned())
+          {
+            write_number_of_molecules_evolution_every =
+                value["WriteNumberOfMoleculesEvolutionEvery"].get<std::size_t>();
+          }
+
+          systems[systemId].propertyNumberOfMoleculesEvolution = PropertyNumberOfMoleculesEvolution(
+              numberOfCycles + numberOfInitializationCycles + numberOfEquilibrationCycles,
+              systems[systemId].components.size(), sample_number_of_molecules_every,
+              write_number_of_molecules_evolution_every);
+        }
+      }
+
+      if (value.contains("ComputeVolumeEvolution") && value["ComputeVolumeEvolution"].is_boolean())
+      {
+        if (value["ComputeVolumeEvolution"].get<bool>())
+        {
+          std::size_t sample_volume_evolution_every{1};
+          if (value.contains("SampleVolumeEvolutionEvery") && value["SampleVolumeEvolutionEvery"].is_number_unsigned())
+          {
+            sample_volume_evolution_every = value["SampleVolumeEvolutionEvery"].get<std::size_t>();
+          }
+
+          std::size_t write_volume_evolution_every{5000};
+          if (value.contains("writeVolumeEvolutionEvery") && value["writeVolumeEvolutionEvery"].is_number_unsigned())
+          {
+            write_volume_evolution_every = value["writeVolumeEvolutionEvery"].get<std::size_t>();
+          }
+
+          systems[systemId].propertyVolumeEvolution =
+              PropertyVolumeEvolution(numberOfCycles + numberOfInitializationCycles + numberOfEquilibrationCycles,
+                                      sample_volume_evolution_every, write_volume_evolution_every);
         }
       }
 
@@ -1498,7 +1434,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             sampleMovieEvery = value["SampleMovieEvery"].get<std::size_t>();
           }
 
-          systems[systemId].samplePDBMovie = SampleMovie(systemId, sampleMovieEvery);
+          bool restrict_to_box{true};
+          if (value.contains("RestrictMoviePositionsToBox") && value["RestrictMoviePositionsToBox"].is_boolean())
+          {
+            restrict_to_box = value["RestrictMoviePositionsToBox"].get<bool>();
+          }
+
+          systems[systemId].samplePDBMovie = SampleMovie(systemId, sampleMovieEvery, restrict_to_box);
         }
       }
 
@@ -1539,7 +1481,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId].numberOfHybridMCSteps = value["HybridMCMoveNumberOfSteps"].get<std::size_t>();
         if (value.contains("TimeStep") && value["TimeStep"].is_number_float())
         {
-          systems[systemId].mc_moves_statistics.setMaxChange(MoveTypes::HybridMC, value["Timestep"].get<double>());
+          systems[systemId].mc_moves_statistics.setMaxChange(Move::Types::HybridMC, value["Timestep"].get<double>());
         }
       }
 
@@ -1550,17 +1492,17 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   // Post-compute
   // ========================================================
 
-  for (std::size_t i = 0uz; i < systems.size(); ++i)
-  {
-    systems[i].maxIsothermTerms = 0uz;
-    if (!systems[i].components.empty())
-    {
-      std::vector<Component>::iterator maxIsothermTermsIterator = std::max_element(
-          systems[i].components.begin(), systems[i].components.end(),
-          [](Component& lhs, Component& rhs) { return lhs.isotherm.numberOfSites < rhs.isotherm.numberOfSites; });
-      systems[i].maxIsothermTerms = maxIsothermTermsIterator->isotherm.numberOfSites;
-    }
-  }
+  // for (std::size_t i = 0uz; i < systems.size(); ++i)
+  //{
+  //   systems[i].maxIsothermTerms = 0uz;
+  //   if (!systems[i].components.empty())
+  //   {
+  //     std::vector<Component>::iterator maxIsothermTermsIterator = std::max_element(
+  //         systems[i].components.begin(), systems[i].components.end(),
+  //         [](Component& lhs, Component& rhs) { return lhs.isotherm.numberOfSites < rhs.isotherm.numberOfSites; });
+  //     systems[i].maxIsothermTerms = maxIsothermTermsIterator->isotherm.numberOfSites;
+  //   }
+  // }
 
   if (simulationType == SimulationType::MonteCarloTransitionMatrix)
   {
@@ -1632,37 +1574,37 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
-  for (std::size_t i = 0uz; i < systems.size(); ++i)
-  {
-    systems[i].numberOfCarrierGases = 0uz;
-    systems[i].carrierGasComponent = 0uz;
-    for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
-    {
-      if (systems[i].components[j].isCarrierGas)
-      {
-        systems[i].carrierGasComponent = j;
-        std::vector<double> values{1.0, 0.0};
-        const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir, values, 2);
-        systems[i].components[systems[i].carrierGasComponent].isotherm.add(isotherm);
-        systems[i].components[systems[i].carrierGasComponent].isotherm.numberOfSites = 1;
+  // for (std::size_t i = 0uz; i < systems.size(); ++i)
+  //{
+  //   systems[i].numberOfCarrierGases = 0uz;
+  //   systems[i].carrierGasComponent = 0uz;
+  //   for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
+  //   {
+  //     if (systems[i].components[j].isCarrierGas)
+  //     {
+  //       systems[i].carrierGasComponent = j;
+  //       std::vector<double> values{1.0, 0.0};
+  //       const Isotherm isotherm = Isotherm(Isotherm::Type::Langmuir, values, 2);
+  //       systems[i].components[systems[i].carrierGasComponent].isotherm.add(isotherm);
+  //       systems[i].components[systems[i].carrierGasComponent].isotherm.numberOfSites = 1;
 
-        systems[i].numberOfCarrierGases++;
-      }
-    }
+  //      systems[i].numberOfCarrierGases++;
+  //    }
+  //  }
 
-    if (simulationType == SimulationType::Breakthrough)
-    {
-      if (systems[i].numberOfCarrierGases == 0uz)
-      {
-        throw std::runtime_error("Error [Breakthrough]: no carrier gas component present\n");
-      }
-      if (systems[i].numberOfCarrierGases > 1)
-      {
-        throw std::runtime_error(
-            "Error [Breakthrough]: multiple carrier gas component present (there can be only one)\n");
-      }
-    }
-  }
+  //  if (simulationType == SimulationType::Breakthrough)
+  //  {
+  //    if (systems[i].numberOfCarrierGases == 0uz)
+  //    {
+  //      throw std::runtime_error("Error [Breakthrough]: no carrier gas component present\n");
+  //    }
+  //    if (systems[i].numberOfCarrierGases > 1)
+  //    {
+  //      throw std::runtime_error(
+  //          "Error [Breakthrough]: multiple carrier gas component present (there can be only one)\n");
+  //    }
+  //  }
+  //}
 
   for (std::size_t i = 0uz; i < systems.size(); ++i)
   {
@@ -1676,7 +1618,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           numberOfTMMCComponents++;
 
           // check initial number of molecules is in the range of the TMMC macrostates
-          std::size_t numberOfMolecules = systems[i].initialNumberOfMolecules[comp.componentId];
+          std::size_t numberOfMolecules = systems[i].initialNumberOfMolecules[comp.definedAtoms[0].first.componentId];
           if (numberOfMolecules < comp.minMacrostate || numberOfMolecules > comp.maxMacrostate)
           {
             throw std::runtime_error(
@@ -1696,7 +1638,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           {
             minMacrostate.push_back(comp.minMacrostate);
             maxMacrostate.push_back(comp.maxMacrostate);
-            componentIds.push_back(comp.componentId);
+            componentIds.push_back(comp.definedAtoms[0].first.componentId);
           }
         }
         systems[i].tmmcnd = TransitionMatrixMultidimensional(minMacrostate, maxMacrostate, componentIds,
@@ -1708,8 +1650,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         {
           if (comp.doTMMC)
           {
-            systems[i].tmmc = TransitionMatrix(comp.minMacrostate, comp.maxMacrostate, comp.componentId,
-                                               sampleTMMCEvery, writeTMMCEvery, subsampleTMMC, useTMMCBias);
+            systems[i].tmmc =
+                TransitionMatrix(comp.minMacrostate, comp.maxMacrostate, comp.definedAtoms[0].first.componentId,
+                                 sampleTMMCEvery, writeTMMCEvery, subsampleTMMC, useTMMCBias);
           }
         }
       }
@@ -1808,6 +1751,9 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "DensityGridBinning",
     "OutputPDBMovie",
     "SampleMovieEvery",
+    "RestrictMoviePositionsToBox",
+    "ComputeNumberOfMoleculesEvolution",
+    "ComputeVolumeEvolution",
     "WriteLammpsData",
     "WriteLammpsDataEvery",
     "Ensemble",

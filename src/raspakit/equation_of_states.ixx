@@ -1,20 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <fstream>
-#include <vector>
-#endif
-
 export module equation_of_states;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import component;
@@ -59,6 +47,22 @@ export struct EquationOfState
     Vapor = 2,               ///< Vapor state.
     Liquid = 3,              ///< Liquid state.
     VaporLiquid = 4          ///< Vapor-liquid coexistence.
+  };
+
+  struct FluidInput
+  {
+    double criticalTemperature;
+    double criticalPressure;
+    double acentricFactor;
+    double molFraction;
+    bool swappable;
+  };
+
+  struct FluidResult
+  {
+    double compressibility;
+    std::optional<double> fugacityCoefficient;
+    EquationOfState::FluidState fluidState;
   };
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
@@ -112,6 +116,14 @@ export struct EquationOfState
                                        EquationOfState::MultiComponentMixingRules multiComponentMixingRules,
                                        double temperature, double pressure, const SimulationBox &simulationBox,
                                        double heliumVoidFraction, std::vector<Component> &components);
+
+
+  static std::vector<EquationOfState::FluidResult> computeFluidProperties(
+                                                      double temperature, 
+                                                      double pressure,
+                                                      const std::vector<EquationOfState::FluidInput> &equationOfStateProperties,
+                                                      EquationOfState::Type type,
+                                                      EquationOfState::MultiComponentMixingRules rules);
 
   /**
    * \brief Serializes the EquationOfState object to an output archive.

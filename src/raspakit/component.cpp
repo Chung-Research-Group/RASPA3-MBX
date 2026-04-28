@@ -1,45 +1,12 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <cstdlib>
-#include <exception>
-#include <filesystem>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <iterator>
-#include <unordered_map>
-#include <numeric>
-#include <optional>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <span>
-#include <sstream>
-#include <string>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#endif
-
 #if !defined(_WIN32)
 #include <assert.h>
 #endif
 
 module component;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import simd_quatd;
@@ -62,7 +29,6 @@ import forcefield;
 import atom;
 import property_lambda_probability_histogram;
 import property_widom;
-import multi_site_isotherm;
 import simulationbox;
 import cif_reader;
 import move_statistics;
@@ -91,24 +57,24 @@ import json;
 Component::Component() {}
 
 // create Component in 'inputreader.cpp'
-Component::Component(Component::Type type, std::size_t currentComponent, const ForceField &forceField,
+Component::Component(Component::Type type, std::size_t componentId, const ForceField &forceField,
                      const std::string &componentName, std::optional<const std::string> fileName,
                      std::size_t numberOfBlocks, std::size_t numberOfLambdaBins,
                      const MCMoveProbabilities &particleProbabilities, std::optional<double> fugacityCoefficient,
                      bool thermodynamicIntegration) noexcept(false)
     : type(type),
-      componentId(currentComponent),
       name(componentName),
       filenameData(fileName),
       fugacityCoefficient(fugacityCoefficient),
       lambdaGC(numberOfBlocks, numberOfLambdaBins),
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
-      averageRosenbluthWeights(numberOfBlocks)
+      averageRosenbluthWeights(numberOfBlocks),
+      averageGibbsRosenbluthWeights(numberOfBlocks)
 {
   if (filenameData.has_value())
   {
-    readComponent(forceField, filenameData.value());
+    readComponent(componentId, forceField, filenameData.value());
   }
   lambdaGC.computeDUdlambda = thermodynamicIntegration;
 
@@ -116,13 +82,13 @@ Component::Component(Component::Type type, std::size_t currentComponent, const F
 }
 
 // create programmatically an 'adsorbate' component
-Component::Component(std::size_t componentId, const ForceField &forceField, std::string componentName, double T_c,
+Component::Component(const ForceField &forceField, std::string componentName, double T_c,
                      double P_c, double w, std::vector<Atom> atomList, const ConnectivityTable &connectivityTable,
                      const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::size_t numberOfBlocks,
                      std::size_t numberOfLambdaBins, const MCMoveProbabilities &particleProbabilities,
-                     std::optional<double> fugacityCoefficient, bool thermodynamicIntegration) noexcept(false)
+                     std::optional<double> fugacityCoefficient, bool thermodynamicIntegration,
+                     std::vector<double4> blockingPockets) noexcept(false)
     : type(Type::Adsorbate),
-      componentId(componentId),
       name(componentName),
       criticalTemperature(T_c),
       criticalPressure(P_c),
@@ -134,7 +100,9 @@ Component::Component(std::size_t componentId, const ForceField &forceField, std:
       lambdaGibbs(numberOfBlocks, numberOfLambdaBins),
       mc_moves_probabilities(particleProbabilities),
       cbmc_moves_statistics(atomList.size()),
-      averageRosenbluthWeights(numberOfBlocks)
+      averageRosenbluthWeights(numberOfBlocks),
+      averageGibbsRosenbluthWeights(numberOfBlocks),
+      blockingPockets(blockingPockets)
 {
   totalMass = 0.0;
   netCharge = 0.0;
@@ -158,7 +126,7 @@ Component::Component(std::size_t componentId, const ForceField &forceField, std:
 }
 
 // read the component from the molecule-file
-void Component::readComponent(const ForceField &forceField, const std::string &fileName)
+void Component::readComponent(std::size_t componentId, const ForceField &forceField, const std::string &fileName)
 {
   const std::string defaultMoleculeFileName = addExtension(fileName, ".json");
 
@@ -544,7 +512,7 @@ double3 Component::computeCenterOfMass(std::span<Atom> atom_list) const
   return com / total_mass;
 }
 
-std::string Component::printStatus(const ForceField &forceField, double inputPressure) const
+std::string Component::printStatus(std::size_t componentId, const ForceField &forceField, double inputPressure) const
 {
   std::ostringstream stream;
 
@@ -608,11 +576,11 @@ std::string Component::printStatus(const ForceField &forceField, double inputPre
   std::print(stream, "    Net-charge:      {:12.8f} [e]\n", netCharge);
   std::print(stream, "\n");
 
-  const std::unordered_map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
+  const std::vector<double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
   std::print(stream, "    Move probabilities:\n");
-  for (auto &[moveType, probability] : normalizedProbabilities)
+  for (std::size_t i = 0; i < normalizedProbabilities.size(); ++i)
   {
-    std::print(stream, "    {:<30} {:8.6f} [-]\n", moveNames[moveType] + ":", probability);
+    std::print(stream, "    {:<30} {:8.6f} [-]\n", Move::moveNames[i] + ":", normalizedProbabilities[i]);
   }
   std::print(stream, "\n");
 
@@ -809,7 +777,6 @@ nlohmann::json Component::jsonStatus() const
   nlohmann::json status;
 
   status["name"] = name;
-  status["id"] = componentId;
   status["criticalTemperature"] = criticalTemperature;
   status["criticalPressure"] = criticalPressure;
   status["acentricFactor"] = acentricFactor;
@@ -842,12 +809,8 @@ nlohmann::json Component::jsonStatus() const
   }
 
   nlohmann::json moves;
-  std::unordered_map<MoveTypes, double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
-  for (auto &[moveType, probability] : normalizedProbabilities)
-  {
-    moves[moveNames[moveType]] = probability;
-  }
-  status["moveProbabilities"] = moves;
+  std::vector<double> normalizedProbabilities = mc_moves_probabilities.normalizedMap();
+  status["moveProbabilities"] = normalizedProbabilities;
 
   status["n_bonds"] = intraMolecularPotentials.bonds.size();
   std::vector<std::string> bondTypes(intraMolecularPotentials.bonds.size());
@@ -870,7 +833,7 @@ std::vector<Atom> Component::copiedAtoms(std::span<Atom> molecule) const
 }
 
 std::pair<Molecule, std::vector<Atom>> Component::equilibratedMoleculeRandomInBox(
-    RandomNumber &random, const SimulationBox &simulationBox) const
+    RandomNumber &random, std::size_t componentId, const SimulationBox &simulationBox) const
 {
   simd_quatd q = random.randomSimdQuatd();
   double3x3 M = double3x3::buildRotationMatrixInverse(q);
@@ -946,28 +909,6 @@ std::pair<Molecule, std::vector<Atom>> Component::rotate(const Molecule &molecul
   return {trialMolecule, trialAtoms};
 }
 
-std::string Component::printBreakthroughStatus() const
-{
-  std::ostringstream stream;
-
-  std::print(stream, "Component {} [{}]\n", componentId, name);
-  if (isCarrierGas)
-  {
-    std::print(stream, "    carrier-gas\n");
-
-    std::print(stream, "{}", isotherm.print());
-  }
-  std::print(stream, "    mol-fraction in the gas:   {} [-]\n", molFraction);
-  if (!isCarrierGas)
-  {
-    std::print(stream, "    mass-transfer coefficient: {} [1/s]\n", massTransferCoefficient);
-    std::print(stream, "    diffusion coefficient:     {} [m^2/s]\n", axialDispersionCoefficient);
-
-    std::print(stream, "{}", isotherm.print());
-  }
-
-  return stream.str();
-}
 
 ConnectivityTable Component::readConnectivityTable(std::size_t size,
                                                    const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data)
@@ -1545,7 +1486,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.type;
   archive << c.growType;
 
-  archive << c.componentId;
   archive << c.name;
   archive << c.filenameData;
   archive << c.filename;
@@ -1601,19 +1541,9 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Compon
   archive << c.cbmc_moves_statistics;
 
   archive << c.averageRosenbluthWeights;
+  archive << c.averageGibbsRosenbluthWeights;
 
   archive << c.lnPartitionFunction;
-
-  archive << c.isotherm;
-  archive << c.massTransferCoefficient;
-  archive << c.axialDispersionCoefficient;
-  archive << c.isCarrierGas;
-
-  archive << c.columnPressure;
-  archive << c.columnLoading;
-  archive << c.columnError;
-
-  archive << c.pressureScale;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -1636,7 +1566,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.type;
   archive >> c.growType;
 
-  archive >> c.componentId;
   archive >> c.name;
   archive >> c.filenameData;
   archive >> c.filename;
@@ -1692,19 +1621,9 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
   archive >> c.cbmc_moves_statistics;
 
   archive >> c.averageRosenbluthWeights;
+  archive >> c.averageGibbsRosenbluthWeights;
 
   archive >> c.lnPartitionFunction;
-
-  archive >> c.isotherm;
-  archive >> c.massTransferCoefficient;
-  archive >> c.axialDispersionCoefficient;
-  archive >> c.isCarrierGas;
-
-  archive >> c.columnPressure;
-  archive >> c.columnLoading;
-  archive >> c.columnError;
-
-  archive >> c.pressureScale;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
@@ -1719,3 +1638,88 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Component &c
 }
 
 std::string Component::repr() const { return std::string("Component test"); }
+
+Component Component::makeMethane(const ForceField &forceField, std::size_t id)
+{
+  std::optional<std::size_t> type_ch4 = forceField.findPseudoAtom("CH4");
+  if (!type_ch4.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "CH4"));
+  }
+
+  return Component(forceField, "methane", 190.564, 45599200, 0.01142, 
+                   {Atom({0, 0, 0}, 0.0, 1.0, 0, static_cast<std::uint16_t>(type_ch4.value()), static_cast<std::uint8_t>(id), false, false)},
+                   {}, {}, 5, 21);
+}
+
+Component Component::makeCO2(const ForceField &forceField, std::size_t id, bool useCharges)
+{
+  const double qC = useCharges ? 0.6512 : 0.0;
+  const double qO = useCharges ? -0.3256 : 0.0;
+
+  std::optional<std::size_t> type_c_co2 = forceField.findPseudoAtom("C_co2");
+  if (!type_c_co2.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "C_co2"));
+  }
+
+  std::optional<std::size_t> type_o_co2 = forceField.findPseudoAtom("O_co2");
+  if (!type_o_co2.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "O_co2"));
+  }
+
+  return Component(
+      forceField, "CO2", 304.1282, 7377300.0, 0.22394,
+      {Atom({0, 0,  1.149},  qO, 1.0, 0, static_cast<std::uint16_t>(type_o_co2.value()), static_cast<std::uint8_t>(id), false, false), 
+       Atom({0, 0,  0.000},  qC, 1.0, 0, static_cast<std::uint16_t>(type_c_co2.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom({0, 0, -1.149},  qO, 1.0, 0, static_cast<std::uint16_t>(type_o_co2.value()), static_cast<std::uint8_t>(id), false, false)},
+      {}, {}, 5, 21);
+}
+
+Component Component::makeWater(const ForceField &forceField, std::size_t id, bool useCharges)
+{
+  const double qh = useCharges ? 0.241 : 0.0;
+  const double ql = useCharges ? -0.241 : 0.0;
+
+  std::optional<std::size_t> type_ow = forceField.findPseudoAtom("Ow");
+  if (!type_ow.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "Ow"));
+  }
+
+  std::optional<std::size_t> type_hw = forceField.findPseudoAtom("Hw");
+  if (!type_hw.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "Hw"));
+  }
+
+  std::optional<std::size_t> type_lw = forceField.findPseudoAtom("Lw");
+  if (!type_lw.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "Lw"));
+  }
+
+  return Component(
+      forceField, "water", 0.0, 0.0, 0.0,
+      {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, static_cast<std::uint16_t>(type_ow.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom(double3(-0.75695032726366118157, 0.0, -0.58588227661829499395), qh, 1.0, 0, static_cast<std::uint16_t>(type_hw.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom(double3(0.75695032726366118157, 0.0, -0.58588227661829499395), qh, 1.0, 0, static_cast<std::uint16_t>(type_hw.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom(double3(0.0, -0.57154330164408200866, 0.40415127656087122858), ql, 1.0, 0, static_cast<std::uint16_t>(type_lw.value()), static_cast<std::uint8_t>(id), false, false),
+       Atom(double3(0.0, 0.57154330164408200866, 0.40415127656087122858), ql, 1.0, 0, static_cast<std::uint16_t>(type_lw.value()), static_cast<std::uint8_t>(id), false, false)},
+      {}, {}, 5, 21);
+}
+
+Component Component::makeIon(const ForceField &forceField, std::size_t id, std::string_view name, std::size_t type, double q)
+{
+  return Component(forceField, std::string{name}, 0.0, 0.0, 0.0, 
+                   {Atom({0, 0, 0}, q, 1.0, 0, static_cast<std::uint16_t>(type), static_cast<std::uint8_t>(id), false, false)}, {},
+                   {}, 5, 21);
+}
+

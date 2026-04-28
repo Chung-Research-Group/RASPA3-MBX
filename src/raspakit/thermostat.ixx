@@ -1,22 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <print>
-#include <tuple>
-#include <vector>
-#endif
-
 export module thermostat;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import units;
@@ -55,7 +41,7 @@ export struct Thermostat
    * \param rotationalDgreesOfFreedom The number of rotational degrees of freedom.
    */
   Thermostat(double temperature, std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps,
-             double deltaT, std::size_t translationalDegreesOfFreedom, std::size_t rotationalDgreesOfFreedom);
+             double deltaT, std::size_t translationalDegreesOfFreedom, std::size_t rotationaleDgreesOfFreedom);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
@@ -69,7 +55,7 @@ export struct Thermostat
   std::size_t
       translationalCenterOfMassConstraint{};  ///< Constraint on translational center of mass degrees of freedom.
   std::size_t translationalDegreesOfFreedom;  ///< Number of translational degrees of freedom.
-  std::size_t rotationalDgreesOfFreedom;      ///< Number of rotational degrees of freedom.
+  std::size_t rotationalDegreesOfFreedom;      ///< Number of rotational degrees of freedom.
 
   std::vector<double>
       thermostatDegreesOfFreedomTranslation;          ///< Degrees of freedom for the translational thermostat chain.

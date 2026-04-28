@@ -1,23 +1,10 @@
 module;
 
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
 #include "bblock/system.h"
-#endif
 
 export module interactions_mbx;
 
-#ifndef USE_LEGACY_HEADERS
-import <span>;
-import <optional>;
-import <tuple>;
-import <vector>;
-#include "bblock/system.h"
-#endif
+import std;
 
 import double3;
 import double3x3;
@@ -48,35 +35,20 @@ export namespace Interactions
  * \return The total inter-molecular energy contributions.
  */
 
-double computeFrameworkElecPermMBXEnergy(
-        const System &system,
-        const SimulationBox &box,
-        const std::optional<Framework> &framework,
-        std::span<const Atom> frameworkAtoms
-) noexcept;
+double computeFrameworkElecPermMBXEnergy(const System& system, const SimulationBox& box,
+                                         const std::optional<Framework>& framework,
+                                         std::span<const Atom> frameworkAtoms) noexcept;
 
-RunningEnergy computeMBXEnergy(
-        const System &system,
-        const std::vector<Component> &components,
-        const SimulationBox &box,
-        const std::optional<Framework> &framework,
-        size_t selectedComponent,
-        std::span<const Atom> frameworkAtoms,
-        std::span<const Atom> moleculeAtoms,
-        std::span<const Atom> selectedMoleculeAtoms,
-        bool includeSelectedMoleculeAtoms,
-        std::vector<double>* mbxEnergyLog = nullptr
-) noexcept;
+RunningEnergy computeMBXEnergy(const System& system, const std::vector<Component>& components, const SimulationBox& box,
+                               const std::optional<Framework>& framework, size_t selectedComponent,
+                               std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+                               std::span<const Atom> selectedMoleculeAtoms, bool includeSelectedMoleculeAtoms,
+                               std::vector<double>* mbxEnergyLog = nullptr) noexcept;
 
-
-RunningEnergy computeMBXEnergySystem(
-        const System &system,
-        const std::vector<Component> &components,
-        const SimulationBox &box,
-        const std::optional<Framework> &framework,
-        std::span<const Atom> frameworkAtoms,
-        std::span<const Atom> moleculeAtoms
-) noexcept;
+RunningEnergy computeMBXEnergySystem(const System& system, const std::vector<Component>& components,
+                                     const SimulationBox& box, const std::optional<Framework>& framework,
+                                     std::span<const Atom> frameworkAtoms,
+                                     std::span<const Atom> moleculeAtoms) noexcept;
 /**
  * \brief Computes the difference in inter-molecular energy due to atom changes.
  *
@@ -92,15 +64,8 @@ RunningEnergy computeMBXEnergySystem(
  * \return The energy difference due to the atom changes, or std::nullopt if an overlap occurs.
  */
 [[nodiscard]] RunningEnergy computeMBXEnergyDifference(
-        const System &system,
-        const std::vector<Component> &components,
-        const SimulationBox &simulationBox,
-        const std::optional<Framework> &framework,
-        size_t selectedComponent,
-        std::span<const Atom> frameworkAtoms,
-        std::span<const Atom> moleculeAtoms,
-        std::span<const Atom> newatoms,
-        std::span<const Atom> oldatoms
-) noexcept;
+    const System& system, const std::vector<Component>& components, const SimulationBox& simulationBox,
+    const std::optional<Framework>& framework, size_t selectedComponent, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 
-}
+}  // namespace Interactions

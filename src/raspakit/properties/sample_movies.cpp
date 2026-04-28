@@ -1,46 +1,30 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <filesystem>
-#include <fstream>
-#include <iostream>
-#include <numbers>
-#include <print>
-#include <source_location>
-#include <span>
-#include <streambuf>
-#include <string>
-#include <vector>
-#endif
-
 module sample_movies;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;
 import stringutils;
 import atom;
+import component;
 import simulationbox;
 import forcefield;
 import units;
 import skelement;
 
-SampleMovie::SampleMovie(std::size_t systemId, std::size_t sampleEvery) : sampleEvery(sampleEvery)
+SampleMovie::SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox) : 
+                         sampleEvery(sampleEvery), restrictToBox(restrictToBox)
 {
   std::filesystem::create_directory("movies");
   std::ofstream stream(std::format("movies/movie.s{}.pdb", systemId));
 }
 
 void SampleMovie::update(const ForceField &forceField, std::size_t systemId, const SimulationBox simulationBox,
-                         std::span<Atom> atomData, std::size_t currentCycle)
+                         std::span<Atom> moleculeAtomPositions, const std::vector<Component> &components,
+                         const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+                         std::size_t currentCycle)
 {
   if (currentCycle % sampleEvery == 0)
   {
@@ -52,21 +36,60 @@ void SampleMovie::update(const ForceField &forceField, std::size_t systemId, con
                simulationBox.lengthB, simulationBox.lengthC, simulationBox.angleAlpha * 180.0 / std::numbers::pi,
                simulationBox.angleBeta * 180.0 / std::numbers::pi, simulationBox.angleGamma * 180.0 / std::numbers::pi);
 
-    for (int index = 1; const Atom &atom : atomData)
+    std::size_t index{0};
+    for (std::size_t l = 0; l != components.size(); ++l)
     {
-      std::size_t atomicNumber = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].atomicNumber;
-      std::string name = std::format("{:<4}", forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].name);
-      std::string chemicalElement = PredefinedElements::predefinedElements[atomicNumber]._chemicalSymbol;
-      bool print_to_output = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].printToPDB;
-      if(print_to_output)
+      std::size_t size = components[l].atoms.size();
+
+      for (std::size_t m = 0; m != numberOfMoleculesPerComponent[l]; ++m)
       {
-        std::print(stream,
-                   "ATOM  {:>5} {:4}{:1}{:>3} {:1}{:>4}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:<4}{:>2}\n",
-                   index, name.substr(0, 4), ' ', " ", ' ', 0, ' ', atom.position.x, atom.position.y, atom.position.z,
-                   1.0, 0.0, ' ', chemicalElement);
-        ++index;
+        std::span<Atom> span = std::span(&moleculeAtomPositions[index], size);
+
+        double3 shift_to_unit_box{};
+        if(restrictToBox)
+        {
+          double3 com = components[l].computeCenterOfMass(span);
+          double3 com_pbc = simulationBox.mapToBox(com);
+          shift_to_unit_box = com - com_pbc;
+        }
+
+        // loop over molecules
+        for (std::size_t i = 0; i != span.size(); i++)
+        {
+          Atom atom = span[i];
+          double3 position = atom.position - shift_to_unit_box;
+          std::size_t atomicNumber = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].atomicNumber;
+          std::string name = std::format("{:<4}", forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].name);
+          std::string chemicalElement = PredefinedElements::predefinedElements[atomicNumber]._chemicalSymbol;
+          bool print_to_output = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].printToPDB;
+          if(print_to_output)
+          {
+            std::print(stream,
+                       "ATOM  {:>5} {:4}{:1}{:>3} {:1}{:>4}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:<4}{:>2}\n",
+                       index, name.substr(0, 4), ' ', " ", ' ', 0, ' ', position.x, position.y, position.z,
+                       1.0, 0.0, ' ', chemicalElement);
+          }
+        }
+        index += size;
       }
     }
+
+
+    //for (int index = 1; const Atom &atom : atomData)
+    //{
+    //  std::size_t atomicNumber = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].atomicNumber;
+    //  std::string name = std::format("{:<4}", forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].name);
+    //  std::string chemicalElement = PredefinedElements::predefinedElements[atomicNumber]._chemicalSymbol;
+    //  bool print_to_output = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].printToPDB;
+    //  if(print_to_output)
+    //  {
+    //    std::print(stream,
+    //               "ATOM  {:>5} {:4}{:1}{:>3} {:1}{:>4}{:1}   {:8.3f}{:8.3f}{:8.3f}{:6.2f}{:6.2f}      {:<4}{:>2}\n",
+    //               index, name.substr(0, 4), ' ', " ", ' ', 0, ' ', atom.position.x, atom.position.y, atom.position.z,
+    //               1.0, 0.0, ' ', chemicalElement);
+    //    ++index;
+    //  }
+    //}
     stream << "ENDMDL\n";
     ++modelNumber;
   }

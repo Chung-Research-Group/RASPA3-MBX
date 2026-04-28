@@ -1,24 +1,10 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <complex>
-#include <cstddef>
-#include <ranges>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
 import std;
-#endif
 
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import molecule;
 import atom;
@@ -32,14 +18,22 @@ import simulationbox;
 
 TEST(insertion_deletion, methane_number_of_molecules_per_component)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component c = TestFactories::makeMethane(forceField, 0);
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component c = Component::makeMethane(forceField, 0);
+  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
+
+  std::optional<std::size_t> type_ch4 = forceField.findPseudoAtom("CH4");
+  if (!type_ch4.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "CH4"));
+  }
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 20uz);
-  EXPECT_EQ(system.numberOfPseudoAtoms[0][2], 20uz);
+  EXPECT_EQ(system.numberOfPseudoAtoms[0][type_ch4.value()], 20uz);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+
 
   for (size_t i = 0; i != atomData.size(); ++i)
   {
@@ -47,7 +41,7 @@ TEST(insertion_deletion, methane_number_of_molecules_per_component)
     EXPECT_NEAR(atomData[i].scalingVDW, 1.0, 1e-6);
     EXPECT_NEAR(atomData[i].scalingCoulomb, 1.0, 1e-6);
     EXPECT_EQ(atomData[i].moleculeId, i);
-    EXPECT_EQ(atomData[i].type, 2);
+    EXPECT_EQ(atomData[i].type, type_ch4.value());
     EXPECT_EQ(atomData[i].componentId, 0);
     EXPECT_EQ(atomData[i].groupId, 0);
   }
@@ -55,10 +49,10 @@ TEST(insertion_deletion, methane_number_of_molecules_per_component)
 
 TEST(insertion_deletion, CO2_number_of_molecules_per_component)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component c = TestFactories::makeCO2(forceField, 0, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component c = Component::makeCO2(forceField, 0, true);
   System system =
-      System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, std::nullopt, {c}, {}, {3}, 5);
+      System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, std::nullopt, {c}, {}, {3}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
 
@@ -80,24 +74,36 @@ TEST(insertion_deletion, CO2_number_of_molecules_per_component)
   EXPECT_EQ(atomData[7].moleculeId, 2);
   EXPECT_EQ(atomData[8].moleculeId, 2);
 
-  EXPECT_EQ(atomData[0].type, 4);
-  EXPECT_EQ(atomData[1].type, 3);
-  EXPECT_EQ(atomData[2].type, 4);
-  EXPECT_EQ(atomData[3].type, 4);
-  EXPECT_EQ(atomData[4].type, 3);
-  EXPECT_EQ(atomData[5].type, 4);
-  EXPECT_EQ(atomData[6].type, 4);
-  EXPECT_EQ(atomData[7].type, 3);
-  EXPECT_EQ(atomData[8].type, 4);
+  std::optional<std::size_t> type_c_co2 = forceField.findPseudoAtom("C_co2");
+  if (!type_c_co2.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "C_co2"));
+  }
+  std::optional<std::size_t> type_o_co2 = forceField.findPseudoAtom("O_co2");
+  if (!type_o_co2.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "O_co2"));
+  }
+  EXPECT_EQ(atomData[0].type, type_o_co2);
+  EXPECT_EQ(atomData[1].type, type_c_co2);
+  EXPECT_EQ(atomData[2].type, type_o_co2);
+  EXPECT_EQ(atomData[3].type, type_o_co2);
+  EXPECT_EQ(atomData[4].type, type_c_co2);
+  EXPECT_EQ(atomData[5].type, type_o_co2);
+  EXPECT_EQ(atomData[6].type, type_o_co2);
+  EXPECT_EQ(atomData[7].type, type_c_co2);
+  EXPECT_EQ(atomData[8].type, type_o_co2);
 }
 
 TEST(insertion_deletion, CO2_Methane_number_of_molecules_per_component)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
-  Component methane = TestFactories::makeMethane(forceField, 0);
-  Component co2 = TestFactories::makeCO2(forceField, 1, true);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  Component methane = Component::makeMethane(forceField, 0);
+  Component co2 = Component::makeCO2(forceField, 1, true);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
 
@@ -136,21 +142,39 @@ TEST(insertion_deletion, CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(atomData[13].moleculeId, 2);
 
   // component 0: Methane
-  EXPECT_EQ(atomData[0].type, 2);
-  EXPECT_EQ(atomData[1].type, 2);
-  EXPECT_EQ(atomData[2].type, 2);
-  EXPECT_EQ(atomData[3].type, 2);
-  EXPECT_EQ(atomData[4].type, 2);
+  std::optional<std::size_t> type_ch4 = forceField.findPseudoAtom("CH4");
+  if (!type_ch4.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "CH4"));
+  }
+  EXPECT_EQ(atomData[0].type, type_ch4.value());
+  EXPECT_EQ(atomData[1].type, type_ch4.value());
+  EXPECT_EQ(atomData[2].type, type_ch4.value());
+  EXPECT_EQ(atomData[3].type, type_ch4.value());
+  EXPECT_EQ(atomData[4].type, type_ch4.value());
   // component 1: CO2
-  EXPECT_EQ(atomData[5].type, 4);
-  EXPECT_EQ(atomData[6].type, 3);
-  EXPECT_EQ(atomData[7].type, 4);
-  EXPECT_EQ(atomData[8].type, 4);
-  EXPECT_EQ(atomData[9].type, 3);
-  EXPECT_EQ(atomData[10].type, 4);
-  EXPECT_EQ(atomData[11].type, 4);
-  EXPECT_EQ(atomData[12].type, 3);
-  EXPECT_EQ(atomData[13].type, 4);
+  std::optional<std::size_t> type_c_co2 = forceField.findPseudoAtom("C_co2");
+  if (!type_c_co2.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "C_co2"));
+  }
+  std::optional<std::size_t> type_o_co2 = forceField.findPseudoAtom("O_co2");
+  if (!type_o_co2.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "O_co2"));
+  }
+  EXPECT_EQ(atomData[5].type, type_o_co2);
+  EXPECT_EQ(atomData[6].type, type_c_co2);
+  EXPECT_EQ(atomData[7].type, type_o_co2);
+  EXPECT_EQ(atomData[8].type, type_o_co2);
+  EXPECT_EQ(atomData[9].type, type_c_co2);
+  EXPECT_EQ(atomData[10].type, type_o_co2);
+  EXPECT_EQ(atomData[11].type, type_o_co2);
+  EXPECT_EQ(atomData[12].type, type_c_co2);
+  EXPECT_EQ(atomData[13].type, type_o_co2);
 
   // component 0: Methane
   EXPECT_NEAR(atomData[0].charge, 0.0, 1e-6);
@@ -172,13 +196,33 @@ TEST(insertion_deletion, CO2_Methane_number_of_molecules_per_component)
 
 TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
-  Component methane = TestFactories::makeMethane(forceField, 0);
-  Component co2 = TestFactories::makeCO2(forceField, 1, true);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  Component methane = Component::makeMethane(forceField, 0);
+  Component co2 = Component::makeCO2(forceField, 1, true);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+
+  std::optional<std::size_t> type_ch4 = forceField.findPseudoAtom("CH4");
+  if (!type_ch4.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "CH4"));
+  }
+  std::optional<std::size_t> type_c_co2 = forceField.findPseudoAtom("C_co2");
+  if (!type_c_co2.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "C_co2"));
+  }
+  std::optional<std::size_t> type_o_co2 = forceField.findPseudoAtom("O_co2");
+  if (!type_o_co2.has_value())
+  {
+    throw std::runtime_error(
+        std::format("[ReadForceFieldSelfInteractions]: unknown pseudo-atom '{}', please define\n", "O_co2"));
+  }
+
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 5);
@@ -187,9 +231,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
 
   // insert new CO2
   system.insertMolecule(1, Molecule(),
-                        {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, false, false),
-                         Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, false, false),
-                         Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, false, false)});
+                        {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, static_cast<std::uint16_t>(type_o_co2.value()), 1, false, false),
+                         Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, static_cast<std::uint16_t>(type_c_co2.value()), 1, false, false),
+                         Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, static_cast<std::uint16_t>(type_o_co2.value()), 1, false, false)});
 
   // refresh span
   atomData = system.spanOfMoleculeAtoms();
@@ -333,9 +377,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
 
   // insert new CO2
   system.insertMolecule(1, Molecule(),
-                        {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, false, false),
-                         Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, false, false),
-                         Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, false, false)});
+                        {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, static_cast<std::uint16_t>(type_o_co2.value()), 1, false, false),
+                         Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, static_cast<std::uint16_t>(type_c_co2.value()), 1, false, false),
+                         Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, static_cast<std::uint16_t>(type_o_co2.value()), 1, false, false)});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 3);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 3);
@@ -386,7 +430,7 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(atomData[17].componentId, 1);
 
   // insert new Methane
-  system.insertMolecule(0, Molecule(), {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, false, false)});
+  system.insertMolecule(0, Molecule(), {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, static_cast<std::uint16_t>(type_ch4.value()), 0, false, false)});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 4);
@@ -529,7 +573,7 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(atomData[12].componentId, 1);
 
   // insert new Methane
-  system.insertMolecule(0, Molecule(), {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, false, false)});
+  system.insertMolecule(0, Molecule(), {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, static_cast<std::uint16_t>(type_ch4.value()), 0, false, false)});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 5);
@@ -615,9 +659,9 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
 
   // insert new CO2
   system.insertMolecule(1, Molecule(),
-                        {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, 4, 1, false, false),
-                         Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, 3, 1, false, false),
-                         Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, 4, 1, false, false)});
+                        {Atom(double3(0.0, 0.0, 1.149), -0.3256, 1.0, 0, static_cast<std::uint16_t>(type_o_co2.value()), 1, false, false),
+                         Atom(double3(0.0, 0.0, 0.0), 0.6512, 1.0, 0, static_cast<std::uint16_t>(type_c_co2.value()), 1, false, false),
+                         Atom(double3(0.0, 0.0, -1.149), -0.3256, 1.0, 0, static_cast<std::uint16_t>(type_o_co2.value()), 1, false, false)});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 4);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 4);
@@ -664,7 +708,7 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(atomData[15].componentId, 1);
 
   // insert new Methane
-  system.insertMolecule(0, Molecule(), {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 2, 0, false, false)});
+  system.insertMolecule(0, Molecule(), {Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, static_cast<std::uint16_t>(type_ch4.value()), 0, false, false)});
 
   EXPECT_EQ(system.numberOfMoleculesPerComponent[0], 5);
   EXPECT_EQ(system.numberOfIntegerMoleculesPerComponent[0], 5);
@@ -791,21 +835,21 @@ TEST(insertion_deletion, Dynamic_CO2_Methane_number_of_molecules_per_component)
   EXPECT_EQ(atomData[13].moleculeId, 2);
 
   // component 0: Methane
-  EXPECT_EQ(atomData[0].type, 2);
-  EXPECT_EQ(atomData[1].type, 2);
-  EXPECT_EQ(atomData[2].type, 2);
-  EXPECT_EQ(atomData[3].type, 2);
-  EXPECT_EQ(atomData[4].type, 2);
+  EXPECT_EQ(atomData[0].type, type_ch4.value());
+  EXPECT_EQ(atomData[1].type, type_ch4.value());
+  EXPECT_EQ(atomData[2].type, type_ch4.value());
+  EXPECT_EQ(atomData[3].type, type_ch4.value());
+  EXPECT_EQ(atomData[4].type, type_ch4.value());
   // component 1: CO2
-  EXPECT_EQ(atomData[5].type, 4);
-  EXPECT_EQ(atomData[6].type, 3);
-  EXPECT_EQ(atomData[7].type, 4);
-  EXPECT_EQ(atomData[8].type, 4);
-  EXPECT_EQ(atomData[9].type, 3);
-  EXPECT_EQ(atomData[10].type, 4);
-  EXPECT_EQ(atomData[11].type, 4);
-  EXPECT_EQ(atomData[12].type, 3);
-  EXPECT_EQ(atomData[13].type, 4);
+  EXPECT_EQ(atomData[5].type, type_o_co2.value());
+  EXPECT_EQ(atomData[6].type, type_c_co2.value());
+  EXPECT_EQ(atomData[7].type, type_o_co2.value());
+  EXPECT_EQ(atomData[8].type, type_o_co2.value());
+  EXPECT_EQ(atomData[9].type, type_c_co2.value());
+  EXPECT_EQ(atomData[10].type, type_o_co2.value());
+  EXPECT_EQ(atomData[11].type, type_o_co2.value());
+  EXPECT_EQ(atomData[12].type, type_c_co2.value());
+  EXPECT_EQ(atomData[13].type, type_o_co2.value());
 
   // component 0: Methane
   EXPECT_NEAR(atomData[0].charge, 0.0, 1e-6);

@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <numeric>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 export module energy_status;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import energy_factor;
@@ -297,6 +279,8 @@ export struct EnergyStatus
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnergyStatus& e);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnergyStatus& e);
+
+  std::string repr() const;
 };
 
 export inline EnergyStatus operator+(const EnergyStatus& a, const EnergyStatus& b)

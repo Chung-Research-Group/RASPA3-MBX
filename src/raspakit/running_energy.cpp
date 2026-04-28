@@ -1,34 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <ranges>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module running_energy;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import units;
 import archive;
@@ -558,6 +532,86 @@ nlohmann::json RunningEnergy::jsonMD() const
   status["translational [K]"] = conv * translationalKineticEnergy;
   status["rotational [K]"] = conv * rotationalKineticEnergy;
   return status;
+}
+
+std::string RunningEnergy::repr() const
+{
+  std::ostringstream stream;
+
+  double conv = Units::EnergyToKelvin;
+  std::print(stream, "Energy status\n");
+  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "Conserved energy{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * conservedEnergy(), Units::displayedUnitOfEnergyString);
+  std::print(stream, "Total potential energy{}     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * potentialEnergy(), Units::displayedUnitOfEnergyString);
+  std::print(stream, "    external field VDW{}     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * externalFieldVDW, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    external field Real{}    {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * externalFieldCharge, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    framework-molecule VDW{} {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * frameworkMoleculeVDW, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    framework-molecule Real{}{: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * frameworkMoleculeCharge, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    molecule-molecule VDW{}  {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * moleculeMoleculeVDW, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    molecule-molecule Real{} {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * moleculeMoleculeCharge, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Van der Waals (Tail){}   {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * tail, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Ewald Fourier{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * ewald_fourier, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Ewald self{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * ewald_self, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Ewald exclusion{}        {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * ewald_exclusion, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    bond{}                   {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * bond, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Urey-Bradley{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * ureyBradley, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    bend{}                   {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * bend, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    inversionBend{}          {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * inversionBend, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    outOfPlaneBend{}         {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * outOfPlaneBend, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    torsion{}                {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * torsion, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    improper torsion{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * improperTorsion, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    bond-bond{}              {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * bondBond, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    bond-bend{}              {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * bondBend, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    bond-torsion{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * bondTorsion, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    bend-bend{}              {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * bendBend, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    bend-torsion{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * bendTorsion, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    intra VDW{}              {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * intraVDW, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    intra Coulombic{}        {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * intraCoul, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    polarization{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * polarization, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    dU/dlambda VDW{}         {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * dudlambdaVDW, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    dU/dlambda Real{}        {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * dudlambdaCharge, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    dU/dlambda Ewald{}       {: .6e} [{}]\n\n", Units::displayedUnitOfEnergyConversionString,
+             conv * dudlambdaEwald, Units::displayedUnitOfEnergyString);
+  std::print(stream, "Total kinetic energy{}       {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * kineticEnergy(), Units::displayedUnitOfEnergyString);
+  std::print(stream, "    translation kinetic{}    {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * translationalKineticEnergy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    rotational kinetic{}     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * rotationalKineticEnergy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "Baro/thermostat energy{}     {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+             conv * NoseHooverEnergy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "\n");
+
+  return stream.str();
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RunningEnergy &e)

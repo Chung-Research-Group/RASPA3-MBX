@@ -1,24 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <chrono>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <optional>
-#include <vector>
-#include <functional>
-#endif
-
 export module monte_carlo;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import randomnumbers;
 import threadpool;
@@ -91,7 +75,7 @@ export struct MonteCarlo
   MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
              std::size_t numberOfEquilibrationCycles, std::size_t printEvery, std::size_t writeBinaryRestartEvery,
              std::size_t rescaleWangLandauEvery, std::size_t optimizeMCMovesEvery, std::vector<System> &systems,
-             RandomNumber &randomSeed, std::size_t numberOfBlocks, bool outputToFiles = false);
+             std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles = false);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
@@ -110,6 +94,7 @@ export struct MonteCarlo
   std::size_t optimizeMCMovesEvery;     ///< Frequency of optimizing MC moves.
 
   std::size_t currentCycle{0};                                      ///< Current cycle number.
+  std::size_t absoluteCurrentCycle{0};                              ///< Current overall cycle number.
   SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
 
   std::vector<System> systems;              ///< Vector of systems to simulate.
@@ -164,7 +149,7 @@ export struct MonteCarlo
    * Sets up the simulation systems, writes initial output, and runs
    * the specified number of initialization cycles.
    */
-  void initialize(std::function<void()> call_back_function = []{});
+  void initialize(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**
    * \brief Performs the equilibration stage of the simulation.
@@ -172,14 +157,30 @@ export struct MonteCarlo
    * Equilibrates the systems by running the specified number of equilibration cycles,
    * and adjusts Wang-Landau biasing factors.
    */
-  void equilibrate(std::function<void()> call_back_function = []{});
+  void setup();
+
+  /**
+   * \brief Performs the equilibration stage of the simulation.
+   *
+   * Equilibrates the systems by running the specified number of equilibration cycles,
+   * and adjusts Wang-Landau biasing factors.
+   */
+  void tearDown();
+
+  /**
+   * \brief Performs the equilibration stage of the simulation.
+   *
+   * Equilibrates the systems by running the specified number of equilibration cycles,
+   * and adjusts Wang-Landau biasing factors.
+   */
+  void equilibrate(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**
    * \brief Performs the production stage of the simulation.
    *
    * Runs the main simulation cycles, collects statistics, and samples properties.
    */
-  void production(std::function<void()> call_back_function = []{});
+  void production(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
 
   /**
    * \brief Generates the final output of the simulation.

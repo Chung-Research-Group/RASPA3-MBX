@@ -1,23 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <cstddef>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 export module interactions_external_field;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double3x3;
@@ -44,9 +29,9 @@ export namespace Interactions
  * \param moleculeAtoms A span of atoms to compute the energy for.
  * \param energyStatus The running total of energies to be updated.
  */
-void computeExternalFieldEnergy(bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-                                std::span<const Atom> moleculeAtoms, RunningEnergy &energyStatus,
-                                const std::optional<InterpolationEnergyGrid> &externalFieldGrid) noexcept;
+void computeExternalFieldEnergy(bool hasExternalField, const ForceField& forceField, const SimulationBox& simulationBox,
+                                std::span<const Atom> moleculeAtoms, RunningEnergy& energyStatus,
+                                const std::optional<InterpolationEnergyGrid>& externalFieldGrid) noexcept;
 
 /**
  * \brief Computes the tail correction for the external field energy.
@@ -60,9 +45,9 @@ void computeExternalFieldEnergy(bool hasExternalField, const ForceField &forceFi
  * \param moleculeAtoms A span of atoms to compute the tail energy for.
  * \param energyStatus The running total of energies to be updated.
  */
-void computeExternalFieldTailEnergy(bool hasExternalField, const ForceField &forceField,
-                                    const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
-                                    RunningEnergy &energyStatus) noexcept;
+void computeExternalFieldTailEnergy(bool hasExternalField, const ForceField& forceField,
+                                    const SimulationBox& simulationBox, std::span<const Atom> moleculeAtoms,
+                                    RunningEnergy& energyStatus) noexcept;
 
 /**
  * \brief Computes the difference in external field energy between two states.
@@ -79,8 +64,8 @@ void computeExternalFieldTailEnergy(bool hasExternalField, const ForceField &for
  * \return An optional RunningEnergy containing the energy difference, or `std::nullopt` if overlap occurs.
  */
 [[nodiscard]] std::optional<RunningEnergy> computeExternalFieldEnergyDifference(
-    bool hasExternalField, const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
-    std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
+    bool hasExternalField, const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::optional<InterpolationEnergyGrid>& externalFieldInterpolationGrid, std::span<const Atom> newatoms,
+    std::span<const Atom> oldatoms) noexcept;
 
 }  // namespace Interactions

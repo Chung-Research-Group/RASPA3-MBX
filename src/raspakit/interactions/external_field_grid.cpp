@@ -1,28 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <iostream>
-#include <numbers>
-#include <optional>
-#include <span>
-#include <type_traits>
-#include <array>
-#include <vector>
-#endif
-
 module interactions_external_field_grid;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import double3;
@@ -41,11 +21,10 @@ import forcefield;
 import tricubic_derivatives_external_field;
 import triquintic_derivatives_external_field;
 
-
 std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<double, 3>, 3>, 3>>
-Interactions::calculateThirdDerivativeAtPositionExternalField(const ForceField &forceField,
-                                                              [[maybe_unused]] const SimulationBox &simulationBox,
+Interactions::calculateThirdDerivativeAtPositionExternalField(const ForceField& forceField,
+                                                              [[maybe_unused]] const SimulationBox& simulationBox,
                                                               double3 pos)
 {
   double energy{0.0};
@@ -53,7 +32,7 @@ Interactions::calculateThirdDerivativeAtPositionExternalField(const ForceField &
   std::array<std::array<double, 3>, 3> second_derivative{};
   std::array<std::array<std::array<double, 3>, 3>, 3> third_derivative{};
 
-  //if (forceField.hasExternalField)
+  // if (forceField.hasExternalField)
   {
     switch (forceField.potentialEnergySurfaceType)
     {
@@ -80,9 +59,9 @@ Interactions::calculateThirdDerivativeAtPositionExternalField(const ForceField &
 }
 
 std::array<double, 8> Interactions::calculateTricubicFractionalAtPositionExternalField(
-    const ForceField &forceField, [[maybe_unused]] const SimulationBox &simulationBox, double3 posA)
+    const ForceField& forceField, [[maybe_unused]] const SimulationBox& simulationBox, double3 posA)
 {
-  //if (forceField.hasExternalField)
+  // if (forceField.hasExternalField)
   {
     double energy_fractional{0.0};
     std::array<double, 3> first_derivative_fractional{};
@@ -93,12 +72,12 @@ std::array<double, 8> Interactions::calculateTricubicFractionalAtPositionExterna
         Interactions::calculateThirdDerivativeAtPositionExternalField(forceField, simulationBox, posA);
 
     energy_fractional = energy;
-    for (const std::size_t &p : std::array<std::size_t, 3>{0, 1, 2})
+    for (const std::size_t& p : std::array<std::size_t, 3>{0, 1, 2})
     {
       first_derivative_fractional[0] += simulationBox.cell[0][p] * first_derivative[p];
       first_derivative_fractional[1] += simulationBox.cell[1][p] * first_derivative[p];
       first_derivative_fractional[2] += simulationBox.cell[2][p] * first_derivative[p];
-      for (const std::size_t &q : std::array<std::size_t, 3>{0, 1, 2})
+      for (const std::size_t& q : std::array<std::size_t, 3>{0, 1, 2})
       {
         second_derivative_fractional[0][1] +=
             simulationBox.cell[0][p] * simulationBox.cell[1][q] * second_derivative[p][q];
@@ -106,7 +85,7 @@ std::array<double, 8> Interactions::calculateTricubicFractionalAtPositionExterna
             simulationBox.cell[0][p] * simulationBox.cell[2][q] * second_derivative[p][q];
         second_derivative_fractional[1][2] +=
             simulationBox.cell[1][p] * simulationBox.cell[2][q] * second_derivative[p][q];
-        for (const std::size_t &r : std::array<std::size_t, 3>{0, 1, 2})
+        for (const std::size_t& r : std::array<std::size_t, 3>{0, 1, 2})
         {
           third_derivative_fractional[0][1][2] += simulationBox.cell[0][p] * simulationBox.cell[1][q] *
                                                   simulationBox.cell[2][r] * third_derivative[p][q][r];
@@ -135,9 +114,9 @@ std::tuple<double, std::array<double, 3>, std::array<std::array<double, 3>, 3>,
            std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>,
            std::array<std::array<std::array<std::array<std::array<std::array<double, 3>, 3>, 3>, 3>, 3>, 3>>
-Interactions::calculateSixthOrderDerivativeAtPositionExternalField(const ForceField &forceField, double3 pos)
+Interactions::calculateSixthOrderDerivativeAtPositionExternalField(const ForceField& forceField, double3 pos)
 {
-  //if (forceField.hasExternalField)
+  // if (forceField.hasExternalField)
   {
     switch (forceField.potentialEnergySurfaceType)
     {
@@ -164,9 +143,9 @@ Interactions::calculateSixthOrderDerivativeAtPositionExternalField(const ForceFi
 }
 
 std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExternalField(
-    const ForceField &forceField, const SimulationBox &simulationBox, double3 posA)
+    const ForceField& forceField, const SimulationBox& simulationBox, double3 posA)
 {
-  //if (forceField.hasExternalField)
+  // if (forceField.hasExternalField)
   {
     double energy_fractional{0.0};
     std::array<double, 3> first_derivative_fractional{};
@@ -181,13 +160,13 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExte
           sixth_derivative] = Interactions::calculateSixthOrderDerivativeAtPositionExternalField(forceField, posA);
 
     energy_fractional = energy;
-    for (const std::size_t &p : std::array<std::size_t, 3>{0, 1, 2})
+    for (const std::size_t& p : std::array<std::size_t, 3>{0, 1, 2})
     {
       first_derivative_fractional[0] += simulationBox.cell[0][p] * first_derivative[p];
       first_derivative_fractional[1] += simulationBox.cell[1][p] * first_derivative[p];
       first_derivative_fractional[2] += simulationBox.cell[2][p] * first_derivative[p];
 
-      for (const std::size_t &q : std::array<std::size_t, 3>{0, 1, 2})
+      for (const std::size_t& q : std::array<std::size_t, 3>{0, 1, 2})
       {
         second_derivative_fractional[0][0] +=
             simulationBox.cell[0][p] * simulationBox.cell[0][q] * second_derivative[p][q];
@@ -202,7 +181,7 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExte
         second_derivative_fractional[2][2] +=
             simulationBox.cell[2][p] * simulationBox.cell[2][q] * second_derivative[p][q];
 
-        for (const std::size_t &r : std::array<std::size_t, 3>{0, 1, 2})
+        for (const std::size_t& r : std::array<std::size_t, 3>{0, 1, 2})
         {
           third_derivative_fractional[0][0][1] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
                                                   simulationBox.cell[1][r] * third_derivative[p][q][r];
@@ -219,7 +198,7 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExte
           third_derivative_fractional[1][2][2] += simulationBox.cell[1][p] * simulationBox.cell[2][q] *
                                                   simulationBox.cell[2][r] * third_derivative[p][q][r];
 
-          for (const std::size_t &s : std::array<std::size_t, 3>{0, 1, 2})
+          for (const std::size_t& s : std::array<std::size_t, 3>{0, 1, 2})
           {
             fourth_derivative_fractional[0][0][1][1] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
                                                         simulationBox.cell[1][r] * simulationBox.cell[1][s] *
@@ -240,7 +219,7 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExte
                                                         simulationBox.cell[2][r] * simulationBox.cell[2][s] *
                                                         fourth_derivative[p][q][r][s];
 
-            for (const std::size_t &t : std::array<std::size_t, 3>{0, 1, 2})
+            for (const std::size_t& t : std::array<std::size_t, 3>{0, 1, 2})
             {
               fifth_derivative_fractional[0][0][1][1][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
                                                             simulationBox.cell[1][r] * simulationBox.cell[1][s] *
@@ -252,7 +231,7 @@ std::array<double, 27> Interactions::calculateTriquinticFractionalAtPositionExte
                                                             simulationBox.cell[1][r] * simulationBox.cell[2][s] *
                                                             simulationBox.cell[2][t] * fifth_derivative[p][q][r][s][t];
 
-              for (const std::size_t &u : std::array<std::size_t, 3>{0, 1, 2})
+              for (const std::size_t& u : std::array<std::size_t, 3>{0, 1, 2})
               {
                 sixth_derivative_fractional[0][0][1][1][2][2] += simulationBox.cell[0][p] * simulationBox.cell[0][q] *
                                                                  simulationBox.cell[1][r] * simulationBox.cell[1][s] *

@@ -1,22 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 export module interactions_internal;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double3x3;
@@ -34,30 +20,30 @@ import component;
 
 export namespace Interactions
 {
-RunningEnergy computeIntraMolecularEnergy(const Potentials::IntraMolecularPotentials &intraMolecularPotentials,
+RunningEnergy computeIntraMolecularEnergy(const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
                                           std::span<const Molecule> moleculeData,
                                           std::span<const Atom> moleculeAtoms) noexcept;
 
-RunningEnergy computeIntraMolecularBondEnergy(const Potentials::IntraMolecularPotentials &intraMolecularPotentials,
+RunningEnergy computeIntraMolecularBondEnergy(const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
                                               std::span<const Molecule> moleculeData,
                                               std::span<const Atom> moleculeAtoms) noexcept;
 
-RunningEnergy computeIntraMolecularBendEnergy(const Potentials::IntraMolecularPotentials &intraMolecularPotentials,
+RunningEnergy computeIntraMolecularBendEnergy(const Potentials::IntraMolecularPotentials& intraMolecularPotentials,
                                               std::span<const Molecule> moleculeData,
                                               std::span<const Atom> moleculeAtoms) noexcept;
 
 std::pair<double, double3x3> computeIntraMolecularBondStrainDerivative(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Molecule> moleculeData,
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials, std::span<const Molecule> moleculeData,
     const std::span<Atom> atoms);
 
 std::pair<double, double3x3> computeIntraMolecularBondStrainDerivative(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, const std::span<Atom> atoms);
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials, const std::span<Atom> atoms);
 
 std::pair<double, double3x3> computeIntraMolecularBendStrainDerivative(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, std::span<const Molecule> moleculeData,
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials, std::span<const Molecule> moleculeData,
     const std::span<Atom> atoms);
 
 std::pair<double, double3x3> computeIntraMolecularBendStrainDerivative(
-    const Potentials::IntraMolecularPotentials &intraMolecularPotentials, const std::span<Atom> atoms);
+    const Potentials::IntraMolecularPotentials& intraMolecularPotentials, const std::span<Atom> atoms);
 
 };  // namespace Interactions

@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <iomanip>
-#include <iostream>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 module mc_moves_widom;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import component;
 import atom;
@@ -54,7 +33,7 @@ import mc_moves_move_types;
 double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t selectedComponent)
 {
   std::size_t selectedMolecule = system.numberOfMoleculesPerComponent[selectedComponent];
-  MoveTypes move = MoveTypes::Widom;
+  Move::Types move = Move::Types::Widom;
   Component& component = system.components[selectedComponent];
   std::chrono::system_clock::time_point t1, t2;
 
@@ -69,10 +48,10 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   // Attempt to grow a new molecule using Configurational Bias Monte Carlo (CBMC) insertion.
   t1 = std::chrono::system_clock::now();
   std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-      system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-      system.spanOfMoleculeAtoms(), system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-      selectedMolecule, 1.0, false, false);
+      random, component, selectedComponent, system.hasExternalField, system.forceField, system.simulationBox, 
+      system.interpolationGrids, system.externalFieldInterpolationGrid,
+      system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
+      cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule, 1.0, false, false);
   t2 = std::chrono::system_clock::now();
 
   component.mc_moves_cputime[move]["NonEwald"] += (t2 - t1);

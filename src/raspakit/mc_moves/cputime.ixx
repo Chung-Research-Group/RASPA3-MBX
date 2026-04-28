@@ -1,22 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <chrono>
-#include <cstddef>
-#include <fstream>
-#include <map>
-#include <string>
-#endif
-
 export module mc_moves_cputime;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import archive;
@@ -41,7 +27,7 @@ export struct MCMoveCpuTime
 
   std::uint64_t versionNumber{2};  ///< Version number for serialization purposes.
 
-  std::map<MoveTypes, std::map<std::string, std::chrono::duration<double>>> timingMap;
+  std::array<std::map<std::string, std::chrono::duration<double>>, std::to_underlying(Move::Types::Count)> timingMap;
 
   std::chrono::duration<double> propertySampling{0.0};            ///< Time spent on property sampling.
   std::chrono::duration<double> energyPressureComputation{0.0};   ///< Time spent on energy and pressure computations.
@@ -59,9 +45,9 @@ export struct MCMoveCpuTime
   inline std::chrono::duration<double> total() const
   {
     std::chrono::duration<double> total{0.0};
-    for (auto& [moveType, moveTimings] : timingMap)
+    for (auto& moveTiming : timingMap)
     {
-      total += moveTimings.at("Total");
+      total += moveTiming.at("Total");
     }
     total += propertySampling;
     total += energyPressureComputation;
@@ -121,7 +107,7 @@ export struct MCMoveCpuTime
 
   MCMoveCpuTime(const MCMoveCpuTime&) = default;
 
-  std::map<std::string, std::chrono::duration<double>>& operator[](const MoveTypes& move) { return timingMap[move]; }
+  std::map<std::string, std::chrono::duration<double>>& operator[](const Move::Types& move) { return timingMap[std::to_underlying(move)]; }
 
   inline MCMoveCpuTime& operator=(const MCMoveCpuTime& b)
   {
@@ -136,11 +122,11 @@ export struct MCMoveCpuTime
     propertySampling += b.propertySampling;
     energyPressureComputation += b.energyPressureComputation;
 
-    for (auto& [moveType, moveTimings] : timingMap)
+    for (std::size_t i = 0; i != timingMap.size(); ++i)
     {
-      for (auto& [timingName, time] : moveTimings)
+      for (auto& [timingName, time] : timingMap[i])
       {
-        time += b.timingMap.at(moveType).at(timingName);
+        time += b.timingMap[i].at(timingName);
       }
     }
     return *this;
@@ -157,11 +143,11 @@ export inline MCMoveCpuTime operator+(const MCMoveCpuTime& a, const MCMoveCpuTim
   m.propertySampling = a.propertySampling + b.propertySampling;
   m.energyPressureComputation = a.energyPressureComputation + b.energyPressureComputation;
 
-  for (auto& [moveType, moveTimings] : m.timingMap)
+  for (std::size_t i = 0; i != m.timingMap.size(); ++i)
   {
-    for (auto& [timingName, time] : moveTimings)
+    for (auto& [timingName, time] : m.timingMap[i])
     {
-      time = a.timingMap.at(moveType).at(timingName) + b.timingMap.at(moveType).at(timingName);
+      time = a.timingMap[i].at(timingName) + b.timingMap[i].at(timingName);
     }
   }
 

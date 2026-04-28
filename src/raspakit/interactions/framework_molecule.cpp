@@ -1,32 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <atomic>
-#include <cmath>
-#include <cstddef>
-#include <deque>
-#include <future>
-#include <iostream>
-#include <limits>
-#include <numbers>
-#include <optional>
-#include <semaphore>
-#include <span>
-#include <thread>
-#include <utility>
-#include <vector>
-#endif
-
 module interactions_framework_molecule;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double4;
@@ -63,8 +39,8 @@ import component;
 import interpolation_energy_grid;
 
 RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> moleculeAtoms) noexcept
 {
@@ -135,8 +111,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeEnergy(
   return energySum;
 }
 
-RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField &forceField,
-                                                               const SimulationBox &simulationBox,
+RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField& forceField,
+                                                               const SimulationBox& simulationBox,
                                                                std::span<const Atom> frameworkAtoms,
                                                                std::span<const Atom> moleculeAtoms) noexcept
 {
@@ -168,8 +144,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
 //
 
 [[nodiscard]] std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms, std::span<const Atom> newatoms,
     std::span<const Atom> oldatoms) noexcept
 {
@@ -185,7 +161,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
   const double cutOffFrameworkVDWSquared = forceField.cutOffFrameworkVDW * forceField.cutOffFrameworkVDW;
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;
 
-  for (auto &atom : newatoms)
+  for (auto& atom : newatoms)
   {
     double3 posB = atom.position;
     std::size_t typeB = static_cast<std::size_t>(atom.type);
@@ -245,7 +221,7 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
     }
   }
 
-  for (auto &atom : oldatoms)
+  for (auto& atom : oldatoms)
   {
     double3 posB = atom.position;
     std::size_t typeB = static_cast<std::size_t>(atom.type);
@@ -303,8 +279,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeTailEnergy(const ForceField 
 }
 
 std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox,
-    [[maybe_unused]] const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
+    const ForceField& forceField, const SimulationBox& simulationBox,
+    [[maybe_unused]] const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
     [[maybe_unused]] const std::optional<Framework> framework, std::span<const Atom> frameworkAtoms,
     std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
@@ -409,7 +385,7 @@ std::optional<RunningEnergy> Interactions::computeFrameworkMoleculeEnergyDiffere
 }
 
 void Interactions::computeFrameworkMoleculeElectricFieldDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> frameworkAtoms,
     std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
 {
@@ -472,7 +448,7 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
 }
 
 [[nodiscard]] RunningEnergy Interactions::computeFrameworkMoleculeTailEnergyDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> frameworkAtoms,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
 {
   RunningEnergy energySum{};
@@ -485,7 +461,7 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
     bool groupIdA = static_cast<bool>(it1->groupId);
     double scalingVDWA = it1->scalingVDW;
 
-    for (const Atom &atom : newatoms)
+    for (const Atom& atom : newatoms)
     {
       std::size_t typeB = static_cast<std::size_t>(atom.type);
       bool groupIdB = static_cast<bool>(atom.groupId);
@@ -496,7 +472,7 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
       energySum.dudlambdaVDW += (groupIdA ? scalingVDWB * temp : 0.0) + (groupIdB ? scalingVDWA * temp : 0.0);
     }
 
-    for (const Atom &atom : oldatoms)
+    for (const Atom& atom : oldatoms)
     {
       std::size_t typeB = static_cast<std::size_t>(atom.type);
       bool groupIdB = static_cast<bool>(atom.groupId);
@@ -512,9 +488,9 @@ void Interactions::computeFrameworkMoleculeElectricFieldDifference(
 }
 
 RunningEnergy Interactions::computeFrameworkMoleculeGradient(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<Atom> frameworkAtoms,
     std::span<Atom> moleculeAtoms,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids) noexcept
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids) noexcept
 {
   RunningEnergy energySum{};
 
@@ -598,9 +574,9 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
 }
 
 [[nodiscard]] std::pair<EnergyStatus, double3x3> Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
-    const ForceField &forceField, const std::optional<Framework> &framework,
-    const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
-    const std::vector<Component> &components, const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
+    const ForceField& forceField, const std::optional<Framework>& framework,
+    const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
+    const std::vector<Component>& components, const SimulationBox& simulationBox, std::span<Atom> frameworkAtoms,
     std::span<Atom> moleculeAtoms) noexcept
 {
   double3 dr, posA, posB;
@@ -746,8 +722,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeGradient(
   return std::make_pair(energy, strainDerivativeTensor);
 }
 
-void Interactions::computeFrameworkMoleculeElectrostaticPotential(const ForceField &forceField,
-                                                                  const SimulationBox &simulationBox,
+void Interactions::computeFrameworkMoleculeElectrostaticPotential(const ForceField& forceField,
+                                                                  const SimulationBox& simulationBox,
                                                                   std::span<double> electricPotentialMolecules,
                                                                   std::span<const Atom> frameworkAtoms,
                                                                   std::span<const Atom> moleculeAtoms) noexcept
@@ -788,8 +764,8 @@ void Interactions::computeFrameworkMoleculeElectrostaticPotential(const ForceFie
   }
 }
 
-RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceField &forceField,
-                                                                  const SimulationBox &simulationBox,
+RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceField& forceField,
+                                                                  const SimulationBox& simulationBox,
                                                                   std::span<double3> electricFieldMolecules,
                                                                   std::span<const Atom> frameworkAtoms,
                                                                   std::span<const Atom> moleculeAtoms) noexcept
@@ -857,8 +833,8 @@ RunningEnergy Interactions::computeFrameworkMoleculeElectricField(const ForceFie
   return energySum;
 }
 
-std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionVDW(const ForceField &forceField,
-                                                                                   const SimulationBox &simulationBox,
+std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionVDW(const ForceField& forceField,
+                                                                                   const SimulationBox& simulationBox,
                                                                                    double3 posA, std::size_t typeA,
                                                                                    std::span<const Atom> frameworkAtoms)
 {
@@ -909,7 +885,7 @@ std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionV
 }
 
 std::tuple<double, double3, double3x3> Interactions::calculateHessianAtPositionCoulomb(
-    const ForceField &forceField, const SimulationBox &simulationBox, double3 posA, double chargeA,
+    const ForceField& forceField, const SimulationBox& simulationBox, double3 posA, double chargeA,
     std::span<const Atom> frameworkAtoms)
 {
   const double cutOffChargeSquared = forceField.cutOffCoulomb * forceField.cutOffCoulomb;

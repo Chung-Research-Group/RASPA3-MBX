@@ -1,27 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <future>
-#include <iostream>
-#include <numbers>
-#include <optional>
-#include <span>
-#include <thread>
-#include <vector>
-#endif
-
 module interactions_intermolecular;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import energy_status;
 import potential_energy_vdw;
@@ -44,7 +25,7 @@ import units;
 import threadpool;
 
 // used in volume moves for computing the state at a new box and new, scaled atom positions
-RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField &forceField, const SimulationBox &box,
+RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& box,
                                                         std::span<const Atom> moleculeAtoms) noexcept
 {
   double3 dr, posA, posB, f;
@@ -111,8 +92,8 @@ RunningEnergy Interactions::computeInterMolecularEnergy(const ForceField &forceF
   return energySum;
 }
 
-RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &forceField,
-                                                            const SimulationBox &simulationBox,
+RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField& forceField,
+                                                            const SimulationBox& simulationBox,
                                                             std::span<const Atom> moleculeAtoms) noexcept
 {
   RunningEnergy energySum{};
@@ -149,7 +130,7 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
 //         mc_moves_random_translation.cpp, mc_moves_random_rotation.cpp
 //         mc_moves_swap_cfcmc.cpp, mc_moves_swap_cfcmc_cbmc.cpp, mc_moves_gibbs_swap_cfcmc.cpp
 [[nodiscard]] std::optional<RunningEnergy> Interactions::computeInterMolecularEnergyDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> moleculeAtoms,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
 {
   double3 dr, s, t;
@@ -175,7 +156,7 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
     double scalingCoulombA = it1->scalingCoulomb;
     double chargeA = it1->charge;
 
-    for (const Atom &atom : newatoms)
+    for (const Atom& atom : newatoms)
     {
       std::size_t compB = static_cast<std::size_t>(atom.componentId);
       std::size_t molB = static_cast<std::size_t>(atom.moleculeId);
@@ -214,7 +195,7 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
       }
     }
 
-    for (const Atom &atom : oldatoms)
+    for (const Atom& atom : oldatoms)
     {
       std::size_t compB = static_cast<std::size_t>(atom.componentId);
       std::size_t molB = static_cast<std::size_t>(atom.moleculeId);
@@ -257,7 +238,7 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
 }
 
 [[nodiscard]] RunningEnergy Interactions::computeInterMolecularTailEnergyDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> moleculeAtoms,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept
 {
   RunningEnergy energySum{};
@@ -274,7 +255,7 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
     bool groupIdA = static_cast<bool>(it1->groupId);
     double scalingVDWA = it1->scalingVDW;
 
-    for (const Atom &atom : newatoms)
+    for (const Atom& atom : newatoms)
     {
       std::size_t compB = static_cast<std::size_t>(atom.componentId);
       std::size_t molB = static_cast<std::size_t>(atom.moleculeId);
@@ -291,7 +272,7 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
       }
     }
 
-    for (const Atom &atom : oldatoms)
+    for (const Atom& atom : oldatoms)
     {
       std::size_t compB = static_cast<std::size_t>(atom.componentId);
       std::size_t molB = static_cast<std::size_t>(atom.moleculeId);
@@ -309,13 +290,13 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
     }
   }
 
-  for (const Atom &atomA : newatoms)
+  for (const Atom& atomA : newatoms)
   {
     std::size_t typeA = static_cast<std::size_t>(atomA.type);
     bool groupIdA = static_cast<bool>(atomA.groupId);
     double scalingVDWA = atomA.scalingVDW;
 
-    for (const Atom &atomB : newatoms)
+    for (const Atom& atomB : newatoms)
     {
       std::size_t typeB = static_cast<std::size_t>(atomB.type);
       bool groupIdB = static_cast<bool>(atomB.groupId);
@@ -327,13 +308,13 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
     }
   }
 
-  for (const Atom &atomA : oldatoms)
+  for (const Atom& atomA : oldatoms)
   {
     std::size_t typeA = static_cast<std::size_t>(atomA.type);
     bool groupIdA = static_cast<bool>(atomA.groupId);
     double scalingVDWA = atomA.scalingVDW;
 
-    for (const Atom &atomB : oldatoms)
+    for (const Atom& atomB : oldatoms)
     {
       std::size_t typeB = static_cast<std::size_t>(atomB.type);
       bool groupIdB = static_cast<bool>(atomB.groupId);
@@ -348,8 +329,8 @@ RunningEnergy Interactions::computeInterMolecularTailEnergy(const ForceField &fo
   return energySum;
 }
 
-RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forceField,
-                                                          const SimulationBox &simulationBox,
+RunningEnergy Interactions::computeInterMolecularGradient(const ForceField& forceField,
+                                                          const SimulationBox& simulationBox,
                                                           std::span<Atom> moleculeAtoms) noexcept
 {
   double3 dr, posA, posB;
@@ -428,7 +409,7 @@ RunningEnergy Interactions::computeInterMolecularGradient(const ForceField &forc
 }
 
 std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStrainDerivative(
-    const ForceField &forceField, const std::vector<Component> &components, const SimulationBox &simulationBox,
+    const ForceField& forceField, const std::vector<Component>& components, const SimulationBox& simulationBox,
     std::span<Atom> moleculeAtoms) noexcept
 {
   double3 dr, posA, posB;
@@ -544,7 +525,7 @@ std::pair<EnergyStatus, double3x3> Interactions::computeInterMolecularEnergyStra
   return {energy, strainDerivativeTensor};
 }
 
-void Interactions::computeInterMolecularElectrostaticPotential(const ForceField &forceField, const SimulationBox &box,
+void Interactions::computeInterMolecularElectrostaticPotential(const ForceField& forceField, const SimulationBox& box,
                                                                std::span<double> electricPotentialMolecules,
                                                                std::span<const Atom> moleculeAtoms) noexcept
 {
@@ -600,7 +581,7 @@ void Interactions::computeInterMolecularElectrostaticPotential(const ForceField 
   }
 }
 
-RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField &forceField, const SimulationBox &box,
+RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField& forceField, const SimulationBox& box,
                                                                std::span<double3> electricFieldMolecules,
                                                                std::span<const Atom> moleculeAtoms) noexcept
 {
@@ -683,7 +664,7 @@ RunningEnergy Interactions::computeInterMolecularElectricField(const ForceField 
 }
 
 std::optional<RunningEnergy> Interactions::computeInterMolecularElectricFieldDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<double3> electricFieldMolecules,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<double3> electricFieldMolecules,
     std::span<double3> electricFieldMolecule, std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms,
     std::span<const Atom> oldatoms) noexcept
 {

@@ -1,28 +1,9 @@
 
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <print>
-#include <source_location>
-#include <vector>
-#endif
-
 module transition_matrix_nd;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;

@@ -1,34 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <optional>
-#include <print>
-#include <source_location>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 module mc_moves;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;
@@ -83,11 +57,12 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
                                                [[maybe_unused]] std::size_t &fractionalMoleculeSystem)
 {
   // pick move type from probabilities object
-  MoveTypes moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
+  Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
   std::vector<std::size_t> oldN(selectedSystem.numberOfIntegerMoleculesPerComponent);
+
   switch (moveType)
   {
-    case MoveTypes::Translation:
+    case Move::Types::Translation:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -114,7 +89,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
 
       break;
     }
-    case MoveTypes::RandomTranslation:
+    case Move::Types::RandomTranslation:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -140,7 +115,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::Rotation:
+    case Move::Types::Rotation:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -167,7 +142,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
 
       break;
     }
-    case MoveTypes::RandomRotation:
+    case Move::Types::RandomRotation:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -194,7 +169,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
 
       break;
     }
-    case MoveTypes::VolumeChange:
+    case Move::Types::VolumeChange:
     {
       // perform move
       std::optional<RunningEnergy> energy = MC_Moves::volumeMove(random, selectedSystem);
@@ -206,7 +181,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::ReinsertionCBMC:
+    case Move::Types::ReinsertionCBMC:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -232,7 +207,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::PartialReinsertionCBMC:
+    case Move::Types::PartialReinsertionCBMC:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -258,7 +233,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::IdentityChangeCBMC:
+    case Move::Types::IdentityChangeCBMC:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -284,7 +259,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::Swap:
+    case Move::Types::Swap:
     {
       if (random.uniform() < 0.5)
       {
@@ -309,9 +284,9 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::SwapCBMC:
-    case MoveTypes::SwapCFCMC:
-    case MoveTypes::SwapCBCFCMC:
+    case Move::Types::SwapCBMC:
+    case Move::Types::SwapCFCMC:
+    case Move::Types::SwapCBCFCMC:
     {
       if (random.uniform() < 0.5)
       {
@@ -338,7 +313,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::GibbsVolume:
+    case Move::Types::GibbsVolume:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
           MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem);
@@ -349,8 +324,8 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::GibbsSwapCBMC:
-    case MoveTypes::GibbsSwapCFCMC:
+    case Move::Types::GibbsSwapCBMC:
+    case Move::Types::GibbsSwapCFCMC:
     {
       if (random.uniform() < 0.5)
       {
@@ -374,15 +349,15 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::Widom:
+    case Move::Types::Widom:
     {
       break;
     }
-    case MoveTypes::WidomCFCMC:
+    case Move::Types::WidomCFCMC:
     {
       break;
     }
-    case MoveTypes::WidomCBCFCMC:
+    case Move::Types::WidomCBCFCMC:
     {
       const auto [energyDifference, Pacc] =
           MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, 0, true, true);
@@ -392,7 +367,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::ParallelTempering:
+    case Move::Types::ParallelTempering:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
           MC_Moves::ParallelTemperingSwap(random, selectedSystem, selectedSecondSystem);
@@ -403,7 +378,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::HybridMC:
+    case Move::Types::HybridMC:
     {
       std::optional<RunningEnergy> energy = MC_Moves::hybridMCMove(random, selectedSystem);
       if (energy)
@@ -412,7 +387,7 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
       }
       break;
     }
-    case MoveTypes::Count:
+    case Move::Types::Count:
     {
       throw std::runtime_error("Move count called, invalid sampling of move probabilities");
       break;
@@ -430,11 +405,12 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
                                               std::size_t &fractionalMoleculeSystem)
 {
   // pick move type from probabilities object
-  MoveTypes moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
+  Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
   std::vector<std::size_t> oldN(selectedSystem.numberOfIntegerMoleculesPerComponent);
+
   switch (moveType)
   {
-    case MoveTypes::Translation:
+    case Move::Types::Translation:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -462,7 +438,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
 
       break;
     }
-    case MoveTypes::RandomTranslation:
+    case Move::Types::RandomTranslation:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -488,7 +464,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::Rotation:
+    case Move::Types::Rotation:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -515,7 +491,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
 
       break;
     }
-    case MoveTypes::RandomRotation:
+    case Move::Types::RandomRotation:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -542,7 +518,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
 
       break;
     }
-    case MoveTypes::VolumeChange:
+    case Move::Types::VolumeChange:
     {
       // perform move
       std::optional<RunningEnergy> energy = MC_Moves::volumeMove(random, selectedSystem);
@@ -554,7 +530,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::ReinsertionCBMC:
+    case Move::Types::ReinsertionCBMC:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -580,7 +556,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::PartialReinsertionCBMC:
+    case Move::Types::PartialReinsertionCBMC:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -606,7 +582,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::IdentityChangeCBMC:
+    case Move::Types::IdentityChangeCBMC:
     {
       // select molecule and only move if there are actually molecules
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
@@ -632,7 +608,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::Swap:
+    case Move::Types::Swap:
     {
       if (random.uniform() < 0.5)
       {
@@ -657,7 +633,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::SwapCBMC:
+    case Move::Types::SwapCBMC:
     {
       if (random.uniform() < 0.5)
       {
@@ -684,7 +660,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::SwapCFCMC:
+    case Move::Types::SwapCFCMC:
     {
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
@@ -697,7 +673,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       selectedSystem.updateTMMCMatrix(Pacc, oldN, selectedComponent);
       break;
     }
-    case MoveTypes::SwapCBCFCMC:
+    case Move::Types::SwapCBCFCMC:
     {
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
@@ -710,7 +686,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       selectedSystem.updateTMMCMatrix(Pacc, oldN, selectedComponent);
       break;
     }
-    case MoveTypes::GibbsVolume:
+    case Move::Types::GibbsVolume:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
           MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem);
@@ -721,7 +697,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::GibbsSwapCBMC:
+    case Move::Types::GibbsSwapCBMC:
     {
       if (random.uniform() < 0.5)
       {
@@ -745,7 +721,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::GibbsSwapCFCMC:
+    case Move::Types::GibbsSwapCFCMC:
     {
       if (selectedSystem.containsTheFractionalMolecule)
       {
@@ -769,15 +745,15 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::Widom:
+    case Move::Types::Widom:
     {
       break;
     }
-    case MoveTypes::WidomCFCMC:
+    case Move::Types::WidomCFCMC:
     {
       break;
     }
-    case MoveTypes::WidomCBCFCMC:
+    case Move::Types::WidomCBCFCMC:
     {
       const auto [energyDifference, Pacc] =
           MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, 0, true, true);
@@ -787,7 +763,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::ParallelTempering:
+    case Move::Types::ParallelTempering:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
           MC_Moves::ParallelTemperingSwap(random, selectedSystem, selectedSecondSystem);
@@ -798,7 +774,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::HybridMC:
+    case Move::Types::HybridMC:
     {
       std::optional<RunningEnergy> energy = MC_Moves::hybridMCMove(random, selectedSystem);
       if (energy)
@@ -807,7 +783,7 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
       }
       break;
     }
-    case MoveTypes::Count:
+    case Move::Types::Count:
     {
       throw std::runtime_error("Move count called, invalid sampling of move probabilities");
       break;
@@ -825,12 +801,13 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
                                            std::size_t currentBlock)
 {
   // pick move type from probabilities object
-  MoveTypes moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
+  Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
   std::vector<std::size_t> oldN(selectedSystem.numberOfIntegerMoleculesPerComponent);
+
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
   switch (moveType)
   {
-    case MoveTypes::Translation:
+    case Move::Types::Translation:
     {
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
@@ -850,7 +827,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::RandomTranslation:
+    case Move::Types::RandomTranslation:
     {
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
@@ -870,7 +847,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::Rotation:
+    case Move::Types::Rotation:
     {
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
@@ -890,7 +867,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::RandomRotation:
+    case Move::Types::RandomRotation:
     {
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
       if (selectedSystem.numberOfMoleculesPerComponent[selectedComponent] > 0)
@@ -909,7 +886,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::VolumeChange:
+    case Move::Types::VolumeChange:
     {
       std::optional<RunningEnergy> energy = MC_Moves::volumeMove(random, selectedSystem);
       if (energy)
@@ -918,7 +895,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::ReinsertionCBMC:
+    case Move::Types::ReinsertionCBMC:
     {
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
@@ -938,7 +915,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::PartialReinsertionCBMC:
+    case Move::Types::PartialReinsertionCBMC:
     {
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
@@ -958,7 +935,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::IdentityChangeCBMC:
+    case Move::Types::IdentityChangeCBMC:
     {
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
@@ -978,7 +955,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::Swap:
+    case Move::Types::Swap:
     {
       if (random.uniform() < 0.5)
       {
@@ -1014,7 +991,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::SwapCBMC:
+    case Move::Types::SwapCBMC:
     {
       if (random.uniform() < 0.5)
       {
@@ -1051,7 +1028,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::SwapCFCMC:
+    case Move::Types::SwapCFCMC:
     {
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
 
@@ -1064,7 +1041,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       selectedSystem.updateTMMCMatrix(Pacc, oldN, selectedComponent);
       break;
     }
-    case MoveTypes::SwapCBCFCMC:
+    case Move::Types::SwapCBCFCMC:
     {
       std::size_t selectedMolecule = selectedSystem.randomMoleculeOfComponent(random, selectedComponent);
       const auto [energyDifference, Pacc] =
@@ -1076,7 +1053,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       selectedSystem.updateTMMCMatrix(Pacc, oldN, selectedComponent);
       break;
     }
-    case MoveTypes::GibbsVolume:
+    case Move::Types::GibbsVolume:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
           MC_Moves::GibbsVolumeMove(random, selectedSystem, selectedSecondSystem);
@@ -1087,7 +1064,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::GibbsSwapCBMC:
+    case Move::Types::GibbsSwapCBMC:
     {
       if (random.uniform() < 0.5)
       {
@@ -1122,7 +1099,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::GibbsSwapCFCMC:
+    case Move::Types::GibbsSwapCFCMC:
     {
       if (selectedSystem.containsTheFractionalMolecule)
       {
@@ -1157,15 +1134,20 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::Widom:
+    case Move::Types::Widom:
     {
       double value = MC_Moves::WidomMove(random, selectedSystem, selectedComponent);
 
-      selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(currentBlock, value,
-                                                                                           selectedSystem.weight());
+      std::size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
+      double V = selectedSystem.simulationBox.volume;
+
+      selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(currentBlock, 
+           value, N, V, selectedSystem.weight());
+      selectedSystem.components[selectedComponent].averageGibbsRosenbluthWeights.addWidomSample(currentBlock, 
+           value, N, V, selectedSystem.weight());
       break;
     }
-    case MoveTypes::WidomCFCMC:
+    case Move::Types::WidomCFCMC:
     {
       const auto [energyDifference, Pacc] =
           MC_Moves::swapMove_CFCMC(random, selectedSystem, selectedComponent, 0, true, true);
@@ -1175,7 +1157,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::WidomCBCFCMC:
+    case Move::Types::WidomCBCFCMC:
     {
       const auto [energyDifference, Pacc] =
           MC_Moves::swapMove_CFCMC_CBMC(random, selectedSystem, selectedComponent, 0, true, true);
@@ -1185,7 +1167,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::ParallelTempering:
+    case Move::Types::ParallelTempering:
     {
       std::optional<std::pair<RunningEnergy, RunningEnergy>> energy =
           MC_Moves::ParallelTemperingSwap(random, selectedSystem, selectedSecondSystem);
@@ -1196,7 +1178,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::HybridMC:
+    case Move::Types::HybridMC:
     {
       std::optional<RunningEnergy> energy = MC_Moves::hybridMCMove(random, selectedSystem);
       if (energy)
@@ -1205,7 +1187,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
       }
       break;
     }
-    case MoveTypes::Count:
+    case Move::Types::Count:
     {
       throw std::runtime_error("Move count called, invalid sampling of move probabilities");
       break;
@@ -1219,7 +1201,7 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
   std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
 
   // Use lookup to skip adding count to system stats for cross system
-  if (moveType != MoveTypes::GibbsSwapCBMC && moveType != MoveTypes::GibbsSwapCFCMC)
+  if (moveType != Move::Types::GibbsSwapCBMC && moveType != Move::Types::GibbsSwapCFCMC)
   {
     selectedSystem.mc_moves_cputime[moveType]["Total"] += (t2 - t1);
     if (componentMoves.count(moveType))

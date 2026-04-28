@@ -1,22 +1,26 @@
 project(raspalib)
 
-find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+if(UNIX AND DEFINED ENV{CONDA_BUILD_CROSS_COMPILATION})
+  find_package(Python3 REQUIRED COMPONENTS Development)
+else()
+  find_package(Python3 REQUIRED COMPONENTS Interpreter Development)
+endif()
 
 include(FetchContent)
 
-if(CONDA)
+#if(CONDA OR APPLE)
   FetchContent_Declare(
     pybind11
     GIT_REPOSITORY https://github.com/pybind/pybind11
     GIT_TAG v3.0.1
   )
-else()
-  FetchContent_Declare(
-    pybind11
-    GIT_REPOSITORY https://github.com/pybind/pybind11
-    GIT_TAG v2.10.4
-  )
-endif()
+#else()
+#  FetchContent_Declare(
+#    pybind11
+#    GIT_REPOSITORY https://github.com/pybind/pybind11
+#    GIT_TAG v2.10.4
+#  )
+#endif()
 
 FetchContent_GetProperties(pybind11)
 
@@ -36,9 +40,14 @@ set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
 if(CONDA)
   target_link_options(${PROJECT_NAME} PRIVATE -L$ENV{CONDA_PREFIX}/lib)
   execute_process(COMMAND python -c "import sysconfig; print(sysconfig.get_path('platlib'))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
-  install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_SITE_PACKAGES})
+  install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_SITE_PACKAGES}/raspalib COMPONENT raspalib)
+  install(DIRECTORY raspalib DESTINATION ${PYTHON_SITE_PACKAGES} COMPONENT raspalib)
 elseif(LINUX)
-  install(TARGETS ${PROJECT_NAME} DESTINATION share/raspa3/lib)
+  # base the install directory on where also python-numpy is installed
+  #execute_process(COMMAND python3 -c "import numpy; import os; print(os.path.dirname(os.path.dirname(numpy.__file__)))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
+  execute_process(COMMAND python3 -c "import sysconfig; print(sysconfig.get_path('platlib'))" OUTPUT_VARIABLE PYTHON_SITE_PACKAGES OUTPUT_STRIP_TRAILING_WHITESPACE)
+  install(TARGETS ${PROJECT_NAME} DESTINATION ${PYTHON_SITE_PACKAGES}/raspalib COMPONENT raspalib)
+  install(DIRECTORY raspalib DESTINATION ${PYTHON_SITE_PACKAGES} COMPONENT raspalib)
 elseif(APPLE)
   install(TARGETS ${PROJECT_NAME} DESTINATION share/raspa3/lib)
 endif()

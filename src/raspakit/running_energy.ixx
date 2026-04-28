@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <map>
-#include <numeric>
-#include <ostream>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 export module running_energy;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import scaling;
@@ -407,6 +386,44 @@ export struct RunningEnergy
     return v;
   }
 
+  inline RunningEnergy& operator*=(const double& b)
+  {
+    externalFieldVDW *= b;
+    frameworkMoleculeVDW *= b;
+    moleculeMoleculeVDW *= b;
+    externalFieldCharge *= b;
+    frameworkMoleculeCharge *= b;
+    moleculeMoleculeCharge *= b;
+    ewald_fourier *= b;
+    ewald_self *= b;
+    ewald_exclusion *= b;
+    bond *= b;
+    ureyBradley *= b;
+    bend *= b;
+    inversionBend *= b;
+    outOfPlaneBend *= b;
+    torsion *= b;
+    improperTorsion *= b;
+    bondBond *= b;
+    bondBend *= b;
+    bondTorsion *= b;
+    bendBend *= b;
+    bendTorsion *= b;
+    intraVDW *= b;
+    intraCoul *= b;
+    tail *= b;
+    polarization *= b;
+    dudlambdaVDW *= b;
+    dudlambdaCharge *= b;
+    dudlambdaEwald *= b;
+    translationalKineticEnergy *= b;
+    rotationalKineticEnergy *= b;
+    NoseHooverEnergy *= b;
+
+    return *this;
+  }
+
+
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   double externalFieldVDW;         ///< Energy from van der Waals interactions with external field.
@@ -443,6 +460,14 @@ export struct RunningEnergy
   double rotationalKineticEnergy;     ///< Rotational kinetic energy.
   double NoseHooverEnergy;            ///< Energy associated with Nose-Hoover thermostat/barostat.
   double mbxEnergy;                   ///< Energy calculated from MBX.
+
+  /**
+   * \brief Returns a string representation of the RunningEnergy object.
+   *
+   * \return A string describing the RunningEnergy object.
+   */
+  std::string repr() const;
+
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const RunningEnergy& c);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, RunningEnergy& c);

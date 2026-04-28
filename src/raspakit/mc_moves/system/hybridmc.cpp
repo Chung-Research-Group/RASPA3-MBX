@@ -1,23 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <chrono>
-#include <cmath>
-#include <cstddef>
-#include <iostream>
-#include <optional>
-#include <span>
-#endif
-
 module mc_moves_hybridmc;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import running_energy;
@@ -37,7 +22,7 @@ import interpolation_energy_grid;
 std::optional<RunningEnergy> MC_Moves::hybridMCMove(RandomNumber& random, System& system)
 {
   std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::HybridMC;
+  Move::Types move = Move::Types::HybridMC;
 
   system.mc_moves_statistics.addTrial(move);
 

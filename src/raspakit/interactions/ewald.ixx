@@ -1,23 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <cstddef>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 export module interactions_ewald;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double3x3;
@@ -56,11 +41,11 @@ export namespace Interactions
  * \param charge The charge of the ion.
  * \return The Fourier energy contribution for the ion.
  */
-double computeEwaldFourierEnergySingleIon(std::vector<std::complex<double>> &eik_x,
-                                          std::vector<std::complex<double>> &eik_y,
-                                          std::vector<std::complex<double>> &eik_z,
-                                          std::vector<std::complex<double>> &eik_xy, const ForceField &forceField,
-                                          const SimulationBox &simulationBox, double3 position, double charge);
+double computeEwaldFourierEnergySingleIon(std::vector<std::complex<double>>& eik_x,
+                                          std::vector<std::complex<double>>& eik_y,
+                                          std::vector<std::complex<double>>& eik_z,
+                                          std::vector<std::complex<double>>& eik_xy, const ForceField& forceField,
+                                          const SimulationBox& simulationBox, double3 position, double charge);
 
 /**
  * \brief Precomputes the Ewald Fourier terms for a rigid framework.
@@ -78,10 +63,10 @@ double computeEwaldFourierEnergySingleIon(std::vector<std::complex<double>> &eik
  * \param frameworkAtoms The atoms of the rigid framework.
  */
 void precomputeEwaldFourierRigid(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> frameworkAtoms);
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> frameworkAtoms);
 
 /**
  * \brief Computes the Ewald Fourier energy for the system.
@@ -103,12 +88,12 @@ void precomputeEwaldFourierRigid(
  * \return The running energy containing the Ewald Fourier energy contributions.
  */
 RunningEnergy computeEwaldFourierEnergy(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, const std::vector<Component> &components,
-    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms);
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, const std::vector<Component>& components,
+    const std::vector<std::size_t>& numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtoms);
 
 /**
  * \brief Computes the energy difference due to atom position changes in the Ewald Fourier summation.
@@ -129,19 +114,19 @@ RunningEnergy computeEwaldFourierEnergy(
  * \return The running energy containing the Ewald Fourier energy difference.
  */
 RunningEnergy energyDifferenceEwaldFourier(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
 
 RunningEnergy energyDifferenceEwaldFourier(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
 
 /**
@@ -163,11 +148,11 @@ RunningEnergy energyDifferenceEwaldFourier(
  * \return The running energy containing the Ewald Fourier energy difference.
  */
 RunningEnergy energyDifferenceEwaldFourier(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
 
 /**
  * \brief Computes the difference in electric field due to atom position changes in the Ewald Fourier summation.
@@ -190,21 +175,21 @@ RunningEnergy energyDifferenceEwaldFourier(
  * \return The running energy containing the Ewald Fourier energy difference.
  */
 RunningEnergy eletricFieldEwaldFourierEnergyDifference(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
 
 void computeEwaldFourierElectricFieldDifference(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms);
 
 /**
@@ -225,12 +210,12 @@ void computeEwaldFourierElectricFieldDifference(
  * \return The running energy containing the Ewald Fourier energy contributions.
  */
 RunningEnergy computeEwaldFourierGradient(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
-    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomData);
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    const ForceField& forceField, const SimulationBox& simulationBox, const std::vector<Component>& components,
+    const std::vector<std::size_t>& numberOfMoleculesPerComponent, std::span<Atom> atomData);
 
 /**
  * \brief Computes the Ewald Fourier energy and its strain derivative.
@@ -256,12 +241,12 @@ RunningEnergy computeEwaldFourierGradient(
  * \return A pair containing the energy status and the strain derivative tensor.
  */
 std::pair<EnergyStatus, double3x3> computeEwaldFourierEnergyStrainDerivative(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, const std::optional<Framework> &framework,
-    const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, const std::optional<Framework>& framework,
+    const std::vector<Component>& components, const std::vector<std::size_t>& numberOfMoleculesPerComponent,
     std::span<Atom> atomData, double UIon, double netChargeFramework,
     std::vector<double> netChargePerComponent) noexcept;
 
@@ -275,9 +260,9 @@ std::pair<EnergyStatus, double3x3> computeEwaldFourierEnergyStrainDerivative(
  * \param storedEik The stored Fourier components to be updated.
  * \param totalEik The new Fourier components after the move.
  */
-void acceptEwaldMove(const ForceField &forceField,
-                     std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-                     std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik);
+void acceptEwaldMove(const ForceField& forceField,
+                     std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+                     std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik);
 
 /**
  * \brief Computes the electric potential at molecule positions using the Ewald Fourier summation.
@@ -298,12 +283,12 @@ void acceptEwaldMove(const ForceField &forceField,
  * \param moleculeAtomPositions Positions and properties of the molecules' atoms.
  */
 void computeEwaldFourierElectrostaticPotential(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::span<double> electricPotentialMolecules, const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+    std::span<double> electricPotentialMolecules, const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<Component>& components, const std::vector<std::size_t>& numberOfMoleculesPerComponent,
     std::span<const Atom> moleculeAtomPositions);
 
 /**
@@ -327,12 +312,12 @@ void computeEwaldFourierElectrostaticPotential(
  * \return The running energy containing the Ewald Fourier energy contributions.
  */
 RunningEnergy computeEwaldFourierElectricField(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<double3> electricFieldMolecules,
-    const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, std::span<double3> electricFieldMolecules,
+    const std::vector<Component>& components, const std::vector<std::size_t>& numberOfMoleculesPerComponent,
     std::span<Atom> atomData);
 
 }  // namespace Interactions

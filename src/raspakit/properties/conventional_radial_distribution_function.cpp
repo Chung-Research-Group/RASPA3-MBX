@@ -1,35 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <numbers>
-#include <print>
-#include <source_location>
-#include <span>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 module property_conventional_rdf;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;
@@ -153,8 +126,8 @@ std::vector<double> PropertyConventionalRadialDistributionFunction::averagedProb
 }
 
 std::pair<std::vector<double>, std::vector<double>>
-PropertyConventionalRadialDistributionFunction::averageProbabilityHistogram(std::size_t atomTypeA,
-                                                                            std::size_t atomTypeB) const
+PropertyConventionalRadialDistributionFunction::result(std::size_t atomTypeA,
+                                                       std::size_t atomTypeB) const
 {
   std::size_t degreesOfFreedom = numberOfBlocks - 1;
   double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
@@ -208,7 +181,7 @@ void PropertyConventionalRadialDistributionFunction::writeOutput(
         stream_rdf_output << "# column 2: normalize rdf []\n";
         stream_rdf_output << "# column 3: error normalize rdf []\n";
 
-        auto [average, error] = averageProbabilityHistogram(atomTypeA, atomTypeB);
+        auto [average, error] = result(atomTypeA, atomTypeB);
 
         // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
         // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/

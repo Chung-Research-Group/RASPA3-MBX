@@ -1,36 +1,10 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cctype>
-#include <complex>
-#include <cstddef>
-#include <cstring>
-#include <format>
-#include <fstream>
-#include <istream>
-#include <locale>
-#include <map>
-#include <optional>
-#include <set>
-#include <string>
-#include <unordered_set>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
 #include <string.h>
-#endif
 
 export module input_reader;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 
@@ -45,8 +19,8 @@ import framework;
 import component;
 import simulationbox;
 import forcefield;
-import loadings;
-import enthalpy_of_adsorption;
+import loading_data;
+import enthalpy_of_adsorption_data;
 import energy_status;
 import averages;
 
@@ -161,6 +135,9 @@ export struct InputReader
 
   std::string displayName{"Column"};  ///< Name used for display purposes.
   double temperature{-1.0};           ///< Simulation temperature.
+
+  std::optional<bool> useMBX{std::nullopt};
+  std::optional<std::string> mbxFilePath{std::nullopt};
 
   // Member Functions
 

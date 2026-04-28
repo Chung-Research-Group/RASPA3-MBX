@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module property_rdf;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import atom;
@@ -59,8 +41,8 @@ export struct PropertyRadialDistributionFunction
   std::vector<double> averagedProbabilityHistogram(std::size_t blockIndex, std::size_t atomTypeA,
                                                    std::size_t atomTypeB) const;
   std::vector<double> averagedProbabilityHistogram(std::size_t atomTypeA, std::size_t atomTypeB) const;
-  std::pair<std::vector<double>, std::vector<double>> averageProbabilityHistogram(std::size_t atomTypeA,
-                                                                                  std::size_t atomTypeB) const;
+  std::pair<std::vector<double>, std::vector<double>> result(std::size_t atomTypeA,
+                                                             std::size_t atomTypeB) const;
 
   std::size_t numberOfBlocks;
   std::size_t numberOfPseudoAtoms;

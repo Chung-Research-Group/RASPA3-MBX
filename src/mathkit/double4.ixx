@@ -1,35 +1,13 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <format>
-#include <fstream>
-#endif
-
 export module double4;
 
-// #if defined(WIN32)
-//     import <intrin.h>;
-// #elif defined(__AVX__)
-//     import <immintrin.h>;
-// #endif
-
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 
 export union double4
 {
-  //    #ifdef __AVX__
-  //      __m256d value;
-  //    #endif
   double v[4];
   struct
   {
@@ -66,14 +44,18 @@ export union double4
   double4 operator-() const { return double4(-this->x, -this->y, -this->z, -this->w); }
   double4& operator+=(const double4& b)
   {
-    this->x += b.x, this->y += b.y, this->z += b.z;
+    this->x += b.x;
+    this->y += b.y;
+    this->z += b.z;
     this->w += b.w;
     return *this;
   }
   double4& operator-=(const double4& b)
   {
-    this->x -= b.x, this->y -= b.y, this->z -= b.z;
-    this->w += b.w;
+    this->x -= b.x;
+    this->y -= b.y;
+    this->z -= b.z;
+    this->w -= b.w;
     return *this;
   }
 

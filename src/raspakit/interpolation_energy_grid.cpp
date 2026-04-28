@@ -1,33 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <istream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <tuple>
-#include <utility>
-#include <vector>
-#include <string>
-#include <filesystem>
-#include "mdspanwrapper.h"
-#endif
-
 #ifdef BLAS_ILP64
 typedef long long blas_int;
 #else
@@ -42,9 +14,7 @@ extern "C"
 
 module interpolation_energy_grid;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import uint3;
@@ -59,7 +29,7 @@ import simulationbox;
 import interactions_framework_molecule_grid;
 import interactions_external_field_grid;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-//import mdspan;
+import mdspan;
 #endif
 
 // For a framework that is kept rigid it is effecient to precompute the energy and forces.
@@ -3816,6 +3786,7 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
 
 // The grid files are stored row-order (std::layout_right)
 // The grid is arranged with the x axis as the outer loop and the z axis as the inner loop
+// calculateEnergyAtPosition using ForceField::InterpolationGridType::EwaldReal calcalulates energy for a unit-charge
 void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& stream,
                                                     ForceField::InterpolationGridType interpolationGridType,
                                                     const ForceField& forceField, const Framework& framework,

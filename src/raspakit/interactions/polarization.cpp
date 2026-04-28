@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <iostream>
-#include <numbers>
-#include <span>
-#include <type_traits>
-#include <vector>
-#endif
-
 module interactions_polarization;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import double3;
@@ -37,7 +19,7 @@ import framework;
 import component;
 import forcefield;
 
-RunningEnergy Interactions::computePolarizationEnergyDifference(const ForceField &forceField,
+RunningEnergy Interactions::computePolarizationEnergyDifference(const ForceField& forceField,
                                                                 std::span<double3> electricFieldNew,
                                                                 std::span<double3> electricField,
                                                                 std::span<Atom> moleculeAtomPositions)
@@ -61,7 +43,7 @@ RunningEnergy Interactions::computePolarizationEnergyDifference(const ForceField
   return energy;
 }
 
-RunningEnergy Interactions::computePolarizationEnergyDifference(const ForceField &forceField,
+RunningEnergy Interactions::computePolarizationEnergyDifference(const ForceField& forceField,
                                                                 std::span<double3> electricFieldNew,
                                                                 std::span<double3> electricField,
                                                                 std::span<Atom> moleculeAtomPositionsNew,

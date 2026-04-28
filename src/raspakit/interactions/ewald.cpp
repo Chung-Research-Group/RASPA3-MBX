@@ -1,27 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <iostream>
-#include <numbers>
-#include <print>
-#include <span>
-#include <type_traits>
-#include <vector>
-#endif
-
 module interactions_ewald;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import double3;
@@ -49,9 +30,9 @@ import forcefield;
 // J. Chem. Phys. 108, 7070 (1998); https://doi.org/10.1063/1.476320
 //
 double Interactions::computeEwaldFourierEnergySingleIon(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy, const ForceField &forceField,
-    const SimulationBox &simulationBox, double3 position, double charge)
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy, const ForceField& forceField,
+    const SimulationBox& simulationBox, double3 position, double charge)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -140,10 +121,10 @@ double Interactions::computeEwaldFourierEnergySingleIon(
 }
 
 void Interactions::precomputeEwaldFourierRigid(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> rigidFrameworkAtoms)
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> rigidFrameworkAtoms)
 {
   double3x3 inv_box = simulationBox.inverseCell;
   double3 ax = double3(inv_box.ax, inv_box.bx, inv_box.cx);
@@ -258,12 +239,12 @@ void Interactions::precomputeEwaldFourierRigid(
 // Energy, called with 'storedEik'
 // Volume-move, called with 'totalEik' for 'storedEik'
 RunningEnergy Interactions::computeEwaldFourierEnergy(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, const std::vector<Component> &components,
-    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtomPositions)
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, const std::vector<Component>& components,
+    const std::vector<std::size_t>& numberOfMoleculesPerComponent, std::span<const Atom> moleculeAtomPositions)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -460,12 +441,12 @@ RunningEnergy Interactions::computeEwaldFourierEnergy(
 
 // compute gradient
 RunningEnergy Interactions::computeEwaldFourierGradient(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    const ForceField &forceField, const SimulationBox &simulationBox, const std::vector<Component> &components,
-    const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::span<Atom> atomData)
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    const ForceField& forceField, const SimulationBox& simulationBox, const std::vector<Component>& components,
+    const std::vector<std::size_t>& numberOfMoleculesPerComponent, std::span<Atom> atomData)
 {
   double alpha = forceField.EwaldAlpha;
   double alpha_squared = alpha * alpha;
@@ -698,11 +679,11 @@ RunningEnergy Interactions::computeEwaldFourierGradient(
 }
 
 RunningEnergy Interactions::energyDifferenceEwaldFourier(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
 {
   RunningEnergy energy;
 
@@ -929,12 +910,12 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
 }
 
 RunningEnergy Interactions::energyDifferenceEwaldFourier(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
 {
   RunningEnergy energy;
@@ -1179,12 +1160,12 @@ RunningEnergy Interactions::energyDifferenceEwaldFourier(
 // Used in insertion_CBCMC and deletion_CBCMC
 
 void Interactions::computeEwaldFourierElectricFieldDifference(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, std::span<double3> electricFieldNew, std::span<double3> electricFieldOld,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms)
 {
   if (!forceField.useCharge) return;
@@ -1328,9 +1309,9 @@ void Interactions::computeEwaldFourierElectricFieldDifference(
   }
 }
 
-void Interactions::acceptEwaldMove(const ForceField &forceField,
-                                   std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-                                   std::vector<std::pair<std::complex<double>, std::complex<double>>> &totalEik)
+void Interactions::acceptEwaldMove(const ForceField& forceField,
+                                   std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+                                   std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik)
 {
   if (!forceField.useCharge) return;
   if (forceField.omitEwaldFourier) return;
@@ -1339,12 +1320,12 @@ void Interactions::acceptEwaldMove(const ForceField &forceField,
 }
 
 std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrainDerivative(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    const ForceField &forceField, const SimulationBox &simulationBox, const std::optional<Framework> &framework,
-    const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+    const ForceField& forceField, const SimulationBox& simulationBox, const std::optional<Framework>& framework,
+    const std::vector<Component>& components, const std::vector<std::size_t>& numberOfMoleculesPerComponent,
     std::span<Atom> atomData, double UIon, double netChargeFramework,
     std::vector<double> netChargePerComponent) noexcept
 {
@@ -1597,12 +1578,12 @@ std::pair<EnergyStatus, double3x3> Interactions::computeEwaldFourierEnergyStrain
 }
 
 void Interactions::computeEwaldFourierElectrostaticPotential(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik,
-    std::span<double> electricPotentialMolecules, const ForceField &forceField, const SimulationBox &simulationBox,
-    const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    [[maybe_unused]] std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik,
+    std::span<double> electricPotentialMolecules, const ForceField& forceField, const SimulationBox& simulationBox,
+    const std::vector<Component>& components, const std::vector<std::size_t>& numberOfMoleculesPerComponent,
     std::span<const Atom> moleculeAtomPositions)
 {
   double alpha = forceField.EwaldAlpha;
@@ -1790,12 +1771,12 @@ void Interactions::computeEwaldFourierElectrostaticPotential(
 }
 
 RunningEnergy Interactions::computeEwaldFourierElectricField(
-    std::vector<std::complex<double>> &eik_x, std::vector<std::complex<double>> &eik_y,
-    std::vector<std::complex<double>> &eik_z, std::vector<std::complex<double>> &eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &fixedFrameworkStoredEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>> &storedEik, const ForceField &forceField,
-    const SimulationBox &simulationBox, std::span<double3> electricFieldMolecules,
-    const std::vector<Component> &components, const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+    std::vector<std::complex<double>>& eik_x, std::vector<std::complex<double>>& eik_y,
+    std::vector<std::complex<double>>& eik_z, std::vector<std::complex<double>>& eik_xy,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::complex<double>>>& storedEik, const ForceField& forceField,
+    const SimulationBox& simulationBox, std::span<double3> electricFieldMolecules,
+    const std::vector<Component>& components, const std::vector<std::size_t>& numberOfMoleculesPerComponent,
     std::span<Atom> moleculeAtomPositions)
 {
   double alpha = forceField.EwaldAlpha;

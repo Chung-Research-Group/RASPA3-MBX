@@ -1,40 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <filesystem>
-#include <fstream>
-#include <functional>
-#include <ios>
-#include <iostream>
-#include <map>
-#include <numeric>
-#include <optional>
-#include <print>
-#include <ranges>
-#include <source_location>
-#include <span>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
-#endif
-
 module monte_carlo;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import hardware_info;
@@ -45,9 +13,9 @@ import randomnumbers;
 import input_reader;
 import component;
 import averages;
-import loadings;
+import loading_data;
 import units;
-import enthalpy_of_adsorption;
+import enthalpy_of_adsorption_data;
 import simulationbox;
 import forcefield;
 import sample_movies;
@@ -98,10 +66,10 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept
 MonteCarlo::MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializationCycles,
                        std::size_t numberOfEquilibrationCycles, std::size_t printEvery,
                        std::size_t writeBinaryRestartEvery, std::size_t rescaleWangLandauEvery,
-                       std::size_t optimizeMCMovesEvery, std::vector<System>& systems, RandomNumber& randomSeed,
-                       std::size_t numberOfBlocks, bool outputToFiles)
+                       std::size_t optimizeMCMovesEvery, std::vector<System>& systems, 
+                       std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles)
     : outputToFiles(outputToFiles),
-      random(randomSeed),
+      random(RandomNumber(randomSeed)),
       numberOfCycles(numberOfCycles),
       numberOfInitializationCycles(numberOfInitializationCycles),
       numberOfEquilibrationCycles(numberOfEquilibrationCycles),
@@ -114,6 +82,11 @@ MonteCarlo::MonteCarlo(std::size_t numberOfCycles, std::size_t numberOfInitializ
       outputJsons(systems.size()),
       estimation(numberOfBlocks, numberOfCycles)
 {
+  // set the system-ids
+  //for(std::size_t i = 0; i < systems.size(); ++i)
+  //{
+  //  systems[i].systemId = i;
+  //}
 }
 
 System& MonteCarlo::randomSystem()
@@ -126,32 +99,7 @@ void MonteCarlo::run()
   switch (simulationStage)
   {
     case SimulationStage::Uninitialized:
-      // this case only happens at first run, not when using a binart-restart file
-      for (System& system : systems)
-      {
-        system.forceField.initializeAutomaticCutOff(system.simulationBox);
-        system.forceField.initializeEwaldParameters(system.simulationBox);
-
-        // switch the fractional molecule on in the first system, and off in all others
-        if (system.systemId == 0uz)
-          system.containsTheFractionalMolecule = true;
-        else
-          system.containsTheFractionalMolecule = false;
-
-        // if the MC/MD hybrid move is on, make sure that interpolation-method include gradients
-        if (system.mc_moves_probabilities.getProbability(MoveTypes::HybridMC) > 0.0 &&
-            system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
-        {
-          system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;
-        }
-      }
-      if (outputToFiles)
-      {
-        createOutputFiles();
-        writeOutputHeader();
-      }
-
-      createInterpolationGrids();
+      setup();
       break;
     case SimulationStage::Initialization:
       goto continueInitializationStage;
@@ -170,6 +118,43 @@ continueEquilibrationStage:
 continueProductionStage:
   production();
 
+  tearDown();
+}
+
+void MonteCarlo::setup()
+{
+  // this case only happens at first run, not when using a binart-restart file
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    system.forceField.initializeAutomaticCutOff(system.simulationBox);
+    system.forceField.initializeEwaldParameters(system.simulationBox);
+
+    // switch the fractional molecule on in the first system, and off in all others
+    if (system_id == 0uz)
+      system.containsTheFractionalMolecule = true;
+    else
+      system.containsTheFractionalMolecule = false;
+
+    // if the MC/MD hybrid move is on, make sure that interpolation-method include gradients
+    if (system.mc_moves_probabilities.getProbability(Move::Types::HybridMC) > 0.0 &&
+        system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
+    {
+      system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;
+    }
+
+    ++system_id;
+  }
+  if (outputToFiles)
+  {
+    createOutputFiles();
+    writeOutputHeader();
+  }
+
+  createInterpolationGrids();
+}
+
+void MonteCarlo::tearDown()
+{
   if (outputToFiles)
   {
     output();
@@ -179,14 +164,16 @@ continueProductionStage:
 void MonteCarlo::createOutputFiles()
 {
   std::filesystem::create_directories("output");
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
     std::string fileNameString =
-        std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system.systemId);
+        std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system_id);
     streams.emplace_back(fileNameString, std::ios::out);
     fileNameString =
-        std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system.systemId);
+        std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
     outputJsonFileNames.emplace_back(fileNameString);
+
+    ++system_id;
   }
 }
 
@@ -194,9 +181,9 @@ void MonteCarlo::writeOutputHeader()
 {
   if (outputToFiles)
   {
-    for (const System& system : systems)
+    for (std::size_t system_id{0}; const System& system : systems)
     {
-      std::ostream stream(streams[system.systemId].rdbuf());
+      std::ostream stream(streams[system_id].rdbuf());
 
       std::print(stream, "{}", system.writeOutputHeader());
       std::print(stream, "Random seed: {}\n\n", random.seed);
@@ -212,41 +199,45 @@ void MonteCarlo::writeOutputHeader()
 #ifdef VERSION
 #define QUOTE(str) #str
 #define EXPAND_AND_QUOTE(str) QUOTE(str)
-      outputJsons[system.systemId]["version"] = EXPAND_AND_QUOTE(VERSION);
+      outputJsons[system_id]["version"] = EXPAND_AND_QUOTE(VERSION);
 #endif
 
-      outputJsons[system.systemId]["seed"] = random.seed;
-      outputJsons[system.systemId]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
-      outputJsons[system.systemId]["initialization"]["units"] = Units::jsonStatus();
-      outputJsons[system.systemId]["initialization"]["initialConditions"] = system.jsonSystemStatus();
-      outputJsons[system.systemId]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
-      outputJsons[system.systemId]["initialization"]["forceField"]["pseudoAtoms"] =
+      outputJsons[system_id]["seed"] = random.seed;
+      outputJsons[system_id]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
+      outputJsons[system_id]["initialization"]["units"] = Units::jsonStatus();
+      outputJsons[system_id]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+      outputJsons[system_id]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
+      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] =
           system.forceField.jsonPseudoAtomStatus();
-      outputJsons[system.systemId]["initialization"]["components"] = system.jsonComponentStatus();
-      outputJsons[system.systemId]["initialization"]["reactions"] = system.reactions.jsonStatus();
+      outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
+      outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
 
-      std::ofstream json(outputJsonFileNames[system.systemId]);
-      json << outputJsons[system.systemId].dump(4);
+      std::ofstream json(outputJsonFileNames[system_id]);
+      json << outputJsons[system_id].dump(4);
+
+      ++system_id;
     }
   }
 }
 
 void MonteCarlo::createInterpolationGrids()
 {
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
     if (outputToFiles)
     {
-      std::ostream stream(streams[system.systemId].rdbuf());
-      system.createExternalFieldInterpolationGrid(stream);
+      std::ostream stream(streams[system_id].rdbuf());
+      system.createExternalFieldInterpolationGrid(stream, system_id);
       system.createFrameworkInterpolationGrids(stream);
     }
     else
     {
       std::ostringstream local;
-      system.createExternalFieldInterpolationGrid(local);
+      system.createExternalFieldInterpolationGrid(local, system_id);
       system.createFrameworkInterpolationGrids(local);
     }
+
+    ++system_id;
   }
 }
 
@@ -307,50 +298,66 @@ void MonteCarlo::performCycle()
   }
 }
 
-void MonteCarlo::initialize(std::function<void()> call_back_function)
+void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   std::chrono::system_clock::time_point t1, t2;
 
   if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
   simulationStage = SimulationStage::Initialization;
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
     system.precomputeTotalRigidEnergy();
     system.runningEnergies = system.computeTotalEnergies();
 
     if (outputToFiles)
     {
-      std::ostream stream(streams[system.systemId].rdbuf());
+      if(system_id >= streams.size())
+      {
+        throw std::runtime_error("Output not opened, did you forgot to call 'setup'?\n");
+      }
+
+      std::ostream stream(streams[system_id].rdbuf());
       stream << system.runningEnergies.printMC("Recomputed from scratch");
       std::print(stream, "\n\n\n\n");
 
-      system.writeRestartFile();
+      system.writeRestartFile(system_id);
     }
-  };
 
-  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; currentCycle++)
+    ++system_id;
+  }
+
+  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::system_clock::now();
 
     performCycle();
 
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
+
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (std::size_t system_id{0}; System& system : systems)
       {
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         if (outputToFiles)
         {
-          std::ostream stream(streams[system.systemId].rdbuf());
+          std::ostream stream(streams[system_id].rdbuf());
           std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
           std::flush(stream);
         }
+        ++system_id;
       }
+    }
 
-      if (call_back_function)
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if(call_back_function)
       {
         call_back_function();
       }
@@ -380,14 +387,30 @@ void MonteCarlo::initialize(std::function<void()> call_back_function)
       }
     }
 
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      {
+        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+      if(system.propertyVolumeEvolution.has_value())
+      {
+        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+
+      ++system_id;
+    }
+
     if (currentCycle % writeRestartEvery == 0uz)
     {
       // write restart
       if (outputToFiles)
       {
-        for (System& system : systems)
+        for (std::size_t system_id{0}; System& system : systems)
         {
-          system.writeRestartFile();
+          system.writeRestartFile(system_id);
+
+          ++system_id;
         }
       }
     }
@@ -401,7 +424,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function)
   }
 }
 
-void MonteCarlo::equilibrate(std::function<void()> call_back_function)
+void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   std::chrono::system_clock::time_point t1, t2;
 
@@ -420,27 +443,37 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function)
     }
   };
 
-  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle)
+  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::system_clock::now();
 
     performCycle();
 
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
+
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (std::size_t system_id{0}; System& system : systems)
       {
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         if (outputToFiles)
         {
-          std::ostream stream(streams[system.systemId].rdbuf());
+          std::ostream stream(streams[system_id].rdbuf());
           std::print(stream, "{}", system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
           std::flush(stream);
         }
+        ++system_id;
       }
-      if (call_back_function)
+    }
+
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if(call_back_function)
       {
         call_back_function();
       }
@@ -456,7 +489,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function)
 
     if (currentCycle % rescaleWangLandauEvery == 0uz)
     {
-      for (System& system : systems)
+      for (std::size_t system_id{0}; System& system : systems)
       {
         for (Component& component : system.components)
         {
@@ -471,10 +504,26 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function)
           for (Component& component : system.components)
           {
             component.lambdaGC.writeBiasingFile(
-                std::format("bias_factors/lambda_bias_{}.s{}.json", component.name, system.systemId));
+                std::format("bias_factors/lambda_bias_{}.s{}.json", component.name, system_id));
           }
         }
+
+        ++system_id;
       }
+    }
+
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      {
+        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+      if(system.propertyVolumeEvolution.has_value())
+      {
+        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+
+      ++system_id;
     }
 
     if (currentCycle % writeBinaryRestartEvery == 0uz)
@@ -498,9 +547,11 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function)
       // write restart
       if (outputToFiles)
       {
-        for (System& system : systems)
+        for (std::size_t system_id{0}; System& system : systems)
         {
-          system.writeRestartFile();
+          system.writeRestartFile(system_id);
+
+          ++system_id;
         }
       }
     }
@@ -514,7 +565,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function)
   }
 }
 
-void MonteCarlo::production(std::function<void()> call_back_function)
+void MonteCarlo::production(std::function<void()> call_back_function, std::size_t callBackEvery)
 {
   double minBias{0uz};
   std::chrono::system_clock::time_point t1, t2;
@@ -561,18 +612,20 @@ void MonteCarlo::production(std::function<void()> call_back_function)
   if (outputToFiles)
   {
     std::filesystem::create_directories("bias_factors");
-    for (System& system : systems)
+    for (std::size_t system_id{0}; System& system : systems)
     {
       for (Component& component : system.components)
       {
         component.lambdaGC.writeBiasingFile(
-            std::format("bias_factors/lambda_bias_{}.s{}.json", component.name, system.systemId));
+            std::format("bias_factors/lambda_bias_{}.s{}.json", component.name, system_id));
       }
+
+      ++system_id;
     }
   }
 
   numberOfSteps = 0uz;
-  for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle)
+  for (currentCycle = 0uz; currentCycle != numberOfCycles; ++currentCycle, ++absoluteCurrentCycle)
   {
     t1 = std::chrono::system_clock::now();
 
@@ -580,9 +633,11 @@ void MonteCarlo::production(std::function<void()> call_back_function)
 
     performCycle();
 
-    for (System& system : systems)
+    for (std::size_t system_id{0}; System& system : systems)
     {
-      system.sampleProperties(estimation.currentBin, currentCycle);
+      system.sampleProperties(system_id, estimation.currentBin, currentCycle);
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+
       if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
       {
         std::chrono::system_clock::time_point time1 = std::chrono::system_clock::now();
@@ -601,24 +656,32 @@ void MonteCarlo::production(std::function<void()> call_back_function)
           std::cerr << system.runningEnergies.printMCDiff(recomputedEnergies) << '\n';
         #endif
       }
+
+      ++system_id;
     }
 
     if (currentCycle % printEvery == 0uz)
     {
-      for (System& system : systems)
+      for (std::size_t system_id{0}; System& system : systems)
       {
         system.loadings =
-            Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
         if (outputToFiles)
         {
-          std::ostream stream(streams[system.systemId].rdbuf());
+          std::ostream stream(streams[system_id].rdbuf());
           std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfCycles)};
           std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
           std::flush(stream);
         }
+
+        ++system_id;
       }
-      if (call_back_function)
+    }
+
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if(call_back_function)
       {
         call_back_function();
       }
@@ -632,38 +695,52 @@ void MonteCarlo::production(std::function<void()> call_back_function)
       }
     }
 
-    if (outputToFiles)
+    for (std::size_t system_id{0}; System& system : systems)
     {
-      for (System& system : systems)
+      if (system.propertyConventionalRadialDistributionFunction.has_value())
       {
-        if (system.propertyConventionalRadialDistributionFunction.has_value())
-        {
-          system.propertyConventionalRadialDistributionFunction->writeOutput(
-              system.forceField, system.systemId, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
-              currentCycle);
-        }
-
-        if (system.propertyRadialDistributionFunction.has_value())
-        {
-          system.propertyRadialDistributionFunction->writeOutput(system.forceField, system.systemId,
-                                                                 system.simulationBox.volume,
-                                                                 system.totalNumberOfPseudoAtoms, currentCycle);
-        }
-        if (system.propertyDensityGrid.has_value())
-        {
-          system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
-                                                  system.framework, system.components, currentCycle);
-        }
-        if (system.averageEnergyHistogram.has_value())
-        {
-          system.averageEnergyHistogram->writeOutput(system.systemId, currentCycle);
-        }
-        if (system.averageNumberOfMoleculesHistogram.has_value())
-        {
-          system.averageNumberOfMoleculesHistogram->writeOutput(system.systemId, system.components, currentCycle);
-        }
+        system.propertyConventionalRadialDistributionFunction->writeOutput(
+            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
+            currentCycle);
       }
+
+      if (system.propertyRadialDistributionFunction.has_value())
+      {
+        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system_id,
+                                                               system.simulationBox.volume,
+                                                               system.totalNumberOfPseudoAtoms, currentCycle);
+      }
+      if (system.propertyDensityGrid.has_value())
+      {
+        system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField,
+                                                system.framework, system.components, currentCycle);
+      }
+      if (system.averageEnergyHistogram.has_value())
+      {
+        system.averageEnergyHistogram->writeOutput(system_id, currentCycle);
+      }
+      if (system.averageNumberOfMoleculesHistogram.has_value())
+      {
+        system.averageNumberOfMoleculesHistogram->writeOutput(system_id, system.components, currentCycle);
+      }
+
+      ++system_id;
     }
+
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      {
+        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+      if(system.propertyVolumeEvolution.has_value())
+      {
+        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+
+      ++system_id;
+    }
+    
 
     if (currentCycle % writeBinaryRestartEvery == 0uz)
     {
@@ -686,9 +763,11 @@ void MonteCarlo::production(std::function<void()> call_back_function)
       // write restart
       if (outputToFiles)
       {
-        for (System& system : systems)
+        for (std::size_t system_id{0}; System& system : systems)
         {
-          system.writeRestartFile();
+          system.writeRestartFile(system_id);
+
+          ++system_id;
         }
       }
     }
@@ -717,9 +796,9 @@ void MonteCarlo::production(std::function<void()> call_back_function)
   if (outputToFiles)
   {
     // Write out last status
-    for (System& system : systems)
+    for (std::size_t system_id{0}; System& system : systems)
     {
-      system.writeRestartFile();
+      system.writeRestartFile(system_id);
 
       system.forceField.initializeAutomaticCutOff(system.simulationBox);
 
@@ -728,9 +807,9 @@ void MonteCarlo::production(std::function<void()> call_back_function)
       system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
 
       system.loadings =
-          Loadings(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+          LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
 
-      std::ostream stream(streams[system.systemId].rdbuf());
+      std::ostream stream(streams[system_id].rdbuf());
 
       std::print(stream, "\n");
       std::print(stream, "===============================================================================\n");
@@ -745,29 +824,31 @@ void MonteCarlo::production(std::function<void()> call_back_function)
       if (system.propertyConventionalRadialDistributionFunction.has_value())
       {
         system.propertyConventionalRadialDistributionFunction->writeOutput(
-            system.forceField, system.systemId, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
+            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
             currentCycle);
       }
 
       if (system.propertyRadialDistributionFunction.has_value())
       {
-        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system.systemId,
+        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system_id,
                                                                system.simulationBox.volume,
                                                                system.totalNumberOfPseudoAtoms, currentCycle);
       }
       if (system.propertyDensityGrid.has_value())
       {
-        system.propertyDensityGrid->writeOutput(system.systemId, system.simulationBox, system.forceField,
+        system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField,
                                                 system.framework, system.components, currentCycle);
       }
       if (system.averageEnergyHistogram.has_value())
       {
-        system.averageEnergyHistogram->writeOutput(system.systemId, currentCycle);
+        system.averageEnergyHistogram->writeOutput(system_id, currentCycle);
       }
       if (system.averageNumberOfMoleculesHistogram.has_value())
       {
-        system.averageNumberOfMoleculesHistogram->writeOutput(system.systemId, system.components, currentCycle);
+        system.averageNumberOfMoleculesHistogram->writeOutput(system_id, system.components, currentCycle);
       }
+
+      ++system_id;
     }
   }
 }
@@ -786,9 +867,9 @@ void MonteCarlo::output()
     }
   }
 
-  for (System& system : systems)
+  for (std::size_t system_id{0}; System& system : systems)
   {
-    std::ostream stream(streams[system.systemId].rdbuf());
+    std::ostream stream(streams[system_id].rdbuf());
 
     RunningEnergy recomputedEnergies = system.computeTotalEnergies();
     RunningEnergy drift = system.runningEnergies - recomputedEnergies;
@@ -811,10 +892,12 @@ void MonteCarlo::output()
     std::print(stream, "Production run CPU timings of the MC moves\n");
     std::print(stream, "===============================================================================\n\n");
 
-    for (const Component& component : system.components)
+    for (std::size_t componentId{0}; const Component& component : system.components)
     {
       std::print(stream, "{}",
-                 component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(component.componentId, component.name));
+                 component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
+
+      ++componentId;
     }
     std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
 
@@ -849,41 +932,45 @@ void MonteCarlo::output()
                    system.components, system.frameworkMass(),
                    system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
 
-    // json statistics
-    outputJsons[system.systemId]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
-    outputJsons[system.systemId]["output"]["recomputedEnergies"] = recomputedEnergies.jsonMC();
-    outputJsons[system.systemId]["output"]["drift"] = drift.jsonMC();
+    std::flush(stream);
 
-    outputJsons[system.systemId]["output"]["MCMoveStatistics"]["system"] = system.jsonMCMoveStatistics();
+    // json statistics
+    outputJsons[system_id]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
+    outputJsons[system_id]["output"]["recomputedEnergies"] = recomputedEnergies.jsonMC();
+    outputJsons[system_id]["output"]["drift"] = drift.jsonMC();
+
+    outputJsons[system_id]["output"]["MCMoveStatistics"]["system"] = system.jsonMCMoveStatistics();
     // outputJsons[system.systemId]["output"]["MCMoveStatistics"]["summedOverAllSystems"] =
     //    countTotal.jsonAllSystemStatistics(numberOfSteps);
 
-    outputJsons[system.systemId]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
+    outputJsons[system_id]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
         total.jsonOverallMCMoveCPUTimeStatistics(totalProductionSimulationTime);
-    outputJsons[system.systemId]["output"]["cpuTimings"]["gridCreation"] = totalGridCreationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["total"] = totalSimulationTime.count();
-    outputJsons[system.systemId]["output"]["cpuTimings"]["system"] =
+    outputJsons[system_id]["output"]["cpuTimings"]["gridCreation"] = totalGridCreationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["total"] = totalSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["system"] =
         system.mc_moves_cputime.jsonSystemMCMoveCPUTimeStatistics();
 
-    outputJsons[system.systemId]["properties"]["averageEnergies"] =
+    outputJsons[system_id]["properties"]["averageEnergies"] =
         system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
-    outputJsons[system.systemId]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
-    outputJsons[system.systemId]["properties"]["averageEnthalpy"] =
+    outputJsons[system_id]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    outputJsons[system_id]["properties"]["averageEnthalpy"] =
         system.averageEnthalpiesOfAdsorption.jsonAveragesStatistics(system.swappableComponents, system.components);
 
     for (const Component& component : system.components)
     {
       // outputJsons[system.systemId]["output"]["MCMoveStatistics"][component.name]["percentage"] =
       //     component.mc_moves_statistics.jsonMCMoveStatistics(numberOfSteps);
-      outputJsons[system.systemId]["output"]["cpuTimings"][component.name] =
+      outputJsons[system_id]["output"]["cpuTimings"][component.name] =
           component.mc_moves_cputime.jsonComponentMCMoveCPUTimeStatistics();
     }
 
-    std::ofstream json(outputJsonFileNames[system.systemId]);
-    json << outputJsons[system.systemId].dump(4);
+    std::ofstream json(outputJsonFileNames[system_id]);
+    json << outputJsons[system_id].dump(4);
+
+    ++system_id;
   }
 }
 

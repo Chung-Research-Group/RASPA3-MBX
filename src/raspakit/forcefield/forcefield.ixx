@@ -1,33 +1,10 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <optional>
-#include <ostream>
-#include <set>
 #include <string>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <string>
-#endif
 
 export module forcefield;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double4;
@@ -80,7 +57,13 @@ export struct ForceField
     ExponentialNonPolynomialTestFunction = 7,
     MullerBrown = 8,
     Eckhardt = 9,
-    GonzalezSchlegel = 10  // https://sci-hub.se/https://doi.org/10.1063/1.465995
+    GonzalezSchlegel = 10,  // https://sci-hub.se/https://doi.org/10.1063/1.465995
+    CylinderX = 11,
+    CylinderY = 12,
+    CylinderZ = 13,
+    RectangleX = 14,
+    RectangleY = 15,
+    RectangleZ = 16
   };
 
   enum class InterpolationGridType : std::size_t
@@ -161,6 +144,7 @@ export struct ForceField
   std::string externalFieldGridFileName{ "external_field.cube" };
   uint3 numberOfExternalFieldGridPoints{8, 8, 8};
   bool writeExternalFieldInterpolationGrid{ false };
+  double4 externalFieldGeometryParameters{5.0, 5.0, 0.0, 0.0};
 
   /**
    * \brief Default constructor for the ForceField struct.
@@ -338,6 +322,19 @@ export struct ForceField
    */
   struct InsensitiveCompare
   {
+inline int SGA_stricmp(const char *a, const char *b) const {
+  int ca, cb;
+  do {
+     ca = * (unsigned char *)a;
+     cb = * (unsigned char *)b;
+     ca = std::tolower(std::toupper(ca));
+     cb = std::tolower(std::toupper(cb));
+     a++;
+     b++;
+   } while (ca == cb && ca != '\0');
+   return ca - cb;
+}
+
     /**
      * \brief Compares two strings in a case-insensitive manner.
      *
@@ -353,7 +350,7 @@ export struct ForceField
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
       return _stricmp(a.c_str(), b.c_str()) < 0;
 #else
-      return strcasecmp(a.c_str(), b.c_str()) < 0;
+      return SGA_stricmp(a.c_str(), b.c_str()) < 0;
 #endif
     }
   };
@@ -370,4 +367,8 @@ export struct ForceField
    * of only known keys.
    */
   static const std::set<std::string, InsensitiveCompare> options;
+
+  static ForceField makeZeoliteForceField(double rc = 12.0, bool shifted = true, bool tailCorrections = false, bool useEwald = false);
+  static ForceField makeMetalOrganicFrameworkForceField(double rc = 12.0, bool shifted = true, bool tailCorrections = false, bool useEwald = false);
+  static ForceField makeZeoPlusPlusForceField(double rc = 12.0, bool shifted = true, bool tailCorrections = false, bool useEwald = false);
 };

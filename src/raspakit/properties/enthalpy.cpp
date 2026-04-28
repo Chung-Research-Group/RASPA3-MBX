@@ -1,39 +1,14 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <optional>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module property_enthalpy;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import stringutils;
 import component;
 import units;
-import enthalpy_of_adsorption;
+import enthalpy_of_adsorption_data;
 import averages;
 import json;
 import averages;
@@ -52,16 +27,16 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
   }
   else
   {
-    std::pair<EnthalpyOfAdsorption, EnthalpyOfAdsorption> enthalpy = averageEnthalpy();
+    std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> enthalpy = result();
     for (std::size_t k = 0; k < swappableComponents.size(); k++)
     {
       std::size_t index = swappableComponents[k];
       double idealGasTerm = components[index].idealGasEnergy.value_or(0.0);
-      std::print(stream, "Component {} [{}]\n", components[index].componentId, components[index].name);
+      std::print(stream, "Component {} [{}]\n", index, components[index].name);
       std::print(stream, "-------------------------------------------------------------------------------\n");
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        EnthalpyOfAdsorption average = averagedEnthalpy(i);
+        EnthalpyOfAdsorptionData average = averagedEnthalpy(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i,
                    Units::EnergyToKelvin * (average.values[k] - idealGasTerm));
       }
@@ -89,7 +64,7 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
         double totalEnthalpyOfAdsorption = 0.0;
-        EnthalpyOfAdsorption average = averagedEnthalpy(i);
+        EnthalpyOfAdsorptionData average = averagedEnthalpy(i);
         for (std::size_t k = 0; k < swappableComponents.size(); k++)
         {
           std::size_t index = swappableComponents[k];
@@ -140,7 +115,7 @@ nlohmann::json PropertyEnthalpy::jsonAveragesStatistics(std::vector<std::size_t>
 
   if (!swappableComponents.empty())
   {
-    std::pair<EnthalpyOfAdsorption, EnthalpyOfAdsorption> enthalpy = averageEnthalpy();
+    std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> enthalpy = result();
     for (std::size_t k = 0; k < swappableComponents.size(); k++)
     {
       std::size_t index = swappableComponents[k];

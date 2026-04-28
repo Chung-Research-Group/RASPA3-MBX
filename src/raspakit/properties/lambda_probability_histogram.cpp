@@ -1,37 +1,9 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <numbers>
-#include <numeric>
-#include <optional>
-#include <print>
-#include <ranges>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module property_lambda_probability_histogram;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
-import double3;
 import archive;
 import units;
 import stringutils;
@@ -94,7 +66,7 @@ void PropertyLambdaProbabilityHistogram::WangLandauIteration(PropertyLambdaProba
 }
 
 std::pair<std::vector<double>, std::vector<double>>
-PropertyLambdaProbabilityHistogram::normalizedAverageProbabilityHistogram()
+PropertyLambdaProbabilityHistogram::result()
 {
   std::pair<std::vector<double>, std::vector<double>> histogram_avg = averageProbabilityHistogram();
 
@@ -285,12 +257,12 @@ std::string PropertyLambdaProbabilityHistogram::writeDUdLambdaStatistics(double 
     std::print(stream, "    ===========================================================================\n\n");
 
     double conv = Units::EnergyToKelvin;
-    std::pair<std::vector<double3>, std::vector<double3>> dudlambda = averageDuDlambda();
+    std::pair<std::vector<double>, std::vector<double>> dudlambda = averageDuDlambda();
     for (std::size_t binIndex = 0; binIndex < numberOfSamplePoints; ++binIndex)
     {
       std::print(stream, "{}{:2d}-{:5f} (lambda) <dU/dlambda>: {: .6e} +/- {:.6e} [K/-]\n", "    ", binIndex,
-                 static_cast<double>(binIndex) * delta, conv * dudlambda.first[binIndex].x,
-                 conv * dudlambda.second[binIndex].x);
+                 static_cast<double>(binIndex) * delta, conv * dudlambda.first[binIndex],
+                 conv * dudlambda.second[binIndex]);
     }
     std::print(stream, "    ---------------------------------------------------------------------------\n");
     std::print(stream, "    Excess chemical potential: integral du/dlambda over lambda (Simpson's rule)\n");
@@ -475,7 +447,7 @@ nlohmann::json PropertyLambdaProbabilityHistogram::jsonDUdLambdaStatistics(
 
   if (computeDUdlambda)
   {
-    std::pair<std::vector<double3>, std::vector<double3>> dudlambda = averageDuDlambda();
+    std::pair<std::vector<double>, std::vector<double>> dudlambda = averageDuDlambda();
 
     /*
     for (std::size_t binIndex = 0; binIndex < numberOfSamplePoints; ++binIndex)

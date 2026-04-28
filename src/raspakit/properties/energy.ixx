@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <numbers>
-#include <numeric>
-#include <optional>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module property_energy;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import averages;
@@ -91,7 +70,7 @@ export struct PropertyEnergy
     return summedBlocks.first / std::max(1.0, summedBlocks.second);
   }
 
-  std::pair<EnergyStatus, EnergyStatus> averageEnergy() const
+  std::pair<EnergyStatus, EnergyStatus> result() const
   {
     EnergyStatus average = averagedEnergy();
 
@@ -116,6 +95,7 @@ export struct PropertyEnergy
       double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
       confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
     }
+
     return std::make_pair(average, confidenceIntervalError);
   }
 
@@ -134,4 +114,6 @@ export struct PropertyEnergy
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnergy &e);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEnergy &e);
+
+  std::string repr() const;
 };

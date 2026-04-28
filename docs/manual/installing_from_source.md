@@ -8,10 +8,10 @@
 
 | Package                | Min. version |
 | ---------------------- | ------------ |
-| clang/clang++          | 18           |
-| cmake                  | 3.28         |
+| clang/clang++          | 19           |
+| cmake                  | 4.3.0        |
 | ninja                  | 1.11         |
-| python                 | 3.11         |
+| python                 | 3.10         |
 | pybind11               | 2.12         |
 | BLAS + LAPACK          | 64‑bit ints  |
 | HDF5                   | 1.12         |
@@ -23,7 +23,7 @@
 git clone https://github.com/raspa3/raspa3.git
 cd raspa3
 conda env create -f env.yml
-conda activate raspa
+conda activate raspa3
 cmake --preset=linux_conda  # or mac_conda / windows_conda_raspa3
 ninja -C build
 ninja -C build install      # optional

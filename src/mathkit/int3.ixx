@@ -1,25 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cctype>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <format>
-#include <fstream>
-#include <functional>
-#include <tuple>
-#endif
-
 export module int3;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import hashcombine;
 import archive;
@@ -96,6 +79,14 @@ export union int3
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const int3& vec);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, int3& vec);
 
+  inline std::string repr() const
+  {
+    std::ostringstream stream;
+
+    std::print(stream, "[{}, {}, {}]", x, y, z);
+
+    return stream.str();
+  }
 };
 
 export inline int3 operator+(int3 lhs, const int3& rhs) { return int3(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z); }

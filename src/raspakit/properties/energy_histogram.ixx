@@ -1,54 +1,41 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <numbers>
-#include <numeric>
-#include <optional>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module property_energy_histogram;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
-
-import double4;
 
 import archive;
 import averages;
 import simulationbox;
+import average_energy_type;
+import units;
 
 inline std::pair<double, double> pair_sum(const std::pair<double, double> &lhs, const std::pair<double, double> &rhs)
 {
   return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
 }
 
+template<typename T>
+std::pair<T, T> operator*(const double& a, const std::pair<T, T>& b)
+{
+  return std::make_pair(a * b.first, a * b.second);
+}
+
+
 export struct PropertyEnergyHistogram
 {
+
   PropertyEnergyHistogram() {};
 
-  PropertyEnergyHistogram(std::size_t numberOfBlocks, std::size_t numberOfBins, std::pair<double, double> range,
+  PropertyEnergyHistogram(std::size_t numberOfBlocks, std::size_t numberOfBins, std::pair<double, double> valueRange,
                           std::size_t sampleEvery, std::size_t writeEvery)
       : numberOfBlocks(numberOfBlocks),
         numberOfBins(numberOfBins),
-        range(range),
+        valueRange(Units::KelvinToEnergy * valueRange),
         sampleEvery(sampleEvery),
         writeEvery(writeEvery),
         bookKeepingEnergyHistogram(
-            std::vector<std::vector<double4>>(numberOfBlocks, std::vector<double4>(numberOfBins))),
+            std::vector<std::vector<AverageEnergyType>>(numberOfBlocks, std::vector<AverageEnergyType>(numberOfBins))),
         numberOfCounts(numberOfBlocks)
   {
   }
@@ -57,18 +44,20 @@ export struct PropertyEnergyHistogram
 
   std::size_t numberOfBlocks;
   std::size_t numberOfBins;
-  std::pair<double, double> range;
+  std::pair<double, double> valueRange;
   std::size_t sampleEvery;
   std::size_t writeEvery;
-  std::vector<std::vector<double4>> bookKeepingEnergyHistogram;
+  std::vector<std::vector<AverageEnergyType>> bookKeepingEnergyHistogram;
   std::vector<double> numberOfCounts;
   double totalNumberOfCounts{0.0};
 
-  void addSample(std::size_t blockIndex, std::size_t currentCycle, double4 energy, const double &weight);
+  void addSample(std::size_t blockIndex, std::size_t currentCycle, AverageEnergyType energy, const double &weight);
 
-  std::vector<double4> averagedProbabilityHistogram(std::size_t blockIndex) const;
-  std::vector<double4> averagedProbabilityHistogram() const;
-  std::pair<std::vector<double4>, std::vector<double4>> averageProbabilityHistogram() const;
+  std::vector<AverageEnergyType> averagedProbabilityHistogram(std::size_t blockIndex) const;
+  std::vector<AverageEnergyType> averagedProbabilityHistogram() const;
+
+  std::tuple<std::vector<double>, std::vector<AverageEnergyType>, std::vector<AverageEnergyType>> result() const;
+  std::vector<double> bins() const;
 
   void writeOutput(std::size_t systemId, std::size_t currentCycle);
 

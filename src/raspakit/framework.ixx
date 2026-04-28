@@ -1,32 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <chrono>
-#include <cstddef>
-#include <cstdint>
-#include <format>
-#include <fstream>
-#include <map>
-#include <optional>
-#include <ostream>
-#include <print>
-#include <span>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module framework;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import archive;
@@ -39,8 +15,6 @@ import atom;
 import forcefield;
 import simulationbox;
 import property_widom;
-import isotherm;
-import multi_site_isotherm;
 import bond_potential;
 import json;
 
@@ -56,43 +30,11 @@ import json;
 export struct Framework
 {
   /**
-   * \brief Enumeration for specifying the source of atomic charges.
-   *
-   * UseChargesFrom defines the source from which atomic charges should be obtained.
-   * Options include using charges from pseudo-atoms, the CIF file, or by performing
-   * charge equilibration calculations.
-   */
-  enum class UseChargesFrom : std::size_t
-  {
-    PseudoAtoms = 0,     ///< Use charges from pseudo-atoms defined in the force field.
-    CIF_File = 1,        ///< Use charges specified in the CIF file.
-    ChargeEquilibration  ///< Compute charges using charge equilibration methods.
-  };
-
-  /**
    * \brief Default constructor for the Framework struct.
    *
    * Initializes an empty Framework object with default values.
    */
   Framework();
-
-  /**
-   * \brief Constructs a Framework from a file with specified parameters.
-   *
-   * Initializes a Framework using data from a specified file, setting up the simulation
-   * box, atoms, and other properties based on the provided force field and unit cell
-   * information.
-   *
-   * \param currentComponent Identifier for the current framework component.
-   * \param forceField Reference to the force field containing pseudo-atom definitions.
-   * \param componentName Name of the framework component.
-   * \param fileName Optional file name containing framework data (e.g., a CIF file).
-   * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
-   * \param useChargesFrom Source of atomic charges (pseudo-atoms, CIF file, or charge equilibration).
-   */
-  Framework(std::size_t currentComponent, const ForceField &forceField, const std::string &componentName,
-            std::optional<const std::string> fileName, std::optional<int3> numberOfUnitCells,
-            Framework::UseChargesFrom useChargesFrom) noexcept(false);
 
   /**
    * \brief Constructs a Framework programmatically with specified parameters.
@@ -105,12 +47,31 @@ export struct Framework
    * \param componentName Name of the framework component.
    * \param simulationBox Simulation box defining the unit cell dimensions.
    * \param spaceGroupHallNumber Space group number according to the Hall notation.
-   * \param definedAtoms Vector of atoms defining the positions and types within the unit cell.
+   * \param definedAtoms Vector of atoms defining the fractional positions and types within the asymmetric unit cell.
+   * \param fractionalAtoms Vector of atoms defining the fractional positions and types within the unit cell.
    * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
    */
-  Framework(std::size_t componentId, const ForceField &forceField, std::string componentName,
-            SimulationBox simulationBox, std::size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms,
-            int3 numberOfUnitCells) noexcept(false);
+  Framework(const ForceField &forceField, std::string componentName,
+            SimulationBox simulationBox, std::size_t spaceGroupHallNumber, const std::vector<Atom> &definedAtoms,
+            const std::vector<Atom> &fractionalAtoms, int3 numberOfUnitCells) noexcept(false);
+
+  /**
+   * \brief Constructs a Framework programmatically with specified parameters.
+   *
+   * Initializes a Framework using provided simulation box, space group number, defined atoms,
+   * and unit cell information, allowing for programmatic creation of frameworks without file input.
+   *
+   * \param componentId Identifier for the framework component.
+   * \param forceField Reference to the force field containing pseudo-atom definitions.
+   * \param componentName Name of the framework component.
+   * \param simulationBox Simulation box defining the unit cell dimensions.
+   * \param spaceGroupHallNumber Space group number according to the Hall notation.
+   * \param definedAtoms Vector of atoms defining the fractional positions and types within the asymmetric unit cell.
+   * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
+   */
+  Framework(const ForceField &forceField, std::string componentName,
+            SimulationBox simulationBox, std::size_t spaceGroupHallNumber, 
+            const std::vector<Atom> &definedAtoms, int3 numberOfUnitCells) noexcept(false);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
 
@@ -118,9 +79,7 @@ export struct Framework
   std::size_t spaceGroupHallNumber{1};  ///< Space group number according to the Hall notation.
   int3 numberOfUnitCells{1, 1, 1};      ///< Number of unit cells in each dimension for the supercell.
 
-  std::size_t frameworkId{0};                 ///< Identifier for the framework.
   std::string name{};                         ///< Name of the framework component.
-  std::optional<std::string> filenameData{};  ///< Optional file name containing framework data.
   std::string filename{};                     ///< File name of the framework.
   std::size_t numberOfComponents{1};
 
@@ -129,7 +88,6 @@ export struct Framework
   double mass{0.0};          ///< Total mass of the framework.
   double unitCellMass{0.0};  ///< Mass of the unit cell.
 
-  UseChargesFrom useChargesFrom{UseChargesFrom::PseudoAtoms};  ///< Source of atomic charges.
   double netCharge{0.0};                                       ///< Net charge of the framework.
   double smallestCharge{0.0};                                  ///< Smallest atomic charge in the framework.
   double largestCharge{0.0};                                   ///< Largest atomic charge in the framework.
@@ -138,6 +96,7 @@ export struct Framework
   std::vector<Atom> fractionalUnitCellAtoms;   ///< Fractional atoms in the unit cell after applying symmetry operations.
   std::vector<Atom> unitCellAtoms;             ///< Cartesian atoms in the unit cell after applying symmetry operations.
   std::vector<Atom> atoms{};                   ///< All Cartesian atoms in the framework after constructing the supercell.
+  std::unordered_set<std::size_t> uniqueAtomTypes{};
 
   std::vector<std::size_t> chiralCenters{};                        ///< Indices of chiral centers in the framework.
   std::vector<BondPotential> bonds{};                              ///< Bonds within the framework.
@@ -167,24 +126,8 @@ export struct Framework
   std::vector<std::pair<std::size_t, std::size_t>>
       excludedIntraCoulomb{};  ///< Pairs of atoms excluded from intramolecular Coulomb interactions.
 
-  /**
-   * \brief Reads framework data from a file.
-   *
-   * Reads the framework structure, including atoms and simulation box, from the specified file,
-   * applying symmetry operations and setting up the framework for simulation.
-   *
-   * \param forceField Reference to the force field containing pseudo-atom definitions.
-   * \param fileName File name containing the framework data (e.g., a CIF file).
-   */
-  void readFramework(const ForceField &forceField, const std::string &fileName);
 
-  /**
-   * \brief Expands defined atoms to fill the unit cell using symmetry operations.
-   *
-   * Applies space group symmetry operations to the defined atoms to generate all atoms
-   * within the unit cell.
-   */
-  void expandDefinedAtomsToUnitCell();
+  void determineUniqueAtomTypes();
 
   /**
    * \brief Constructs the supercell by replicating the unit cell atoms.
@@ -246,6 +189,11 @@ export struct Framework
    * \return A string representing the Framework.
    */
   std::string repr() const;
+
+  static Framework makeFAU(const ForceField &forceField, int3 replicate = {1, 1, 1});
+  static Framework makeITQ29(const ForceField &forceField, int3 replicate = {1, 1, 1});
+  static Framework makeMFI(const ForceField &forceField, int3 replicate = {1, 1, 1});
+  static Framework makeCHA(const ForceField &forceField, int3 replicate = {1, 1, 1});
 };
 
 /**

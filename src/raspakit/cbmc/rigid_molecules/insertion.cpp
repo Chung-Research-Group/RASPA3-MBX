@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <iostream>
-#include <numeric>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <type_traits>
-#include <vector>
-#endif
-
 module cbmc_rigid_insertion;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import randomnumbers;
 import component;
@@ -44,7 +26,7 @@ import component;
 import interpolation_energy_grid;
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growRigidMoleculeChainInsertion(
-    RandomNumber &random, const Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, const Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
@@ -60,10 +42,11 @@ import interpolation_energy_grid;
   {
     simd_quatd orientation = random.randomSimdQuatd();
     std::vector<Atom> randomlyRotatedAtoms = CBMC::rotateRandomlyAround(orientation, molecule_atoms, starting_bead);
+
     double3 com = component.computeCenterOfMass(randomlyRotatedAtoms);
 
     trialPositions[i] = {
-        Molecule(com, orientation, component.totalMass, component.componentId, component.definedAtoms.size()),
+        Molecule(com, orientation, component.totalMass, selectedComponent, component.definedAtoms.size()),
         randomlyRotatedAtoms};
   };
 

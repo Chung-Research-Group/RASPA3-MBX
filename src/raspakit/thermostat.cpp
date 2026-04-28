@@ -1,37 +1,21 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <format>
-#include <print>
-#include <source_location>
-#include <tuple>
-#include <vector>
-#endif
-
 module thermostat;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import units;
 import randomnumbers;
 
 Thermostat::Thermostat(double temperature, std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps,
-                       double deltaT, std::size_t translationalDegreesOfFreedom, std::size_t rotationalDgreesOfFreedom)
+                       double deltaT, std::size_t translationalDegreesOfFreedom, std::size_t rotationalDegreesOfFreedom)
     : temperature(temperature),
       thermostatChainLength(thermostatChainLength),
       numberOfYoshidaSuzukiSteps(numberOfYoshidaSuzukiSteps),
       deltaT(deltaT),
       translationalDegreesOfFreedom(translationalDegreesOfFreedom),
-      rotationalDgreesOfFreedom(rotationalDgreesOfFreedom),
+      rotationalDegreesOfFreedom(rotationalDegreesOfFreedom),
       thermostatDegreesOfFreedomTranslation(thermostatChainLength),
       thermostatForceTranslation(thermostatChainLength),
       thermostatVelocityTranslation(thermostatChainLength),
@@ -90,8 +74,7 @@ Thermostat::Thermostat(double temperature, std::size_t thermostatChainLength, st
 void Thermostat::initialize(RandomNumber &random)
 {
   thermostatDegreesOfFreedomTranslation[0] =
-      static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint) * Units::KB *
-      temperature;
+      static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint) * Units::KB * temperature;
   for (std::size_t i = 1; i != thermostatChainLength; ++i)
   {
     thermostatDegreesOfFreedomTranslation[i] = Units::KB * temperature;
@@ -104,7 +87,7 @@ void Thermostat::initialize(RandomNumber &random)
         timeScaleParameterThermostat * timeScaleParameterThermostat;
   }
 
-  thermostatDegreesOfFreedomRotation[0] = static_cast<double>(rotationalDgreesOfFreedom) * Units::KB * temperature;
+  thermostatDegreesOfFreedomRotation[0] = static_cast<double>(rotationalDegreesOfFreedom) * Units::KB * temperature;
   for (std::size_t i = 1; i != thermostatChainLength; ++i)
   {
     thermostatDegreesOfFreedomRotation[i] = Units::KB * temperature;
@@ -113,7 +96,7 @@ void Thermostat::initialize(RandomNumber &random)
   for (std::size_t i = 0; i != thermostatChainLength; ++i)
   {
     thermostatMassRotation[i] =
-        static_cast<double>(rotationalDgreesOfFreedom) * timeScaleParameterThermostat * timeScaleParameterThermostat;
+        static_cast<double>(rotationalDegreesOfFreedom) * timeScaleParameterThermostat * timeScaleParameterThermostat;
   }
 
   for (std::size_t i = 0; i != thermostatChainLength; ++i)
@@ -124,7 +107,7 @@ void Thermostat::initialize(RandomNumber &random)
                   thermostatMassTranslation[i]);
 
     thermostatVelocityRotation[i] =
-        random.Gaussian() * std::sqrt(static_cast<double>(rotationalDgreesOfFreedom) / thermostatMassTranslation[i]);
+        random.Gaussian() * std::sqrt(static_cast<double>(rotationalDegreesOfFreedom) / thermostatMassTranslation[i]);
   }
 }
 
@@ -137,7 +120,6 @@ std::pair<double, double> Thermostat::NoseHooverNVT(double UKineticTranslation, 
   std::size_t nyosh = numberOfYoshidaSuzukiSteps;
 
   double scale_translation = 1.0;
-
   if (translationalDegreesOfFreedom > 0)
   {
     thermostatForceTranslation[0] =
@@ -189,8 +171,7 @@ std::pair<double, double> Thermostat::NoseHooverNVT(double UKineticTranslation, 
   }
 
   double scale_rotation = 1.0;
-
-  if (rotationalDgreesOfFreedom > 0)
+  if (rotationalDegreesOfFreedom > 0)
   {
     thermostatForceRotation[0] =
         (2.0 * UKineticRotation - thermostatDegreesOfFreedomRotation[0]) / thermostatMassRotation[0];
@@ -261,10 +242,10 @@ double Thermostat::getEnergy()
     }
   }
 
-  if (rotationalDgreesOfFreedom > 0)
+  if (rotationalDegreesOfFreedom > 0)
   {
     energy += 0.5 * thermostatMassRotation[0] * thermostatVelocityRotation[0] * thermostatVelocityRotation[0] +
-              static_cast<double>(rotationalDgreesOfFreedom) * Units::KB * temperature * thermostatPositionRotation[0];
+              static_cast<double>(rotationalDegreesOfFreedom) * Units::KB * temperature * thermostatPositionRotation[0];
 
     for (std::size_t i = 1; i < thermostatChainLength; i++)
     {

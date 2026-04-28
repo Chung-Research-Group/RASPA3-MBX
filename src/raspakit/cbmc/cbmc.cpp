@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cstddef>
-#include <iostream>
-#include <numeric>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <utility>
-#include <vector>
-#endif
-
 module cbmc;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import randomnumbers;
 import component;
@@ -50,7 +32,7 @@ import interpolation_energy_grid;
 // and 'isFractional' are passed to the function and set on the atoms.
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeSwapInsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
@@ -75,7 +57,7 @@ import interpolation_energy_grid;
   if (component.atoms.size() == 1)
   {
     return ChainGrowData(Molecule(double3(firstBeadData->atom.position), simd_quatd(0.0, 0.0, 0.0, 1.0),
-                                  component.totalMass, component.componentId, component.definedAtoms.size()),
+                                  component.totalMass, selectedComponent, component.definedAtoms.size()),
                          {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
   }
 
@@ -94,7 +76,7 @@ import interpolation_energy_grid;
   switch (growType)
   {
     case Component::GrowType::Rigid:
-      chainData = CBMC::growRigidMoleculeChainInsertion(random, component, hasExternalField, forceField, simulationBox,
+      chainData = CBMC::growRigidMoleculeChainInsertion(random, component, selectedComponent, hasExternalField, forceField, simulationBox,
                                                         interpolationGrids, externalFieldInterpolationGrid,
                                                         framework, frameworkAtomData,
                                                         moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
@@ -159,7 +141,7 @@ import interpolation_energy_grid;
 }
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeReinsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
@@ -191,7 +173,7 @@ import interpolation_energy_grid;
   if (molecule_atoms.size() == 1)
   {
     Molecule firstBeadMolecule = Molecule(firstBeadData->atom.position, simd_quatd(), component.totalMass,
-                                          component.componentId, component.definedAtoms.size());
+                                          selectedComponent, component.definedAtoms.size());
     firstBeadMolecule.atomIndex = molecule.atomIndex;
     firstBeadMolecule.numberOfAtoms = molecule.numberOfAtoms;
 
@@ -204,7 +186,7 @@ import interpolation_energy_grid;
   {
     case Component::GrowType::Rigid:
       chainData = CBMC::growRigidMoleculeChainInsertion(
-          random, component, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid, framework,
+          random, component, selectedComponent, hasExternalField, forceField, simulationBox, interpolationGrids, externalFieldInterpolationGrid, framework,
           frameworkAtomData, moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, atoms);
       break;
     case Component::GrowType::Flexible:
@@ -271,7 +253,7 @@ import interpolation_energy_grid;
 }
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculePartialReinsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
@@ -283,7 +265,7 @@ import interpolation_energy_grid;
   switch (growType)
   {
     case Component::GrowType::Rigid:
-      chainData = CBMC::growRigidMoleculeChainInsertion(random, component, hasExternalField, forceField, simulationBox,
+      chainData = CBMC::growRigidMoleculeChainInsertion(random, component, selectedComponent, hasExternalField, forceField, simulationBox,
                                                         interpolationGrids, externalFieldInterpolationGrid, framework, frameworkAtomData,
                                                         moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                                                         cutOffCoulomb, moleculeAtoms);
@@ -339,7 +321,7 @@ import interpolation_energy_grid;
 }
 
 [[nodiscard]] std::optional<ChainGrowData> CBMC::growMoleculeIdentityChangeInsertion(
-    RandomNumber &random, Component &component, bool hasExternalField, const ForceField &forceField,
+    RandomNumber &random, Component &component, std::size_t selectedComponent, bool hasExternalField, const ForceField &forceField,
     const SimulationBox &simulationBox, const std::vector<std::optional<InterpolationEnergyGrid>> &interpolationGrids,
     const std::optional<InterpolationEnergyGrid> &externalFieldInterpolationGrid,
     const std::optional<Framework> &framework, std::span<const Atom> frameworkAtomData,
@@ -364,7 +346,7 @@ import interpolation_energy_grid;
   {
     // update atom index
     return ChainGrowData(Molecule(double3(firstBeadData->atom.position), simd_quatd(0.0, 0.0, 0.0, 1.0),
-                                  component.totalMass, component.componentId, component.definedAtoms.size()),
+                                  component.totalMass,selectedComponent, component.definedAtoms.size()),
                          {firstBeadData->atom}, firstBeadData->energies, firstBeadData->RosenbluthWeight, 0.0);
   }
 
@@ -383,7 +365,7 @@ import interpolation_energy_grid;
   switch (growType)
   {
     case Component::GrowType::Rigid:
-      chainData = CBMC::growRigidMoleculeChainInsertion(random, component, hasExternalField, forceField, simulationBox,
+      chainData = CBMC::growRigidMoleculeChainInsertion(random, component, selectedComponent, hasExternalField, forceField, simulationBox,
                                                         interpolationGrids, externalFieldInterpolationGrid, framework, frameworkAtomData,
                                                         moleculeAtomData, beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
                                                         cutOffCoulomb, molecule_atoms);
