@@ -215,21 +215,21 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
                          energyFourierDifference + tailEnergyDifference + polarizationDifference;
 
       // Energy logging
-#if DEBUG
-      std::cerr << "deletion" << "," << selectedComponent << ","
-                << (system.numberOfIntegerMoleculesPerComponent[selectedComponent] - 1) << ","
-                << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ","
-                << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ","
-                << (oldTotalEnergy.moleculeMoleculeVDW + energyDifference.moleculeMoleculeVDW) << ","
-                << (oldTotalEnergy.tail + energyDifference.tail) << ","
-                << (oldTotalEnergy.frameworkMoleculeCharge + energyDifference.frameworkMoleculeCharge) << ","
-                << (oldTotalEnergy.moleculeMoleculeCharge + energyDifference.moleculeMoleculeCharge) << ","
-                << ((oldTotalEnergy.ewald_fourier + energyDifference.ewald_fourier) +
-                    (oldTotalEnergy.ewald_self + energyDifference.ewald_self) +
-                    (oldTotalEnergy.ewald_exclusion + energyDifference.ewald_exclusion))
-                << "," << energyDifference.potentialEnergy() << ","
-                << (preFactor * (std::exp(-system.beta * energyDifference.potentialEnergy()))) << "\n";
-#endif
+// #if DEBUG
+//       std::cerr << "deletion" << "," << selectedComponent << ","
+//                 << (system.numberOfIntegerMoleculesPerComponent[selectedComponent] - 1) << ","
+//                 << (oldTotalEnergy.potentialEnergy() + energyDifference.potentialEnergy()) << ","
+//                 << (oldTotalEnergy.frameworkMoleculeVDW + energyDifference.frameworkMoleculeVDW) << ","
+//                 << (oldTotalEnergy.moleculeMoleculeVDW + energyDifference.moleculeMoleculeVDW) << ","
+//                 << (oldTotalEnergy.tail + energyDifference.tail) << ","
+//                 << (oldTotalEnergy.frameworkMoleculeCharge + energyDifference.frameworkMoleculeCharge) << ","
+//                 << (oldTotalEnergy.moleculeMoleculeCharge + energyDifference.moleculeMoleculeCharge) << ","
+//                 << ((oldTotalEnergy.ewald_fourier + energyDifference.ewald_fourier) +
+//                     (oldTotalEnergy.ewald_self + energyDifference.ewald_self) +
+//                     (oldTotalEnergy.ewald_exclusion + energyDifference.ewald_exclusion))
+//                 << "," << energyDifference.potentialEnergy() << ","
+//                 << (preFactor * (std::exp(-system.beta * energyDifference.potentialEnergy()))) << "\n";
+// #endif
     }
 
     // Calculate the acceptance probability

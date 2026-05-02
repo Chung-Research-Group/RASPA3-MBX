@@ -175,23 +175,23 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   RunningEnergy energyDifferenceFF =
       growData->energies + energyFourierDifference + tailEnergyDifference + polarizationDifference;
   RunningEnergy energyDifferenceMBX;
+  RunningEnergy newTotalEnergy = RunningEnergy();
+  std::vector<double> mbxEnergyLog(7, 0.0);
   if (!system.useMBX)
   {
     // Energy logging
-#if DEBUG
-    std::cerr << "insertion_cbmc" << "," << selectedComponent << ","
-              << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ","
-              << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ","
-              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ","
-              << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ","
-              << (oldTotalEnergy.tail + energyDifferenceFF.tail) << ","
-              << (oldTotalEnergy.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ","
-              << (oldTotalEnergy.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ","
-              << ((oldTotalEnergy.ewald_fourier + energyDifferenceFF.ewald_fourier) +
-                  (oldTotalEnergy.ewald_self + energyDifferenceFF.ewald_self) +
-                  (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion))
-              << "," << energyDifferenceFF.potentialEnergy() << "," << Pacc << "\n";
-#endif
+    // std::cerr << "insertion_cbmc" << "," << selectedComponent << ","
+    //           << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ","
+    //           << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ","
+    //           << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ","
+    //           << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ","
+    //           << (oldTotalEnergy.tail + energyDifferenceFF.tail) << ","
+    //           << (oldTotalEnergy.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ","
+    //           << (oldTotalEnergy.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ","
+    //           << ((oldTotalEnergy.ewald_fourier + energyDifferenceFF.ewald_fourier) +
+    //               (oldTotalEnergy.ewald_self + energyDifferenceFF.ewald_self) +
+    //               (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion))
+    //           << "," << energyDifferenceFF.potentialEnergy() << "," << Pacc << "\n";
   }
   else
   {
@@ -200,11 +200,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
     // growth and retrace steps. But it's not taking much time anyway, so we can leave it for now.
 
     // Now we calculate the MBX energy difference.
-    std::vector<double> mbxEnergyLog(7, 0);  // Vector to store energylog values
-
     // We calculate the system energy difference before and after the CMBC Reinsertion
     time_begin = std::chrono::system_clock::now();
-    RunningEnergy newTotalEnergy = Interactions::computeMBXEnergy(
+    newTotalEnergy = Interactions::computeMBXEnergy(
         system, system.components, system.simulationBox, system.framework, selectedComponent,
         system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), newMolecule, true, &mbxEnergyLog);
 
@@ -225,22 +223,6 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
 
     // Add the correction factor, exp(-beta*DeltaDeltaE)
     Pacc *= std::exp(-system.beta * (energyDifferenceMBX.potentialEnergy() - energyDifferenceFF.potentialEnergy()));
-
-    // Energy logging
-#if DEBUG
-    std::cerr << "insertion_cbmc" << "," << selectedComponent << ","
-              << (1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ","
-              << (oldTotalEnergy.potentialEnergy() + energyDifferenceMBX.potentialEnergy()) << ","
-              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceMBX.frameworkMoleculeVDW) << ","
-              << (oldTotalEnergy.tail + energyDifferenceMBX.tail) << "," << newTotalEnergy.mbxEnergy << ","
-              << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ","  // e2b
-              << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ","  // e3b
-              << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ","  // e4b
-              << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ","  // edisp
-              << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ","  // eelec_perm
-              << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ","  // eelec_ind
-              << energyDifferenceMBX.potentialEnergy() << "," << Pacc << "\n";
-#endif
   }
 
   // Apply acceptance/rejection criterion
@@ -255,6 +237,20 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
 
     if (system.useMBX)
     {
+      // Energy logging
+      std::cerr << "insertion_cbmc" << "," << selectedComponent << ","
+              << (system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ","
+              << (oldTotalEnergy.potentialEnergy() + energyDifferenceMBX.potentialEnergy()) << ","
+              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceMBX.frameworkMoleculeVDW) << ","
+              << (oldTotalEnergy.tail + energyDifferenceMBX.tail) << "," << newTotalEnergy.mbxEnergy << ","
+              << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ","  // e2b
+              << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ","  // e3b
+              << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ","  // e4b
+              << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ","  // edisp
+              << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ","  // eelec_perm
+              << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ","  // eelec_ind
+              << energyDifferenceMBX.potentialEnergy() << "," << Pacc << "\n";
+
       return {energyDifferenceMBX, double3(0.0, 1.0 - Pacc, Pacc)};
     }
 

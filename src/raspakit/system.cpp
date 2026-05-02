@@ -193,10 +193,8 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
       // Enable MBX in currentEnergyStatus
       this->currentEnergyStatus.useMBX = true;
 
-      #if DEBUG
-            std::cerr
-                << "type,component,N,total,hg_VDW,hg_tail,mbx_tot,E2b,E3b,E4b,Edisp,Eelec_perm,Eelec_ind,E_diff,Pacc\n";  // Header for MBX energy log
-      #endif
+      std::cerr
+          << "type,component,N,total,hg_VDW,hg_tail,mbx_tot,E2b,E3b,E4b,Edisp,Eelec_perm,Eelec_ind,E_diff,Pacc\n";  // Header for MBX energy log
     }
     else
     {
