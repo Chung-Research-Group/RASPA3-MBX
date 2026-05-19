@@ -112,45 +112,45 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
-  // Sum up all energy contributions
-  newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
+  // // Sum up all energy contributions
+  // newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
 
-  // The intra-molecular energies have not changed by the com-scaling
-  newTotalEnergy.bond = oldTotalEnergy.bond;
-  newTotalEnergy.ureyBradley = oldTotalEnergy.ureyBradley;
-  newTotalEnergy.bend = oldTotalEnergy.bend;
-  newTotalEnergy.inversionBend = oldTotalEnergy.inversionBend;
-  newTotalEnergy.outOfPlaneBend = oldTotalEnergy.outOfPlaneBend;
-  newTotalEnergy.torsion = oldTotalEnergy.torsion;
-  newTotalEnergy.improperTorsion = oldTotalEnergy.improperTorsion;
-  newTotalEnergy.bondBond = oldTotalEnergy.bondBond;
-  newTotalEnergy.bondBend = oldTotalEnergy.bondBend;
-  newTotalEnergy.bondTorsion = oldTotalEnergy.bondTorsion;
-  newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
-  newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
+  // // The intra-molecular energies have not changed by the com-scaling
+  // newTotalEnergy.bond = oldTotalEnergy.bond;
+  // newTotalEnergy.ureyBradley = oldTotalEnergy.ureyBradley;
+  // newTotalEnergy.bend = oldTotalEnergy.bend;
+  // newTotalEnergy.inversionBend = oldTotalEnergy.inversionBend;
+  // newTotalEnergy.outOfPlaneBend = oldTotalEnergy.outOfPlaneBend;
+  // newTotalEnergy.torsion = oldTotalEnergy.torsion;
+  // newTotalEnergy.improperTorsion = oldTotalEnergy.improperTorsion;
+  // newTotalEnergy.bondBond = oldTotalEnergy.bondBond;
+  // newTotalEnergy.bondBend = oldTotalEnergy.bondBend;
+  // newTotalEnergy.bondTorsion = oldTotalEnergy.bondTorsion;
+  // newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
+  // newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
 
-  // Energy logging
-#if DEBUG
-  std::cerr << "volume" << ", " << numberOfMolecules << ", " << newTotalEnergy.potentialEnergy() << ", "
-            << newTotalEnergy.frameworkMoleculeVDW << ", " << newTotalEnergy.moleculeMoleculeVDW << ", "
-            << newTotalEnergy.tail << ", " << newTotalEnergy.frameworkMoleculeCharge << ", "
-            << newTotalEnergy.moleculeMoleculeCharge << ", "
-            << (newTotalEnergy.ewald_fourier + newTotalEnergy.ewald_self + newTotalEnergy.ewald_exclusion) << ", "
-            << (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy()) << ", "
-            << (std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
-                         (system.pressure * (newVolume - oldVolume) +
-                          (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
-                             system.beta))
-            << "\n";
-#endif
+//   // Energy logging
+// #if DEBUG
+//   std::cerr << "volume" << ", " << numberOfMolecules << ", " << newTotalEnergy.potentialEnergy() << ", "
+//             << newTotalEnergy.frameworkMoleculeVDW << ", " << newTotalEnergy.moleculeMoleculeVDW << ", "
+//             << newTotalEnergy.tail << ", " << newTotalEnergy.frameworkMoleculeCharge << ", "
+//             << newTotalEnergy.moleculeMoleculeCharge << ", "
+//             << (newTotalEnergy.ewald_fourier + newTotalEnergy.ewald_self + newTotalEnergy.ewald_exclusion) << ", "
+//             << (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy()) << ", "
+//             << (std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
+//                          (system.pressure * (newVolume - oldVolume) +
+//                           (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
+//                              system.beta))
+//             << "\n";
+// #endif
+  std::vector<double> mbxEnergyLog(7, 0);  // Vector to store energylog values
+  
   if (system.useMBX)
   {
     // Should work only and only if there is not framework, check required for avoiding undefined
     // behaviour in our MBX implementation.
     if (!system.framework.has_value())
     {
-      std::vector<double> mbxEnergyLog(7, 0);  // Vector to store energylog values
-
       time_begin = std::chrono::system_clock::now();
       std::span<const Atom> frameworkAtoms{};  // Volume move is processed without framework, hence no frameworkAtoms
 
@@ -161,24 +161,6 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
       // Since, no framework is involved, MBX itself contains all the neccessary energy contributions.
       newTotalEnergy = mbxEnergy;
-
-      // Energy logging
-#if DEBUG
-      std::cerr << "volume" << ", " << numberOfMolecules << ", " << newTotalEnergy.potentialEnergy() << ", "
-                << newTotalEnergy.frameworkMoleculeVDW << ", " << newTotalEnergy.tail << ", "
-                << newTotalEnergy.mbxEnergy << ", " << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ", "  // e2b
-                << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ", "                                      // e3b
-                << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ", "                                      // e4b
-                << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ", "                                      // edisp
-                << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ", "  // eelec_perm
-                << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ", "  // eelec_ind
-                << (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy()) << ", "
-                << (std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
-                             (system.pressure * (newVolume - oldVolume) +
-                              (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
-                                 system.beta))
-                << "\n";
-#endif
     }
   }
 
@@ -197,6 +179,24 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
     Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
+    if (system.useMBX)
+    {
+          // Energy logging
+      std::cerr << "volume" << ", " << numberOfMolecules << ", " << newTotalEnergy.potentialEnergy() << ", "
+                << newTotalEnergy.frameworkMoleculeVDW << ", " << newTotalEnergy.tail << ", "
+                << newTotalEnergy.mbxEnergy << ", " << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ", "  // e2b
+                << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ", "                                      // e3b
+                << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ", "                                      // e4b
+                << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ", "                                      // edisp
+                << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ", "  // eelec_perm
+                << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ", "  // eelec_ind
+                << (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy()) << ", "
+                << (std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
+                             (system.pressure * (newVolume - oldVolume) +
+                              (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
+                                 system.beta))
+                << "\n";
+    }
     return newTotalEnergy - oldTotalEnergy;
   }
 
