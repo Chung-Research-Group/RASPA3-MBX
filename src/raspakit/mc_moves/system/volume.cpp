@@ -112,22 +112,22 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   time_end = std::chrono::system_clock::now();
   system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
 
-  // // Sum up all energy contributions
-  // newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
+  // Sum up all energy contributions
+  newTotalEnergy = newTotalInterEnergy + newTotalTailEnergy + newTotalEwaldEnergy;
 
-  // // The intra-molecular energies have not changed by the com-scaling
-  // newTotalEnergy.bond = oldTotalEnergy.bond;
-  // newTotalEnergy.ureyBradley = oldTotalEnergy.ureyBradley;
-  // newTotalEnergy.bend = oldTotalEnergy.bend;
-  // newTotalEnergy.inversionBend = oldTotalEnergy.inversionBend;
-  // newTotalEnergy.outOfPlaneBend = oldTotalEnergy.outOfPlaneBend;
-  // newTotalEnergy.torsion = oldTotalEnergy.torsion;
-  // newTotalEnergy.improperTorsion = oldTotalEnergy.improperTorsion;
-  // newTotalEnergy.bondBond = oldTotalEnergy.bondBond;
-  // newTotalEnergy.bondBend = oldTotalEnergy.bondBend;
-  // newTotalEnergy.bondTorsion = oldTotalEnergy.bondTorsion;
-  // newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
-  // newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
+  // The intra-molecular energies have not changed by the com-scaling
+  newTotalEnergy.bond = oldTotalEnergy.bond;
+  newTotalEnergy.ureyBradley = oldTotalEnergy.ureyBradley;
+  newTotalEnergy.bend = oldTotalEnergy.bend;
+  newTotalEnergy.inversionBend = oldTotalEnergy.inversionBend;
+  newTotalEnergy.outOfPlaneBend = oldTotalEnergy.outOfPlaneBend;
+  newTotalEnergy.torsion = oldTotalEnergy.torsion;
+  newTotalEnergy.improperTorsion = oldTotalEnergy.improperTorsion;
+  newTotalEnergy.bondBond = oldTotalEnergy.bondBond;
+  newTotalEnergy.bondBend = oldTotalEnergy.bondBend;
+  newTotalEnergy.bondTorsion = oldTotalEnergy.bondTorsion;
+  newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
+  newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
 
 //   // Energy logging
 // #if DEBUG
