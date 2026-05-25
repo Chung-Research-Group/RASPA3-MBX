@@ -203,23 +203,7 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   RunningEnergy energyDifferenceMBX;
   RunningEnergy newTotalEnergy = RunningEnergy();
   std::vector<double> mbxEnergyLog(7, 0.0);
-  if (!system.useMBX)
-  {
-    // Energy logging
-    // std::cerr << "reinsertion" << "," << selectedComponent << ","
-    //           << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ","
-    //           << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ","
-    //           << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ","
-    //           << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ","
-    //           << (oldTotalEnergy.tail + energyDifferenceFF.tail) << ","
-    //           << (oldTotalEnergy.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ","
-    //           << (oldTotalEnergy.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ","
-    //           << ((oldTotalEnergy.ewald_fourier + energyDifferenceFF.ewald_fourier) +
-    //               (oldTotalEnergy.ewald_self + energyDifferenceFF.ewald_self) +
-    //               (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion))
-    //           << "," << energyDifferenceFF.potentialEnergy() << "," << Pacc << "\n";
-  }
-  else
+  if (system.useMBX)
   {
     // Compute the total energy difference from FF. Now it just calculates everything all again, no matter it has been
     // calculated before or not. We can optimize this later by reusing the calculated energy difference from the CBMC
@@ -284,6 +268,19 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     {
       return (energyNew.value() - energyOld.value()) + energyFourierDifference + polarizationDifference;
     }
+
+    std::cerr << "reinsertion" << "," << selectedComponent << ","
+              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ","
+              << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ","
+              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ","
+              << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ","
+              << (oldTotalEnergy.tail + energyDifferenceFF.tail) << ","
+              << (oldTotalEnergy.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ","
+              << (oldTotalEnergy.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ","
+              << ((oldTotalEnergy.ewald_fourier + energyDifferenceFF.ewald_fourier) +
+                  (oldTotalEnergy.ewald_self + energyDifferenceFF.ewald_self) +
+                  (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion))
+              << "," << energyDifferenceFF.potentialEnergy() << "," << Pacc << "\n";
 
     // Should we add the tail energy back here?
     return (growData->energies - retraceData.energies) + energyFourierDifference + polarizationDifference;

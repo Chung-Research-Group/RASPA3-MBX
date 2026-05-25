@@ -129,20 +129,6 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
   newTotalEnergy.bendBend = oldTotalEnergy.bendBend;
   newTotalEnergy.bendTorsion = oldTotalEnergy.bendTorsion;
 
-//   // Energy logging
-// #if DEBUG
-//   std::cerr << "volume" << ", " << numberOfMolecules << ", " << newTotalEnergy.potentialEnergy() << ", "
-//             << newTotalEnergy.frameworkMoleculeVDW << ", " << newTotalEnergy.moleculeMoleculeVDW << ", "
-//             << newTotalEnergy.tail << ", " << newTotalEnergy.frameworkMoleculeCharge << ", "
-//             << newTotalEnergy.moleculeMoleculeCharge << ", "
-//             << (newTotalEnergy.ewald_fourier + newTotalEnergy.ewald_self + newTotalEnergy.ewald_exclusion) << ", "
-//             << (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy()) << ", "
-//             << (std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
-//                          (system.pressure * (newVolume - oldVolume) +
-//                           (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
-//                              system.beta))
-//             << "\n";
-// #endif
   std::vector<double> mbxEnergyLog(7, 0);  // Vector to store energylog values
   
   if (system.useMBX)
@@ -164,11 +150,12 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
     }
   }
 
-  // Apply acceptance/rejection rule
-  if (random.uniform() < std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
+  double Pacc = std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
                                   (system.pressure * (newVolume - oldVolume) +
                                    (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
-                                      system.beta))
+                                      system.beta);
+  // Apply acceptance/rejection rule
+  if (random.uniform() < Pacc)
   {
     // Move accepted: update system state
     system.mc_moves_statistics.addAccepted(move);
@@ -181,7 +168,7 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
     if (system.useMBX)
     {
-          // Energy logging
+      // Energy logging
       std::cerr << "volume" << ", " << numberOfMolecules << ", " << newTotalEnergy.potentialEnergy() << ", "
                 << newTotalEnergy.frameworkMoleculeVDW << ", " << newTotalEnergy.tail << ", "
                 << newTotalEnergy.mbxEnergy << ", " << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ", "  // e2b
@@ -191,11 +178,17 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
                 << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ", "  // eelec_perm
                 << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ", "  // eelec_ind
                 << (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy()) << ", "
-                << (std::exp((numberOfMolecules + 1.0) * std::log(newVolume / oldVolume) -
-                             (system.pressure * (newVolume - oldVolume) +
-                              (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy())) *
-                                 system.beta))
-                << "\n";
+                << Pacc << "\n";
+    }
+    else
+    {
+      std::cerr << "volume" << ", " << numberOfMolecules << ", " << newTotalEnergy.potentialEnergy() << ", "
+            << newTotalEnergy.frameworkMoleculeVDW << ", " << newTotalEnergy.moleculeMoleculeVDW << ", "
+            << newTotalEnergy.tail << ", " << newTotalEnergy.frameworkMoleculeCharge << ", "
+            << newTotalEnergy.moleculeMoleculeCharge << ", "
+            << (newTotalEnergy.ewald_fourier + newTotalEnergy.ewald_self + newTotalEnergy.ewald_exclusion) << ", "
+            << (newTotalEnergy.potentialEnergy() - oldTotalEnergy.potentialEnergy()) << ", "
+            << Pacc << "\n";
     }
     return newTotalEnergy - oldTotalEnergy;
   }

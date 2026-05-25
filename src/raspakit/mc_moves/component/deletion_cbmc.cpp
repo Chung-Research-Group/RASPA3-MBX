@@ -169,23 +169,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     RunningEnergy energyDifferenceMBX;
     RunningEnergy newTotalEnergy = RunningEnergy();
     std::vector<double> mbxEnergyLog(7, 0.0);
-    if (!system.useMBX)
-    {
-      // Energy logging
-      // std::cerr << "deletion_cbmc" << "," << selectedComponent << ","
-      //           << (system.numberOfIntegerMoleculesPerComponent[selectedComponent] - 1) << ","
-      //           << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ","
-      //           << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ","
-      //           << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ","
-      //           << (oldTotalEnergy.tail + energyDifferenceFF.tail) << ","
-      //           << (oldTotalEnergy.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ","
-      //           << (oldTotalEnergy.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ","
-      //           << ((oldTotalEnergy.ewald_fourier + energyDifferenceFF.ewald_fourier) +
-      //               (oldTotalEnergy.ewald_self + energyDifferenceFF.ewald_self) +
-      //               (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion))
-      //           << "," << energyDifferenceFF.potentialEnergy() << "," << Pacc << "\n";
-    }
-    else
+    if (system.useMBX)
     {
       // Compute the total energy difference from FF. Now it just calculates everything all again, no matter it has been
       // calculated before or not. We can optimize this later by reusing the calculated energy difference from the CBMC
@@ -243,6 +227,19 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 
         return {-energyDifferenceMBX, double3(Pacc, 1.0 - Pacc, 0.0)};
       }
+      // Energy logging
+      std::cerr << "deletion_cbmc" << "," << selectedComponent << ","
+                << (system.numberOfIntegerMoleculesPerComponent[selectedComponent]) << ","
+                << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ","
+                << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ","
+                << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ","
+                << (oldTotalEnergy.tail + energyDifferenceFF.tail) << ","
+                << (oldTotalEnergy.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ","
+                << (oldTotalEnergy.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ","
+                << ((oldTotalEnergy.ewald_fourier + energyDifferenceFF.ewald_fourier) +
+                    (oldTotalEnergy.ewald_self + energyDifferenceFF.ewald_self) +
+                    (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion))
+                << "," << energyDifferenceFF.potentialEnergy() << "," << Pacc << "\n";
 
       // return the -energyDifferenceFF here.
       return {-energyDifferenceFF, double3(Pacc, 1.0 - Pacc, 0.0)};

@@ -125,7 +125,6 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   RunningEnergy energyDifferenceFF = growData->energies + energyFourierDifference + tailEnergyDifference;
 
   // Energy logging
-#if DEBUG
   std::cerr << "widom_FF" << "," << selectedComponent << "," << (energyDifferenceFF.potentialEnergy()) << ","
             << (energyDifferenceFF.frameworkMoleculeVDW) << "," << (energyDifferenceFF.moleculeMoleculeVDW) << ","
             << (energyDifferenceFF.tail) << "," << (energyDifferenceFF.frameworkMoleculeCharge) << ","
@@ -135,7 +134,6 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
             << "," << newMolecule[1].position.x << "," << newMolecule[1].position.y << "," << newMolecule[1].position.z
             << "," << newMolecule[2].position.x << "," << newMolecule[2].position.y << "," << newMolecule[2].position.z
             << "\n";
-#endif
 
   // MBX Calculator
   if (system.useMBX)
@@ -172,7 +170,6 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
     energyDifferenceMBX.tail = tailEnergyDifferenceFrameworkMolecule.tail;
 
     // Energy logging
-#if DEBUG
     std::cerr << "widom_MBX" << "," << selectedComponent << "," << energyDifferenceMBX.potentialEnergy() << ","
               << energyDifferenceMBX.frameworkMoleculeVDW << "," << energyDifferenceMBX.tail << ","
               << energyDifferenceMBX.mbxEnergy << "," << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ","  // e2b
@@ -185,7 +182,6 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
               << "," << newMolecule[1].position.x << "," << newMolecule[1].position.y << ","
               << newMolecule[1].position.z << "," << newMolecule[2].position.x << "," << newMolecule[2].position.y
               << "," << newMolecule[2].position.z << "\n";
-#endif
 
     double correctionFactorMBX =
         std::exp(-system.beta * (energyDifferenceMBX.potentialEnergy() - energyDifferenceFF.potentialEnergy()));
