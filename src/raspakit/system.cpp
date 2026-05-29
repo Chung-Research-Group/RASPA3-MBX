@@ -198,11 +198,9 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
     }
     else
     {
-      #if DEBUG
-            std::cerr
-                << "type,component,N,total,hg_VDW,gg_VDW,tail,hg_Charge,gg_Charge,E_ewald,E_diff,Pacc\n";  // Header for FF
+      std::cerr
+          << "type,component,N,total,hg_VDW,gg_VDW,tail,hg_Charge,gg_Charge,E_ewald,E_diff,Pacc\n";  // Header for FF
       // energy log
-      #endif
     }
   }
 
