@@ -353,6 +353,24 @@ ForceField::ForceField(std::string filePath)
                       item["parameters"].dump(), ex.what()));
     }
 
+    VDWParameters::Type type = VDWParameters::stringToEnum(jsonType);
+
+    // For morse potential.
+    if (type == VDWParameters::Type::Morse && scannedJsonParameters.size() != 3)
+    {
+      throw std::runtime_error(
+          std::format("[ReadForceFieldBinaryInteractions]: Morse potential requires "
+                      "three parameters [D, a, r0], received {}\n",
+                      item["parameters"].dump()));
+    }
+
+    if (type != VDWParameters::Type::Morse && scannedJsonParameters.size() < 2)
+    {
+      throw std::runtime_error(
+          std::format("[ReadForceFieldBinaryInteractions]: incorrect VDW parameters {}\n",
+                      item["parameters"].dump()));
+    }
+
     if (scannedJsonParameters.size() < 2)
     {
       throw std::runtime_error(
@@ -361,10 +379,27 @@ ForceField::ForceField(std::string filePath)
 
     double param0 = scannedJsonParameters[0];
     double param1 = scannedJsonParameters[1];
-    VDWParameters::Type type = VDWParameters::stringToEnum(jsonType);
+    
 
     data[indexA.value() * numberOfPseudoAtoms + indexB.value()] = VDWParameters(param0, param1, type);
     data[indexB.value() * numberOfPseudoAtoms + indexA.value()] = VDWParameters(param0, param1, type);
+
+    if (scannedJsonParameters.size() > 2)
+    {
+      data[indexA.value() * numberOfPseudoAtoms + indexB.value()].parameters.z =
+          scannedJsonParameters[2];
+      data[indexB.value() * numberOfPseudoAtoms + indexA.value()].parameters.z =
+          scannedJsonParameters[2];
+    }
+
+    if (scannedJsonParameters.size() > 3)
+    {
+      data[indexA.value() * numberOfPseudoAtoms + indexB.value()].parameters.w =
+          scannedJsonParameters[3];
+      data[indexB.value() * numberOfPseudoAtoms + indexA.value()].parameters.w =
+          scannedJsonParameters[3];
+    }
+
   }
 
   useCharge = parsed_data.value("ChargeMethod", "Ewald") != "None";
@@ -1124,6 +1159,27 @@ std::string ForceField::printForceFieldStatus() const
                      Units::displayedUnitOfEnergyString,
                      tailCorrections[i * numberOfPseudoAtoms + j] ? "true" : "false");
           break;
+        case VDWParameters::Type::Morse:
+          std::print(
+              stream,
+              "{:8} - {:8} {:14} D{}: {:9.5f} [{}], a:  {:8.5f} [{}⁻¹]\n",
+              pseudoAtoms[i].name,
+              pseudoAtoms[j].name,
+              "Morse",
+              Units::displayedUnitOfEnergyConversionString,
+              Units::EnergyToKelvin *
+                  data[i * numberOfPseudoAtoms + j].parameters.x,
+              Units::displayedUnitOfEnergyString,
+              data[i * numberOfPseudoAtoms + j].parameters.y,
+              Units::displayedUnitOfLengthString);
+
+          std::print(
+              stream,
+              "{:34} r0     {:9.5f} [{}]\n",
+              std::string(""),
+              data[i * numberOfPseudoAtoms + j].parameters.z,
+              Units::displayedUnitOfLengthString);
+          break;
         case VDWParameters::Type::None:
           std::print(stream, "{:8} - {:8} None\n", pseudoAtoms[i].name, pseudoAtoms[j].name);
           break;
@@ -1209,6 +1265,20 @@ nlohmann::json ForceField::jsonForceFieldStatus() const
           interactions[count]["σ/kʙ [Å]"] = data[i * numberOfPseudoAtoms + j].parameters.y;
           interactions[count]["shift [K]"] = data[i * numberOfPseudoAtoms + j].shift * Units::EnergyToKelvin;
           interactions[count]["tailCorrections"] = tailCorrections[i * numberOfPseudoAtoms + j];
+          break;
+        case VDWParameters::Type::Morse:
+          interactions[count]["typeA"] = pseudoAtoms[i].name;
+          interactions[count]["typeB"] = pseudoAtoms[j].name;
+          interactions[count]["potential"] = "Morse";
+          interactions[count]["D/kʙ [K]"] =
+              data[i * numberOfPseudoAtoms + j].parameters.x *
+              Units::EnergyToKelvin;
+          interactions[count]["a [Å⁻¹]"] =
+              data[i * numberOfPseudoAtoms + j].parameters.y;
+          interactions[count]["r0 [Å]"] =
+              data[i * numberOfPseudoAtoms + j].parameters.z;
+          interactions[count]["tailCorrections"] =
+              tailCorrections[i * numberOfPseudoAtoms + j];
           break;
         default:
           break;
