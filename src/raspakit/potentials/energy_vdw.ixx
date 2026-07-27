@@ -78,7 +78,8 @@ export namespace Potentials
       double r = std::sqrt(rr);
       double scaledDistance = -stiffness * (r - equilibriumDistance);
       double expTerm = std::exp(scaledDistance);
-      double energy = wellDepth * (1 - expTerm) * (1 - expTerm);
+      // double energy = wellDepth * (1 - expTerm) * (1 - expTerm);
+      double energy = wellDepth * ((1.0 - expTerm) * (1.0 - expTerm) - 1.0);
       return EnergyFactor(energy, 0.0);
     }
     case VDWParameters::Type::RepulsiveHarmonic:
