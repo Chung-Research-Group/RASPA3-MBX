@@ -17,6 +17,12 @@
 12. [Monte Carlo: Henry coefficient of methane, CO₂ and N₂ in MFI](#Example_basic_12)
 13. [Monte Carlo: radial distribution function of water](#Example_basic_13)
 14. [Molecular Dynamics: radial distribution function of water](#Example_basic_14)
+15. [Molecular Dynamics: butane and isobutane in FAU](#Example_basic_15)
+16. [Monte Carlo: molecule properties of semi-flexible diethyl-biphenyl in box](#Example_basic_16)
+17. [Molecular Dynamics: molecule properties of semi-flexible diethyl-biphenyl in box](#Example_basic_17)
+19. [Minimization: CO₂ in IRMOF-1](#Example_basic_19)
+20. [Monte Carlo: flexible cyclohexane in box (ring-closure CBMC)](#Example_basic_20)
+21. [Molecular Dynamics: flexible cyclohexane in box](#Example_basic_21)
 
 
 #### Monte Carlo: methane in box <a name="Example_basic_1"></a>
@@ -27,7 +33,7 @@ The inputs for the simulation are specified in a json-file called `simulation.js
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 10000,
+  "NumberOfProductionCycles" : 10000,
   "NumberOfInitializationCycles" : 1000,
   "PrintEvery" : 1000,
 
@@ -54,6 +60,7 @@ The inputs for the simulation are specified in a json-file called `simulation.js
   ]
 }
 ```
+
 There are global settings, but also settings for `Systems` and `Components`. The latter are arrays of sections with options. In this example, we specify one system of type `Box` with box-lengths \f$30 \times 30 \times 30\f$ &Aring;. We also set the option to make movies to `true` and sample the movie-snapshots every 10 cycles.
 
 In RASPA, the cycle is define as max(20,\f$N\f$) steps, where \f$N\f$ is the number of molecules in the system. In every cycle, each of the molecules has on average been used for a Monte Carlo move (accepted or rejected). There is a minimum of 20 steps to avoid that low-density systems or not sampled well. The definition of a cycle is less dependent on the system size. The number of Monte Carlo steps is roughly the number of cycles times the average number of molecules.
@@ -98,7 +105,6 @@ The methane molecule is defined in `methane.json`
   "CriticalTemperature" : 190.564,
   "CriticalPressure" : 4599200.0,
   "AcentricFactor" : 0.01142,
-  "Type" : "rigid",
   "pseudoAtoms" :
     [
       ["CH4",[0.0, 0.0, 0.0]]
@@ -152,7 +158,7 @@ RASPA has a build-in structure of being able to simulate several systems at the 
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 10000,
+  "NumberOfProductionCycles" : 10000,
   "NumberOfInitializationCycles" : 1000,
   "PrintEvery" : 1000,
 
@@ -204,7 +210,6 @@ with the N₂ defined as
   "CriticalTemperature": 126.192,
   "CriticalPressure": 3395800.0,
   "AcentricFactor": 0.0372,
-  "Type": "rigid",
   "pseudoAtoms": [
     ["N_n2", [0.0, 0.0, 0.55]],
     ["N_com", [0.0, 0.0, 0.0]],
@@ -218,7 +223,6 @@ and CO₂ defined as
   "CriticalTemperature": 304.1282,
   "CriticalPressure": 7377300.0,
   "AcentricFactor": 0.22394,
-  "Type": "rigid",
   "pseudoAtoms": [
     ["O_co2", [0.0, 0.0, 1.149]],
     ["C_co2", [0.0, 0.0, 0.0]],
@@ -352,7 +356,7 @@ At every MC-step, each move will be randomly selected with 1/3 probability.
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 10000,
+  "NumberOfProductionCycles" : 10000,
   "NumberOfInitializationCycles" : 1000,
   "PrintEvery" : 1000,
 
@@ -401,7 +405,7 @@ A Monte Carlo run of 50 propane and 50 butane molecules in a \f$30\times30\times
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 20000,
+  "NumberOfProductionCycles" : 20000,
   "NumberOfInitializationCycles" : 5000,
   "PrintEvery" : 1000,
 
@@ -444,7 +448,6 @@ The intra-molecular force field contains bond and bend terms for `propane.json`
   "CriticalTemperature" : 369.825,
   "CriticalPressure" : 4247660.0,
   "AcentricFactor" : 0.1524,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3", [0.0, 0.0, 0.0]],
@@ -475,7 +478,6 @@ and bond, bend, and torsion terms for `butane.json`
   "CriticalTemperature" : 425.125,
   "CriticalPressure" : 3796000.0,
   "AcentricFactor" : 0.201,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3", [0.0, 0.0, 0.0]],
@@ -720,7 +722,7 @@ A molecular dynamics run of a methane fluid at 300K and a density of 98.7 kg / m
 ```json
 {
   "SimulationType" : "MolecularDynamics",
-  "NumberOfCycles" : 1000000,
+  "NumberOfProductionCycles" : 1000000,
   "NumberOfInitializationCycles" : 1000,
   "NumberOfEquilibrationCycles" : 10000,
   "PrintEvery" : 10000,
@@ -902,7 +904,7 @@ plt.savefig('example_basic_5_msd.png')
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 5000,
+  "NumberOfProductionCycles" : 5000,
   "NumberOfInitializationCycles" : 5000,
   "PrintEvery" : 1000,
 
@@ -1011,7 +1013,7 @@ Total energy/kʙ
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 20000,
+  "NumberOfProductionCycles" : 20000,
   "NumberOfInitializationCycles" : 0,
   "PrintEvery" : 1000,
 
@@ -1068,7 +1070,7 @@ Total energy/kʙ
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 50000,
+  "NumberOfProductionCycles" : 50000,
   "NumberOfInitializationCycles" : 5000,
   "PrintEvery" : 1000,
 
@@ -1198,7 +1200,7 @@ Component 0 [methane]
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 20000,
+  "NumberOfProductionCycles" : 20000,
   "NumberOfInitializationCycles" : 5000,
   "PrintEvery" : 1000,
 
@@ -1273,7 +1275,7 @@ Component 0 (butane)
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
   "NumberOfInitializationCycles" : 50000,
   "NumberOfEquilibrationCycles" : 50000,
   "PrintEvery" : 5000,
@@ -1338,7 +1340,7 @@ Component 0 (CO2)
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
   "NumberOfInitializationCycles" : 20000,
   "PrintEvery" : 5000,
 
@@ -1541,7 +1543,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 20000,
+  "NumberOfProductionCycles" : 20000,
   "NumberOfInitializationCycles" : 0,
   "PrintEvery" : 1000,
 
@@ -1583,7 +1585,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 ```json
 {
   "SimulationType" : "MolecularDynamics",
-  "NumberOfCycles" : 10000,
+  "NumberOfProductionCycles" : 10000,
   "NumberOfInitializationCycles" : 5000,
   "NumberOfEquilibrationCycles" : 20000,
   "PrintEvery" : 5000,
@@ -1623,7 +1625,7 @@ H1   H      0.3802     0.228      0.8802      0.156
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 10000,
+  "NumberOfProductionCycles" : 10000,
   "NumberOfInitializationCycles" : 10000,
   "PrintEvery" : 100,
 
@@ -1651,6 +1653,214 @@ H1   H      0.3802     0.228      0.8802      0.156
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 1.0,
       "CreateNumberOfMolecules" : 512
+    }
+  ]
+}
+```
+
+#### Monte Carlo: molecule properties of semi-flexible diethyl-biphenyl in box<a name="Example_basic_16"></a>
+
+This example computes probability histograms of the intra-molecular geometry (bond lengths, bend angles, and torsion angles) for 32 united-atom 4,4'-diethyl-biphenyl molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 298 K. The histograms are written to the `molecule_properties` directory.
+
+The molecule is semi-flexible: the two aromatic 6-rings are declared as rigid bodies (`"RigidBodies"` in the molecule file), connected to each other by a flexible biphenyl bond that carries a twist torsion, and to the flexible ethyl tails by flexible junction bonds. Interactions entirely inside a rigid body are omitted (the geometry of a rigid body is fixed); only the junction bonds, bends, and torsions crossing a rigid-body boundary are defined and sampled during the CBMC growth. The rigid rings are grown as single rigid bodies hinged on their connecting atoms, with the junction bends sampled by an internal Monte-Carlo scheme and the spin about the junction bond biased by the crossing torsions.
+
+The partial-reinsertion move regrows either an ethyl tail or a whole ring plus the far tail; the fixed-atom sets must always contain each rigid body either entirely or not at all.
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 1000000,
+  "NumberOfInitializationCycles" : 10000,
+  "PrintEvery" : 50000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 298.0,
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "diethyl-biphenyl",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "PartialReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 32
+    }
+  ]
+}
+```
+
+The rigid sub-units are declared in the molecule file `diethyl-biphenyl.json`; every atom not listed in a rigid body is flexible:
+
+```json
+  "RigidBodies" : [
+    [2, 3, 4, 5, 6, 7],
+    [8, 9, 10, 11, 12, 13]
+  ]
+```
+
+#### Minimization: CO₂ in IRMOF-1 <a name="Example_basic_19"></a>
+
+This fixed-cell example minimizes one rigid CO₂ molecule in IRMOF-1 with Ewald electrostatics and the Baker
+eigenvector-following driver. Molecular positions are initialized deterministically by
+`CreateNumberOfMolecules` and `RandomSeed`; rigid translations and quaternion-tangent rotations are optimized.
+
+Run from `examples/basic/19_minimization_co2_in_irmof_1`:
+
+```bash
+raspa3
+```
+
+Progress is written to `output/minimization.s0.txt`, and the final energy, convergence diagnostics, and atomic
+coordinates are written to `output/minimization.s0.json`. A successful run ends with
+`Final minimization status: converged=true`.
+
+#### Molecular Dynamics: molecule properties of semi-flexible diethyl-biphenyl in box<a name="Example_basic_17"></a>
+
+This example is the molecular-dynamics counterpart of example 16. It computes the same intra-molecular geometry histograms (bond lengths, bend angles, and torsion angles) using an NVT molecular dynamics simulation of 32 semi-flexible united-atom 4,4'-diethyl-biphenyl molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 298 K.
+
+The molecule definition is identical to example 16: the two aromatic 6-rings are rigid bodies, propagated in MD as rigid bodies (center-of-mass translation plus quaternion rotation), while the ethyl tails and the biphenyl bond are flexible and are integrated as Cartesian atoms. Only the junction bonds, bends, and torsions crossing a rigid-body boundary contribute to the intra-molecular forces; interactions entirely inside a rigid body are omitted. Comparing the histograms in `molecule_properties` against those of example 16 verifies that the CBMC sampling and the MD integration produce the same conformational distributions.
+
+```json
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfProductionCycles" : 1000000,
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "PrintEvery" : 10000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 298.0,
+      "Ensemble" : "NVT",
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "diethyl-biphenyl",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 32
+    }
+  ]
+}
+```
+
+#### Monte Carlo: flexible cyclohexane in box (ring-closure CBMC)<a name="Example_basic_20"></a>
+
+This example samples 30 fully flexible united-atom cyclohexane molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 300 K. It demonstrates growing a flexible ring with ring-closure configurational-bias Monte Carlo.
+
+Rings need no declaration in the molecule file: they are inferred from cycles in the `"Connectivity"` bond graph. The internal bonds, bends, and torsions of a flexible ring are kept and sampled during growth. During CBMC insertion, deletion, and reinsertion the whole ring is grown as a single ring-closure step: the internal ring conformation is sampled from its Boltzmann distribution by an internal Metropolis Monte-Carlo (which keeps the ring closed through the closure bond and carries no Rosenbluth weight, exactly like the flexible bond/bend Monte-Carlo), and the ring is then placed with the same coupled-decoupled orientational bias used for a rigid fragment. When a ring carries flexible tails, they are grown off the closed ring with the existing coupled-decoupled scheme.
+
+```json
+  "Connectivity" : [
+    [0, 1],
+    [1, 2],
+    [2, 3],
+    [3, 4],
+    [4, 5],
+    [5, 0]
+  ],
+  "Bonds" : [
+    [["CH2_c", "CH2_c"], "HARMONIC", [96500.0, 1.54]]
+  ],
+  "Bends" : [
+    [["CH2_c", "CH2_c", "CH2_c"], "HARMONIC", [62500.0, 114.0]]
+  ],
+  "Torsions" : [
+    [["CH2_c", "CH2_c", "CH2_c", "CH2_c"], "TRAPPE", [0.0, 355.03, -68.19, 791.32]]
+  ]
+```
+
+Fused and bridged polycyclic systems are supported: all rings of a fused or bridged cluster are grown together as one unit, with every closure bond maintained during the internal Monte-Carlo sampling. Because ring bonds and bends are sampled during growth, use flexible (harmonic) bond and bend potentials rather than fixed lengths.
+
+Run from `examples/basic/20_mc_flexible_cyclohexane_in_box`:
+
+```bash
+raspa3
+```
+
+```json
+{
+  "SimulationType" : "MonteCarlo",
+  "NumberOfProductionCycles" : 10000,
+  "NumberOfInitializationCycles" : 1000,
+  "PrintEvery" : 1000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true,
+      "OutputPDBMovie" : true,
+      "SampleMovieEvery" : 10
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "cyclohexane",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 30
+    }
+  ]
+}
+```
+
+#### Molecular Dynamics: flexible cyclohexane in box<a name="Example_basic_21"></a>
+
+This example is the molecular-dynamics counterpart of example 20: 30 fully flexible cyclohexane molecules in a \f$30 \times 30 \times 30\f$ &Aring; box at 300 K, integrated with NVT dynamics. Because the molecule has no rigid body, every ring atom is integrated as a Cartesian atom under the ring bond, bend, and torsion potentials. Comparing the intra-molecular geometry histograms in `molecule_properties` against those of example 20 verifies that the ring-closure CBMC sampling and the MD integration produce the same ring conformational distributions.
+
+```json
+{
+  "SimulationType" : "MolecularDynamics",
+  "NumberOfProductionCycles" : 100000,
+  "NumberOfInitializationCycles" : 5000,
+  "NumberOfEquilibrationCycles" : 10000,
+  "PrintEvery" : 5000,
+
+  "Systems" :
+  [
+    {
+      "Type" : "Box",
+      "BoxLengths" : [30.0, 30.0, 30.0],
+      "ExternalTemperature" : 300.0,
+      "Ensemble" : "NVT",
+      "ChargeMethod" : "None",
+      "ComputeMoleculeProperties" : true
+    }
+  ],
+
+  "Components" :
+  [
+    {
+      "Name" : "cyclohexane",
+      "TranslationProbability" : 1.0,
+      "RotationProbability" : 1.0,
+      "ReinsertionProbability" : 1.0,
+      "CreateNumberOfMolecules" : 30
     }
   ]
 }

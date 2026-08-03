@@ -1,29 +1,11 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <numeric>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 export module energy_status;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
-import energy_factor;
+import energy_dudlambda;
 import energy_status_intra;
 import energy_status_inter;
 import component;
@@ -33,7 +15,8 @@ export struct EnergyStatus
 {
   EnergyStatus() : totalEnergy(0.0, 0.0), polarizationEnergy(0.0, 0.0) {};
 
-  EnergyStatus(std::size_t numberOfExternalFields, std::size_t numberOfFrameworks, std::size_t numberOfComponents, bool useMBX=false)
+  EnergyStatus(std::size_t numberOfExternalFields, std::size_t numberOfFrameworks, std::size_t numberOfComponents,
+               bool useMBX = false)
       : numberOfExternalFields(numberOfExternalFields),
         numberOfFrameworks(numberOfFrameworks),
         numberOfComponents(numberOfComponents),
@@ -72,9 +55,9 @@ export struct EnergyStatus
     return interComponentEnergies[compA * numberOfComponents + compB];
   }
 
-  Potentials::EnergyFactor interEnergyComponent(std::size_t compA)
+  EnergyDuDlambda interEnergyComponent(std::size_t compA)
   {
-    Potentials::EnergyFactor sum(0.0, 0.0);
+    EnergyDuDlambda sum(0.0, 0.0);
     for (std::size_t i = 0; i < numberOfComponents; i++)
     {
       sum += interComponentEnergies[compA * numberOfComponents + i].totalInter;
@@ -84,8 +67,8 @@ export struct EnergyStatus
 
   void zero()
   {
-    totalEnergy = Potentials::EnergyFactor(0.0, 0.0);
-    polarizationEnergy = Potentials::EnergyFactor(0.0, 0.0);
+    totalEnergy = EnergyDuDlambda(0.0, 0.0);
+    polarizationEnergy = EnergyDuDlambda(0.0, 0.0);
     dUdlambda = 0.0;
     translationalKineticEnergy = 0.0;
     rotationalKineticEnergy = 0.0;
@@ -108,70 +91,54 @@ export struct EnergyStatus
     frameworkMoleculeEnergy.zero();
     interEnergy.zero();
 
-    if ( ! useMBX )
+    for (std::size_t i = 0; i < this->intraComponentEnergies.size(); ++i)
     {
-      for (std::size_t i = 0; i < this->intraComponentEnergies.size(); ++i)
-      {
-        intraEnergy += intraComponentEnergies[i];
-      }
-      for (std::size_t i = 0; i < this->externalFieldComponentEnergies.size(); ++i)
-      {
-        externalFieldComponentEnergies[i].sumTotal();
-        externalFieldMoleculeEnergy += externalFieldComponentEnergies[i];
-      }
-      for (std::size_t i = 0; i < this->frameworkComponentEnergies.size(); ++i)
-      {
-        frameworkComponentEnergies[i].sumTotal();
-        frameworkMoleculeEnergy += frameworkComponentEnergies[i];
-      }
-      for (std::size_t i = 0; i < this->interComponentEnergies.size(); ++i)
-      {
-        interComponentEnergies[i].sumTotal();
-        interEnergy += interComponentEnergies[i];
-      }
+      intraEnergy += intraComponentEnergies[i];
+    }
+    for (std::size_t i = 0; i < this->externalFieldComponentEnergies.size(); ++i)
+    {
+      externalFieldComponentEnergies[i].sumTotal();
+      externalFieldMoleculeEnergy += externalFieldComponentEnergies[i];
+    }
+    for (std::size_t i = 0; i < this->frameworkComponentEnergies.size(); ++i)
+    {
+      frameworkComponentEnergies[i].sumTotal();
+      frameworkMoleculeEnergy += frameworkComponentEnergies[i];
+    }
+    for (std::size_t i = 0; i < this->interComponentEnergies.size(); ++i)
+    {
+      interComponentEnergies[i].sumTotal();
+      interEnergy += interComponentEnergies[i];
+    }
 
-      totalEnergy =
-        intraEnergy.total() + externalFieldMoleculeEnergy.total() + frameworkMoleculeEnergy.total() +
-        interEnergy.total() + polarizationEnergy +
-        Potentials::EnergyFactor(translationalKineticEnergy + rotationalKineticEnergy + noseHooverEnergy, 0.0);
+    if (useMBX)
+    {
+      // MBX replaces guest intra/intermolecular and electrostatic terms. External fields remain independent,
+      // while the classical framework-guest VDW interaction and its tail correction are retained.
+      totalEnergy = externalFieldMoleculeEnergy.total() + frameworkMoleculeEnergy.VanDerWaals +
+                    frameworkMoleculeEnergy.VanDerWaalsTailCorrection + EnergyDuDlambda(mbxEnergy, 0.0);
     }
     else
     {
-      // In case of using MBX, the intraEnergies, interEnergies, and polarizationEnergies are handled by MBX.
-      // For frameworkMolecule interactions, we need VDW contribution only.
-      for (std::size_t i = 0; i < this->externalFieldComponentEnergies.size(); ++i)
-      {
-        externalFieldComponentEnergies[i].sumTotal();
-        externalFieldMoleculeEnergy += externalFieldComponentEnergies[i];
-      }
-      for (std::size_t i = 0; i < this->frameworkComponentEnergies.size(); ++i)
-      {
-        // Turning off CoulombicReal and CoulombicFourier terms in frameworkComponentEnergies 
-        frameworkComponentEnergies[i].CoulombicReal.energy = 0.0; 
-        frameworkComponentEnergies[i].CoulombicReal.dUdlambda = 0.0; 
-        
-        frameworkComponentEnergies[i].CoulombicFourier.energy = 0.0; 
-        frameworkComponentEnergies[i].CoulombicFourier.dUdlambda = 0.0; 
-
-        frameworkComponentEnergies[i].sumTotal();
-        frameworkMoleculeEnergy += frameworkComponentEnergies[i];
-      }
-      // The totalEnergy is an instance of EnergyFactor here.  
-      totalEnergy =
-        externalFieldMoleculeEnergy.total() + 
-        frameworkMoleculeEnergy.total() + 
-        Potentials::EnergyFactor(mbxEnergy, 0.0) +  
-        Potentials::EnergyFactor(translationalKineticEnergy + rotationalKineticEnergy + noseHooverEnergy, 0.0);
-    } 
+      totalEnergy = intraEnergy.total() + externalFieldMoleculeEnergy.total() + frameworkMoleculeEnergy.total() +
+        interEnergy.total() + polarizationEnergy;
+    }
   }
 
   void turnOffClassicalTerms()
   {
-    polarizationEnergy = Potentials::EnergyFactor(0.0, 0.0);
+    polarizationEnergy = EnergyDuDlambda(0.0, 0.0);
     std::fill(intraComponentEnergies.begin(), intraComponentEnergies.end(), EnergyIntra());
     std::fill(interComponentEnergies.begin(), interComponentEnergies.end(), EnergyInter());
+    for (EnergyInter& energy : frameworkComponentEnergies)
+    {
+      energy.CoulombicReal = EnergyDuDlambda(0.0, 0.0);
+      energy.CoulombicFourier = EnergyDuDlambda(0.0, 0.0);
+      energy.sumTotal();
+    }
+    sumTotal();
   }
-  
+
   std::string printEnergyStatus(const std::vector<Component>& components, const std::string& label);
 
   inline EnergyStatus& operator+=(const EnergyStatus& b)
@@ -242,7 +209,7 @@ export struct EnergyStatus
 
   inline EnergyStatus operator-() const
   {
-    EnergyStatus v(numberOfExternalFields, numberOfFrameworks, numberOfComponents);
+    EnergyStatus v(numberOfExternalFields, numberOfFrameworks, numberOfComponents, useMBX);
     v.totalEnergy = -totalEnergy;
     v.polarizationEnergy = -polarizationEnergy;
     v.dUdlambda = -dUdlambda;
@@ -274,11 +241,11 @@ export struct EnergyStatus
     return v;
   }
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
   std::size_t numberOfExternalFields;
   std::size_t numberOfFrameworks;
   std::size_t numberOfComponents;
-  Potentials::EnergyFactor totalEnergy;
+  EnergyDuDlambda totalEnergy;
   EnergyIntra intraEnergy;
   EnergyInter externalFieldMoleculeEnergy;
   EnergyInter frameworkMoleculeEnergy;
@@ -287,21 +254,23 @@ export struct EnergyStatus
   std::vector<EnergyInter> externalFieldComponentEnergies;
   std::vector<EnergyInter> frameworkComponentEnergies;
   std::vector<EnergyInter> interComponentEnergies;
-  Potentials::EnergyFactor polarizationEnergy;
+  EnergyDuDlambda polarizationEnergy;
   double dUdlambda;
   double translationalKineticEnergy;
   double rotationalKineticEnergy;
   double noseHooverEnergy;
-  bool useMBX;
-  double mbxEnergy;
+  bool useMBX{false};
+  double mbxEnergy{0.0};
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const EnergyStatus& e);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, EnergyStatus& e);
+
+  std::string repr() const;
 };
 
 export inline EnergyStatus operator+(const EnergyStatus& a, const EnergyStatus& b)
 {
-  EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
+  EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents, a.useMBX);
   m.totalEnergy = a.totalEnergy + b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy + b.polarizationEnergy;
   m.dUdlambda = a.dUdlambda + b.dUdlambda;
@@ -335,7 +304,7 @@ export inline EnergyStatus operator+(const EnergyStatus& a, const EnergyStatus& 
 
 export inline EnergyStatus operator-(const EnergyStatus& a, const EnergyStatus& b)
 {
-  EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
+  EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents, a.useMBX);
   m.totalEnergy = a.totalEnergy - b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy - b.polarizationEnergy;
   m.dUdlambda = a.dUdlambda - b.dUdlambda;
@@ -369,7 +338,7 @@ export inline EnergyStatus operator-(const EnergyStatus& a, const EnergyStatus& 
 
 export inline EnergyStatus operator*(const EnergyStatus& a, const EnergyStatus& b)
 {
-  EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
+  EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents, a.useMBX);
   m.totalEnergy = a.totalEnergy * b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy * b.polarizationEnergy;
   m.dUdlambda = a.dUdlambda * b.dUdlambda;
@@ -403,7 +372,7 @@ export inline EnergyStatus operator*(const EnergyStatus& a, const EnergyStatus& 
 
 export inline EnergyStatus operator*(const double& a, const EnergyStatus& b)
 {
-  EnergyStatus m(b.numberOfExternalFields, b.numberOfFrameworks, b.numberOfComponents);
+  EnergyStatus m(b.numberOfExternalFields, b.numberOfFrameworks, b.numberOfComponents, b.useMBX);
   m.totalEnergy = a * b.totalEnergy;
   m.polarizationEnergy = a * b.polarizationEnergy;
   m.dUdlambda = a * b.dUdlambda;
@@ -437,7 +406,7 @@ export inline EnergyStatus operator*(const double& a, const EnergyStatus& b)
 
 export inline EnergyStatus operator/(const EnergyStatus& a, const double& b)
 {
-  EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
+  EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents, a.useMBX);
   m.totalEnergy = a.totalEnergy / b;
   m.polarizationEnergy = a.polarizationEnergy / b;
   m.dUdlambda = a.dUdlambda / b;
@@ -471,7 +440,7 @@ export inline EnergyStatus operator/(const EnergyStatus& a, const double& b)
 
 export inline EnergyStatus sqrt(const EnergyStatus& a)
 {
-  EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
+  EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents, a.useMBX);
   m.totalEnergy = sqrt(a.totalEnergy);
   m.polarizationEnergy = sqrt(a.polarizationEnergy);
   m.dUdlambda = std::sqrt(a.dUdlambda);

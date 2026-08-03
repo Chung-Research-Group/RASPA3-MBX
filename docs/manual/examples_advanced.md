@@ -6,8 +6,8 @@
 1. [Monte Carlo: CFCMC Gibbs CO₂](#Example_advanced_1)
 2. [Monte Carlo: CFCMC adsorption of CO₂ in MFI](#Example_advanced_2)
 3. [Monte Carlo: CFCMC binary mixture adsorption of CO₂ and N₂ in DMOF](#Example_advanced_3)
-4. [Transition Matrix Monte Carlo: methane in Tobacco-667](#Example_advanced_4)
-5. [HMC CFCMC co2 in MFI](#Example_advanced_5)
+4. [HMC CFCMC co2 in MFI](#Example_advanced_4)
+5. [Transition Matrix Monte Carlo: methane in Tobacco-667](#Example_advanced_5)
 
 
 #### Monte Carlo: CFCMC Gibbs CO₂<a name="Example_advanced_1"></a>
@@ -15,7 +15,7 @@
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
   "NumberOfInitializationCycles" : 50000,
   "NumberOfEquilibrationCycles" : 100000,
   "PrintEvery" : 5000,
@@ -46,7 +46,7 @@
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
-      "Gibbs_CFCMC_SwapProbability" : 1.0,
+      "GibbsSwapCFCMCProbability" : 1.0,
       "WidomProbability" : 1.0,
       "CreateNumberOfMolecules" : [256, 256]
     }
@@ -111,7 +111,7 @@ Vapor
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 50000,
+  "NumberOfProductionCycles" : 50000,
   "NumberOfInitializationCycles" : 25000,
   "NumberOfEquilibrationCycles" : 25000,
   "PrintEvery" : 5000,
@@ -429,12 +429,12 @@ Component 0 [CO2]
 }
 ```
 
-#### Transition Matrix Monte Carlo: methane in Tobacco-667<a name="Example_advanced_4"></a>
+#### HMC CFCMC co2 in MFI<a name="Example_advanced_4"></a>
 
 ```json
 {
   "SimulationType": "MonteCarlo",
-  "NumberOfCycles": 10000,
+  "NumberOfProductionCycles": 10000,
   "NumberOfInitializationCycles": 5000,
   "NumberOfEquilibrationCycles": 5000,
   "PrintEvery": 1000,
@@ -471,13 +471,13 @@ Component 0 [CO2]
 }
 ```
 
-#### HMC CFCMC co2 in MFI<a name="Example_advanced_5"></a>
+#### Transition Matrix Monte Carlo: methane in Tobacco-667<a name="Example_advanced_5"></a>
 
 
 ```json
 {
   "SimulationType" : "MonteCarloTransitionMatrix",
-  "NumberOfCycles" : 200000,
+  "NumberOfProductionCycles" : 200000,
   "NumberOfInitializationCycles" : 100000,
   "PrintEvery" : 5000,
 

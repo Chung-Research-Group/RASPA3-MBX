@@ -1,20 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <string>
-#include <vector>
-#endif
-
 module skseitzintegermatrix;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import int3x3;
@@ -64,6 +52,24 @@ std::vector<SKSeitzIntegerMatrix> SKSeitzIntegerMatrix::SeitzMatrices(std::strin
 
   std::vector<SKSeitzIntegerMatrix> matrices = std::vector<SKSeitzIntegerMatrix>();
   matrices.resize(m);
+
+  for (std::size_t i = 0; i < m; i++)
+  {
+    char x = encoding[3 * i];
+    char y = encoding[3 * i + 1];
+    char z = encoding[3 * i + 2];
+
+    matrices[i] = SKSeitzIntegerMatrix(x, y, z);
+  }
+
+  return matrices;
+}
+
+std::vector<SKSeitzIntegerMatrix> SKSeitzIntegerMatrix::SeitzMatricesFromGenerators(std::string encoding)
+{
+  std::size_t m = std::min(encoding.size() / 3, static_cast<std::size_t>(3));
+
+  std::vector<SKSeitzIntegerMatrix> matrices(3, SKSeitzIntegerMatrix(SKRotationMatrix::identity, int3(0, 0, 0)));
 
   for (std::size_t i = 0; i < m; i++)
   {

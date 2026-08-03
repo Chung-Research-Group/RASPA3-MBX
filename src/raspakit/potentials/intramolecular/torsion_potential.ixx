@@ -1,36 +1,15 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstring>
-#include <format>
-#include <fstream>
-#include <map>
-#include <print>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#endif
-
 export module torsion_potential;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import archive;
 import randomnumbers;
 import double3;
+import double3x3;
+import units;
 import units;
 
 /**
@@ -60,7 +39,8 @@ export enum class TorsionType : std::size_t {
   OPLS = 11,
   MM3 = 12,
   FourierSeries = 13,
-  FourierSeries2 = 14
+  FourierSeries2 = 14,
+  CVFFBlocked = 15
 };
 
 /**
@@ -114,7 +94,7 @@ export struct TorsionPotential
    *
    * A static vector indicating the number of parameters needed for each torsion type.
    */
-  static inline std::array<std::size_t, 8> numberOfTorsionParameters{0, 2, 2, 1, 2, 2, 2, 1};
+  static inline std::array<std::size_t, 16> numberOfTorsionParameters{1, 2, 2, 3, 6, 4, 5, 5, 3, 3, 3, 4, 3, 6, 6, 5};
 
   /**
    * \brief Mapping of torsion type strings to TorsionType enums.
@@ -127,9 +107,12 @@ export struct TorsionPotential
       {"HARMONIC_COSINE", TorsionType::HarmonicCosine},
       {"THREE_COSINE", TorsionType::ThreeCosine},
       {"SIX_COSINE", TorsionType::RyckaertBellemans},
+      {"RYCKAERT_BELLEMANS", TorsionType::RyckaertBellemans},
       {"TRAPPE", TorsionType::TraPPE},
       {"TRAPPE_EXTENDED", TorsionType::TraPPE_Extended},
+      {"MOD_TRAPPE", TorsionType::ModifiedTraPPE},
       {"CVFF", TorsionType::CVFF},
+      {"CVFF_BLOCKED", TorsionType::CVFFBlocked},
       {"CFF", TorsionType::CFF},
       {"CFF2", TorsionType::CFF2},
       {"OPLS", TorsionType::OPLS},
@@ -138,6 +121,11 @@ export struct TorsionPotential
       {"FOURIER_SERIES2", TorsionType::FourierSeries2}};
 
   double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc, const double3 &posD) const;
+
+  std::tuple<double, std::array<double3, 4>, double3x3> potentialEnergyGradientStrain(const double3 &posA,
+                                                                                        const double3 &posB,
+                                                                                        const double3 &posC,
+                                                                                        const double3 &posD) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const TorsionPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TorsionPotential &b);

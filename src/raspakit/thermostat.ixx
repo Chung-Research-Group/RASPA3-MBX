@@ -1,22 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <print>
-#include <tuple>
-#include <vector>
-#endif
-
 export module thermostat;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import units;
@@ -41,6 +27,14 @@ export struct Thermostat
    */
   Thermostat() {}
 
+  Thermostat(std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps, double timeScaleParameterThermostat):
+      thermostatChainLength(thermostatChainLength),
+      numberOfYoshidaSuzukiSteps(numberOfYoshidaSuzukiSteps),
+      timeScaleParameterThermostat(timeScaleParameterThermostat)
+  {
+  }
+      
+
   /**
    * \brief Constructs a Thermostat with specified parameters.
    *
@@ -52,24 +46,25 @@ export struct Thermostat
    * \param numberOfYoshidaSuzukiSteps The number of Yoshida-Suzuki steps for integration.
    * \param deltaT The simulation time step.
    * \param translationalDegreesOfFreedom The number of translational degrees of freedom.
-   * \param rotationalDgreesOfFreedom The number of rotational degrees of freedom.
+   * \param rotationalDegreesOfFreedom The number of rotational degrees of freedom.
    */
-  Thermostat(double temperature, std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps,
-             double deltaT, std::size_t translationalDegreesOfFreedom, std::size_t rotationalDgreesOfFreedom);
+  Thermostat(double temperature, double timeStep,
+             std::size_t translationalDegreesOfFreedom, std::size_t rotationaleDegreesOfFreedom,
+             std::size_t thermostatChainLength, std::size_t numberOfYoshidaSuzukiSteps,
+             double timeScaleParameterThermostat);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization.
 
   double temperature;                         ///< The target temperature for the thermostat.
-  std::size_t thermostatChainLength;          ///< The length of the thermostat chain.
-  double timeScaleParameterThermostat{0.15};  ///< Time scale parameter for the thermostat.
-  std::size_t numberOfRespaSteps{5};          ///< Number of RESPA steps.
-  std::size_t numberOfYoshidaSuzukiSteps{5};  ///< Number of Yoshida-Suzuki steps for integration.
-  double deltaT{};                            ///< The simulation time step.
-
+  double timeStep{};                          ///< The simulation time step.
   std::size_t
       translationalCenterOfMassConstraint{};  ///< Constraint on translational center of mass degrees of freedom.
   std::size_t translationalDegreesOfFreedom;  ///< Number of translational degrees of freedom.
-  std::size_t rotationalDgreesOfFreedom;      ///< Number of rotational degrees of freedom.
+  std::size_t rotationalDegreesOfFreedom;     ///< Number of rotational degrees of freedom.
+  std::size_t thermostatChainLength;          ///< The length of the thermostat chain.
+  std::size_t numberOfRespaSteps{5};          ///< Number of RESPA steps.
+  std::size_t numberOfYoshidaSuzukiSteps{5};  ///< Number of Yoshida-Suzuki steps for integration.
+  double timeScaleParameterThermostat{0.15};   ///< Time scale parameter for the thermostat.
 
   std::vector<double>
       thermostatDegreesOfFreedomTranslation;          ///< Degrees of freedom for the translational thermostat chain.
@@ -94,6 +89,9 @@ export struct Thermostat
    * \param random A reference to a RandomNumber generator.
    */
   void initialize(RandomNumber &random);
+  void refreshDegreesOfFreedom(std::size_t translationalDegreesOfFreedom,
+                               std::size_t rotationalDegreesOfFreedom,
+                               std::size_t translationalCenterOfMassConstraint);
 
   /**
    * \brief Performs a Nose-Hoover NVT integration step.

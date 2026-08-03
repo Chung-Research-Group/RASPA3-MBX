@@ -1,32 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <type_traits>
-#include <vector>
-#endif
-
 module energy_status;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import stringutils;
@@ -34,11 +10,9 @@ import units;
 import component;
 import energy_status_intra;
 import energy_status_inter;
-import energy_factor;
+import energy_dudlambda;
 import json;
 
-// This function might need to be changed such that only MBX terms are non-zero when useMBX is enabled. 
-// For now, this function is not being used anywhere. We can work on this later.
 std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &components, const std::string &label)
 {
   std::ostringstream stream;
@@ -132,6 +106,47 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
   return stream.str();
 }
 
+
+std::string EnergyStatus::repr() const
+{
+  std::ostringstream stream;
+
+  double conv = Units::EnergyToKelvin;
+  std::print(stream, "Energy status\n");
+  std::print(stream, "===============================================================================\n\n");
+  std::print(stream, "Total potential energy:  {: .6e}\n", conv * totalEnergy.energy);
+  std::print(stream, "    framework-molecule Van der Waals:        {: .6e} [{}]\n",
+             conv * frameworkMoleculeEnergy.VanDerWaals.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    framework-molecule Van der Waals (Tail): {: .6e} [{}]\n",
+             conv * frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    framework-molecule Coulombic Real:       {: .6e} [{}]\n",
+             conv * frameworkMoleculeEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    framework-molecule Coulombic Fourier:    {: .6e} [{}]\n",
+             conv * frameworkMoleculeEnergy.CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    molecule-molecule  Van der Waals:        {: .6e} [{}]\n",
+             conv * interEnergy.VanDerWaals.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    molecule-molecule  Van der Waals (Tail): {: .6e} [{}]\n",
+             conv * interEnergy.VanDerWaalsTailCorrection.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    molecule-molecule  Coulombic Real:       {: .6e} [{}/-]\n",
+             conv * interEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    molecule-molecule  Coulombic Fourier:    {: .6e} [{}/-]\n",
+             conv * interEnergy.CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
+  std::print(stream, "    polarization:                            {: .6e} [{}/-]\n", conv * polarizationEnergy.energy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    dU/dlambda:                              {: .6e} [{}/-]\n", conv * totalEnergy.dUdlambda,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    translational kinetic energy:            {: .6e} [{}/-]\n", conv * translationalKineticEnergy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    rotational kinetic energy:               {: .6e} [{}/-]\n", conv * rotationalKineticEnergy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    Nose-Hoover energy:                      {: .6e} [{}/-]\n", conv * noseHooverEnergy,
+             Units::displayedUnitOfEnergyString);
+  std::print(stream, "    MBX energy:                              {: .6e} [{}/-]\n", conv * mbxEnergy,
+             Units::displayedUnitOfEnergyString);
+
+  return stream.str();
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnergyStatus &e)
 {
   archive << e.versionNumber;
@@ -153,6 +168,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
   archive << e.translationalKineticEnergy;
   archive << e.rotationalKineticEnergy;
   archive << e.noseHooverEnergy;
+  archive << e.useMBX;
   archive << e.mbxEnergy;
 
 #if DEBUG_ARCHIVE
@@ -190,7 +206,16 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyStatus
   archive >> e.translationalKineticEnergy;
   archive >> e.rotationalKineticEnergy;
   archive >> e.noseHooverEnergy;
-  archive >> e.mbxEnergy;
+  if (versionNumber >= 2)
+  {
+    archive >> e.useMBX;
+    archive >> e.mbxEnergy;
+  }
+  else
+  {
+    e.useMBX = false;
+    e.mbxEnergy = 0.0;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

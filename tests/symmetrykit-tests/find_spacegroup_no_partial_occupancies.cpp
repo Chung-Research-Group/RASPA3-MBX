@@ -1,30 +1,12 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <cstddef>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <iterator>
-#include <optional>
-#include <print>
-#include <random>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
 import std;
-#endif
 
 import double3;
 import double3x3;
 import randomnumbers;
 
-import skposcarlegacyparser;
+import skposcarparser;
 import sksymmetrycell;
 import skspacegroup;
 import skpointgroup;
@@ -43,7 +25,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Triclinic)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -114,7 +96,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Monoclinic)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -279,7 +261,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Orthorhombic)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -467,7 +449,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Tetragonal)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -561,7 +543,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Trigonal)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -653,7 +635,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Hexagonal)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -759,7 +741,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Cubic)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -1118,7 +1100,7 @@ TEST(FindSpacegroupNoPartialOccupancies, Virtual)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();

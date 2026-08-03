@@ -1,37 +1,35 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <istream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <utility>
-#include <vector>
-#endif
-
 module molecule;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;
 import simd_quatd;
 import stringutils;
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const GroupState &g)
+{
+  archive << g.centerOfMassPosition;
+  archive << g.velocity;
+  archive << g.gradient;
+  archive << g.orientation;
+  archive << g.orientationMomentum;
+  archive << g.orientationGradient;
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, GroupState &g)
+{
+  archive >> g.centerOfMassPosition;
+  archive >> g.velocity;
+  archive >> g.gradient;
+  archive >> g.orientation;
+  archive >> g.orientationMomentum;
+  archive >> g.orientationGradient;
+  return archive;
+}
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Molecule &atom)
 {

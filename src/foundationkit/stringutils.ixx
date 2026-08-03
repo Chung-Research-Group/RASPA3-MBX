@@ -1,26 +1,9 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cctype>
-#include <cstddef>
-#include <format>
-#include <locale>
-#include <print>
-#include <string>
-#include <type_traits>
-#endif
-
 export module stringutils;
 
-#ifdef USE_STD_IMPORT
 import std;
 import std.compat;
-#endif
 
 export inline std::string simplified(std::string a) { return a; };
 
@@ -86,3 +69,29 @@ export inline std::string addExtension(const std::string& fileName, const std::s
     return fileName + extension;
   }
 }
+
+export std::string readFileContent(const std::string &fileName, const std::string &extension)
+{
+  std::string file_name_string = addExtension(fileName, extension);
+
+  std::filesystem::path path = std::filesystem::path(file_name_string);
+  if (!std::filesystem::exists(path))
+  {
+    if (const char* env_p = std::getenv("RASPA_DIR"))
+    {
+      path = std::filesystem::path(env_p) / file_name_string;
+    }
+  }
+
+  if (!std::filesystem::exists(path))
+  {
+    throw std::runtime_error(
+        std::format("File '{}' not found (also not in 'RASPA_DIR')\n", file_name_string));
+  }
+
+  std::ifstream t(path);
+  std::string file_content((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
+
+  return file_content;
+}
+

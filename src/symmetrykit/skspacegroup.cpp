@@ -1,27 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <iterator>
-#include <map>
-#include <string>
-#include <unordered_set>
-#include <vector>
-#include <ranges>
-#endif
-
 module skspacegroup;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import int3x3;
@@ -46,7 +27,8 @@ import skseitzintegermatrix;
 import skintegersymmetryoperationset;
 
 // https://stackoverflow.com/questions/66897068/can-trim-of-a-string-be-done-inplace-with-c20-ranges
-std::string simplified(const std::string &a)
+/*
+inline std::string simplified(const std::string &a)
 {
   std::string s = a;
   auto not_space = [](unsigned char c){ return !std::isspace(c); };
@@ -63,9 +45,24 @@ std::string simplified(const std::string &a)
         std::ranges::find_if(s, not_space));
 
     return s;
+}*/
+
+inline std::string simplified(const std::string &a)
+{
+  std::string s = a;
+
+  s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
+
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
+
+  return s;
 }
 
-std::string toLower(const std::string &a)
+inline std::string toLower(const std::string &a)
 {
   std::string data = a;
   std::transform(data.begin(), data.end(), data.begin(),
@@ -164,6 +161,253 @@ std::optional<std::size_t> SKSpaceGroup::HallNumberFromSpaceGroupNumber([[maybe_
     }
   }
   return std::nullopt;
+}
+
+struct CifCoordinateExpression
+{
+  int xCoeff = 0;
+  int yCoeff = 0;
+  int zCoeff = 0;
+  double translation = 0.0;
+};
+
+std::optional<double> parseCifRational(std::string_view expression, std::size_t& position)
+{
+  const std::size_t start = position;
+  while (position < expression.size() && std::isdigit(expression[position]))
+  {
+    ++position;
+  }
+  if (position == start)
+  {
+    return std::nullopt;
+  }
+
+  const int numerator = std::stoi(std::string(expression.substr(start, position - start)));
+  if (position < expression.size() && expression[position] == '/')
+  {
+    ++position;
+    const std::size_t denominatorStart = position;
+    while (position < expression.size() && std::isdigit(expression[position]))
+    {
+      ++position;
+    }
+    if (position == denominatorStart)
+    {
+      return std::nullopt;
+    }
+    const int denominator = std::stoi(std::string(expression.substr(denominatorStart, position - denominatorStart)));
+    if (denominator == 0)
+    {
+      return std::nullopt;
+    }
+    return static_cast<double>(numerator) / static_cast<double>(denominator);
+  }
+
+  return static_cast<double>(numerator);
+}
+
+std::optional<CifCoordinateExpression> parseCifCoordinateExpression(std::string expression)
+{
+  expression.erase(std::remove_if(expression.begin(), expression.end(),
+                                  [](unsigned char character) { return std::isspace(character); }),
+                   expression.end());
+  if (expression.empty())
+  {
+    return std::nullopt;
+  }
+
+  CifCoordinateExpression coordinateExpression{};
+  std::size_t position = 0;
+  while (position < expression.size())
+  {
+    int sign = 1;
+    if (expression[position] == '+')
+    {
+      ++position;
+    }
+    else if (expression[position] == '-')
+    {
+      sign = -1;
+      ++position;
+    }
+
+    if (position >= expression.size())
+    {
+      return std::nullopt;
+    }
+
+    if (std::isdigit(expression[position]))
+    {
+      const std::optional<double> value = parseCifRational(expression, position);
+      if (!value)
+      {
+        return std::nullopt;
+      }
+      coordinateExpression.translation += static_cast<double>(sign) * *value;
+      continue;
+    }
+
+    const char variable = static_cast<char>(std::tolower(expression[position]));
+    if (variable != 'x' && variable != 'y' && variable != 'z')
+    {
+      return std::nullopt;
+    }
+    ++position;
+
+    int& coefficient = variable == 'x'   ? coordinateExpression.xCoeff
+                       : variable == 'y' ? coordinateExpression.yCoeff
+                                         : coordinateExpression.zCoeff;
+    coefficient += sign;
+  }
+
+  return coordinateExpression;
+}
+
+std::string stripCifQuotes(std::string expression)
+{
+  expression.erase(std::remove_if(expression.begin(), expression.end(),
+                                  [](unsigned char character) { return std::isspace(character); }),
+                   expression.end());
+  if (expression.size() >= 2 &&
+      ((expression.front() == '\'' && expression.back() == '\'') ||
+       (expression.front() == '"' && expression.back() == '"')))
+  {
+    expression = expression.substr(1, expression.size() - 2);
+  }
+  return expression;
+}
+
+std::vector<std::string> splitCifSymmetryCoordinates(std::string expression)
+{
+  std::vector<std::string> coordinates;
+  std::string current;
+
+  for (char character : expression)
+  {
+    if (character == ',')
+    {
+      coordinates.push_back(current);
+      current.clear();
+      continue;
+    }
+    current.push_back(character);
+  }
+
+  if (!current.empty())
+  {
+    coordinates.push_back(current);
+  }
+
+  return coordinates;
+}
+
+Centring SKSpaceGroup::centringFromHMString(std::string hmString)
+{
+  hmString.erase(std::remove_if(hmString.begin(), hmString.end(),
+                                [](unsigned char character)
+                                { return character == '\'' || character == '"' || std::isspace(character); }),
+                 hmString.end());
+  if (hmString.empty())
+  {
+    return Centring::primitive;
+  }
+
+  switch (std::toupper(hmString.front()))
+  {
+    case 'P':
+      return Centring::primitive;
+    case 'I':
+      return Centring::body;
+    case 'F':
+      return Centring::face;
+    case 'A':
+      return Centring::a_face;
+    case 'B':
+      return Centring::b_face;
+    case 'C':
+      return Centring::c_face;
+    case 'R':
+      return Centring::r;
+    case 'H':
+      return Centring::h;
+    default:
+      return Centring::primitive;
+  }
+}
+
+std::optional<SKSeitzMatrix> SKSpaceGroup::parseCifSymmetryOperation(std::string expression)
+{
+  expression = stripCifQuotes(std::move(expression));
+
+  const std::vector<std::string> coordinates = splitCifSymmetryCoordinates(expression);
+  if (coordinates.size() != 3)
+  {
+    return std::nullopt;
+  }
+
+  std::array<CifCoordinateExpression, 3> parsedCoordinates{};
+  for (std::size_t i = 0; i < coordinates.size(); ++i)
+  {
+    const std::optional<CifCoordinateExpression> parsedCoordinate =
+        parseCifCoordinateExpression(coordinates[i]);
+    if (!parsedCoordinate)
+    {
+      return std::nullopt;
+    }
+    parsedCoordinates[i] = *parsedCoordinate;
+  }
+
+  const SKRotationMatrix rotation(
+      int3(parsedCoordinates[0].xCoeff, parsedCoordinates[1].xCoeff, parsedCoordinates[2].xCoeff),
+      int3(parsedCoordinates[0].yCoeff, parsedCoordinates[1].yCoeff, parsedCoordinates[2].yCoeff),
+      int3(parsedCoordinates[0].zCoeff, parsedCoordinates[1].zCoeff, parsedCoordinates[2].zCoeff));
+  const double3 translation(parsedCoordinates[0].translation, parsedCoordinates[1].translation,
+                            parsedCoordinates[2].translation);
+  return SKSeitzMatrix(rotation, translation);
+}
+
+std::optional<std::size_t> SKSpaceGroup::HallNumberFromSymmetryOperations(
+    const std::vector<SKSeitzMatrix>& operations, double3x3 lattice, Centring centering,
+    std::optional<std::size_t> internationalNumber, double symmetryPrecision)
+{
+  if (operations.empty())
+  {
+    return std::nullopt;
+  }
+
+  std::vector<std::size_t> hallNumbers{};
+  if (internationalNumber && *internationalNumber > 0 && *internationalNumber <= 230)
+  {
+    hallNumbers = SKSpaceGroupDataBase::spaceGroupHallData[*internationalNumber];
+  }
+  else
+  {
+    for (std::size_t internationalTableNumber = 1; internationalTableNumber <= 230; ++internationalTableNumber)
+    {
+      for (std::size_t hallNumber : SKSpaceGroupDataBase::spaceGroupHallData[internationalTableNumber])
+      {
+        hallNumbers.push_back(hallNumber);
+      }
+    }
+  }
+
+  std::optional<std::size_t> matchedHallNumber;
+  for (std::size_t hallNumber : hallNumbers)
+  {
+    if (!matchSpaceGroup(hallNumber, lattice, centering, operations, symmetryPrecision))
+    {
+      continue;
+    }
+
+    matchedHallNumber = hallNumber;
+    if (SKSpaceGroupDataBase::spaceGroupData[hallNumber].standardSetting())
+    {
+      return hallNumber;
+    }
+  }
+
+  return matchedHallNumber;
 }
 
 std::vector<double3> SKSpaceGroup::listOfSymmetricPositions(double3 pos)
@@ -324,11 +568,11 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
     }
     std::map<std::size_t, std::size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    std::size_t leastOccuringAtomType = index->first;
+    std::size_t leastOccurringAtomType = index->first;
 
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, std::size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, std::size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
   }
 
   double3x3 smallestUnitCell = SKSymmetryCell::findSmallestPrimitiveCell(reducedAtoms, atoms, unitCell,
@@ -337,17 +581,17 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
   std::optional<double3x3> primitiveDelaunayUnitCell =
       SKSymmetryCell::computeDelaunayReducedCell(smallestUnitCell, symmetryPrecision);
 
-  if (primitiveDelaunayUnitCell)
+  if (primitiveDelaunayUnitCell.has_value())
   {
     SKPointSymmetrySet latticeSymmetries =
-        SKSymmetryCell::findLatticeSymmetry(*primitiveDelaunayUnitCell, symmetryPrecision);
+        SKSymmetryCell::findLatticeSymmetry(primitiveDelaunayUnitCell.value(), symmetryPrecision);
 
     std::vector<std::tuple<double3, std::size_t, double>> positionInPrimitiveCell =
-        SKSymmetryCell::trim(atoms, unitCell, *primitiveDelaunayUnitCell, allowPartialOccupancies, symmetryPrecision);
+        SKSymmetryCell::trim(atoms, unitCell, primitiveDelaunayUnitCell.value(), allowPartialOccupancies, symmetryPrecision);
 
-    SKSymmetryOperationSet spaceGroupSymmetries =
-        SKSpaceGroup::findSpaceGroupSymmetry(unitCell, positionInPrimitiveCell, positionInPrimitiveCell,
-                                             latticeSymmetries, allowPartialOccupancies, symmetryPrecision);
+    SKSymmetryOperationSet spaceGroupSymmetries = SKSpaceGroup::findSpaceGroupSymmetry(
+        primitiveDelaunayUnitCell.value(), positionInPrimitiveCell, positionInPrimitiveCell, latticeSymmetries,
+        allowPartialOccupancies, symmetryPrecision);
 
     SKPointSymmetrySet pointSymmetry = SKPointSymmetrySet(spaceGroupSymmetries.rotations());
 
@@ -365,9 +609,9 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
         {
           case Laue::laue_1:
           {
-            SKSymmetryCell::createFromUnitCell((*primitiveDelaunayUnitCell) * (*Mprime));
+            SKSymmetryCell::createFromUnitCell(primitiveDelaunayUnitCell.value() * (*Mprime));
             std::optional<std::pair<SKSymmetryCell, SKTransformationMatrix>> symmetryCell =
-                SKSymmetryCell::createFromUnitCell((*primitiveDelaunayUnitCell) * (*Mprime))
+                SKSymmetryCell::createFromUnitCell(primitiveDelaunayUnitCell.value() * Mprime.value())
                     .computeReducedNiggliCellAndChangeOfBasisMatrix();
             if (!symmetryCell)
             {
@@ -383,7 +627,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
             // lattice vectors
             // (|a| < |c|)
             std::optional<double3x3> computedDelaunayReducedCell2D = SKSymmetryCell::computeDelaunayReducedCell2D(
-                (*primitiveDelaunayUnitCell) * (*Mprime), symmetryPrecision);
+                primitiveDelaunayUnitCell.value() * Mprime.value(), symmetryPrecision);
             if (!computedDelaunayReducedCell2D)
             {
               return std::nullopt;
@@ -400,7 +644,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
 
         SKTransformationMatrix correctedBasis = pointGroup->computeBasisCorrection(*Mprime, centering);
 
-        double3x3 primitiveLattice = (*primitiveDelaunayUnitCell) * correctedBasis;
+        double3x3 primitiveLattice = primitiveDelaunayUnitCell.value() * correctedBasis;
 
         // transform the symmetries (rotation and translation) from the primtive cell to the conventional cell
         // the centering is used to add the additional translations
@@ -428,7 +672,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
               SKIntegerSymmetryOperationSet dataBaseSpaceGroupSymmetries =
                   spaceGroup.spaceGroupSetting().fullSeitzMatrices();
 
-              double3x3 transform = conventionalBravaisLattice.inverse() * *primitiveDelaunayUnitCell;
+              double3x3 transform = conventionalBravaisLattice.inverse() * primitiveDelaunayUnitCell.value();
 
               std::vector<std::tuple<double3, std::size_t, double>> atomsInConventionalCell{};
               std::transform(positionInPrimitiveCell.begin(), positionInPrimitiveCell.end(),
@@ -491,7 +735,7 @@ std::optional<SKSpaceGroup::FoundSpaceGroupInfo> SKSpaceGroup::findSpaceGroup(
             SKIntegerSymmetryOperationSet dataBaseSpaceGroupSymmetries =
                 spaceGroup.spaceGroupSetting().fullSeitzMatrices();
 
-            double3x3 transform = conventionalBravaisLattice.inverse() * *primitiveDelaunayUnitCell;
+            double3x3 transform = conventionalBravaisLattice.inverse() * primitiveDelaunayUnitCell.value();
 
             std::vector<std::tuple<double3, std::size_t, double>> atomsInConventionalCell{};
             std::transform(positionInPrimitiveCell.begin(), positionInPrimitiveCell.end(),
@@ -541,7 +785,7 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
 {
   std::vector<std::tuple<double3, std::size_t, double>> reducedAtoms{};
 
-  std::size_t leastOccuringAtomType{};
+  std::size_t leastOccurringAtomType{};
   if (allowPartialOccupancies)
   {
     reducedAtoms = atoms;
@@ -555,11 +799,11 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
     }
     std::map<std::size_t, std::size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    leastOccuringAtomType = index->first;
+    leastOccurringAtomType = index->first;
 
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, std::size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, std::size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
   }
 
   double3x3 smallestUnitCell = SKSymmetryCell::findSmallestPrimitiveCell(reducedAtoms, atoms, unitCell,
@@ -600,8 +844,8 @@ std::optional<SKSpaceGroup::FoundNiggliCellInfo> SKSpaceGroup::findNiggliCell(
       {
         std::copy_if(positionInNiggliCell.begin(), positionInNiggliCell.end(),
                      std::back_inserter(reducedPositionsInNiggliCell),
-                     [leastOccuringAtomType](const std::tuple<double3, std::size_t, double>& atom)
-                     { return std::get<1>(atom) == leastOccuringAtomType; });
+                     [leastOccurringAtomType](const std::tuple<double3, std::size_t, double>& atom)
+                     { return std::get<1>(atom) == leastOccurringAtomType; });
       }
 
       SKPointSymmetrySet latticeSymmetries = SKSymmetryCell::findLatticeSymmetry(NiggliUnitCell, symmetryPrecision);
@@ -677,11 +921,11 @@ std::optional<SKPointGroup> SKSpaceGroup::findPointGroup(double3x3 unitCell,
     }
     std::map<std::size_t, std::size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    std::size_t leastOccuringAtomType = index->first;
+    std::size_t leastOccurringAtomType = index->first;
 
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, std::size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, std::size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
   }
   double3x3 smallestUnitCell = SKSymmetryCell::findSmallestPrimitiveCell(reducedAtoms, atoms, unitCell,
                                                                          allowPartialOccupancies, symmetryPrecision);
@@ -692,14 +936,14 @@ std::optional<SKPointGroup> SKSpaceGroup::findPointGroup(double3x3 unitCell,
   if (primitiveDelaunayUnitCell)
   {
     SKPointSymmetrySet latticeSymmetries =
-        SKSymmetryCell::findLatticeSymmetry(*primitiveDelaunayUnitCell, symmetryPrecision);
+        SKSymmetryCell::findLatticeSymmetry(primitiveDelaunayUnitCell.value(), symmetryPrecision);
 
     std::vector<std::tuple<double3, std::size_t, double>> positionInPrimitiveCell =
-        SKSymmetryCell::trim(atoms, unitCell, *primitiveDelaunayUnitCell, allowPartialOccupancies, symmetryPrecision);
+        SKSymmetryCell::trim(atoms, unitCell, primitiveDelaunayUnitCell.value(), allowPartialOccupancies, symmetryPrecision);
 
-    SKSymmetryOperationSet spaceGroupSymmetries =
-        SKSpaceGroup::findSpaceGroupSymmetry(unitCell, positionInPrimitiveCell, positionInPrimitiveCell,
-                                             latticeSymmetries, allowPartialOccupancies, symmetryPrecision);
+    SKSymmetryOperationSet spaceGroupSymmetries = SKSpaceGroup::findSpaceGroupSymmetry(
+        primitiveDelaunayUnitCell.value(), positionInPrimitiveCell, positionInPrimitiveCell, latticeSymmetries,
+        allowPartialOccupancies, symmetryPrecision);
 
     SKPointSymmetrySet pointSymmetry = SKPointSymmetrySet(spaceGroupSymmetries.rotations());
 
@@ -803,10 +1047,18 @@ std::optional<double3> SKSpaceGroup::getOriginShift(std::size_t HallNumber, Cent
   double3x3 translationsnew = double3x3();
 
   SKSpaceGroup dataBaseSpaceGroup = SKSpaceGroup(HallNumber);
-  std::vector<SKSeitzIntegerMatrix> dataBaseSpaceGroupGenerators =
-      SKSeitzIntegerMatrix::SeitzMatrices(dataBaseSpaceGroup.spaceGroupSetting().encodedGenerators());
+  const std::string& encodedGenerators = dataBaseSpaceGroup.spaceGroupSetting().encodedGenerators();
+  if (encodedGenerators.empty())
+  {
+    if (centering != dataBaseSpaceGroup.spaceGroupSetting().centring())
+    {
+      return std::nullopt;
+    }
+    return double3(0.0, 0.0, 0.0);
+  }
 
-  // assert(!dataBaseSpaceGroupGenerators.empty());
+  std::vector<SKSeitzIntegerMatrix> dataBaseSpaceGroupGenerators =
+      SKSeitzIntegerMatrix::SeitzMatricesFromGenerators(encodedGenerators);
 
   // apply change-of-basis to generators
   for (std::size_t i = 0; i < dataBaseSpaceGroupGenerators.size(); i++)

@@ -1,22 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cstdint>
-#include <ostream>
-#include <string>
-#include <vector>
-#endif
-
 export module skspacegroupsetting;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import int3x3;
@@ -43,6 +29,7 @@ export class SKSpaceGroupSetting
   std::vector<SKSeitzIntegerMatrix> SeitzMatricesWithoutTranslation() const;
 
   std::size_t number() const { return _spaceGroupNumber; }
+  std::size_t order() const { return _order; }
   std::size_t HallNumber() const { return _HallNumber; }
   std::string HallString() const { return _HallString; }
   std::string HMString() const { return _HMString; }
@@ -53,12 +40,14 @@ export class SKSpaceGroupSetting
   std::string centringString() const;
 
   const std::string encodedGenerators() const { return _encodedGenerators; }
+  const std::string encodedSeitz() const { return _encodedSeitz; }
 
   bool inversionAtOrigin() const { return _inversionAtOrigin; }
   int3 inversionCenter() const { return _inversionCenter; }
 
   const std::vector<int3> latticeTranslations() const { return _latticeTranslations; }
   Centring centring() const { return _centring; }
+  bool standardSetting() const { return _standard; }
 
   // check
   SKAsymmetricUnit asymmetricUnit() const { return _asymmetricUnit; }

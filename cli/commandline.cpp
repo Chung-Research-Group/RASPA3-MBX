@@ -1,49 +1,22 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <bitset>
-#include <complex>
-#include <cstddef>
-#include <deque>
-#include <exception>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <locale>
-#include <mutex>
-#include <optional>
-#include <print>
-#include <ranges>
-#include <semaphore>
-#include <span>
-#include <string_view>
-#include <vector>
-#include <tuple>
-#include "mdspanwrapper.h"
-#endif
-
 module commandline;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import int3;
 import uint3;
 import double3;
 import threadpool;
+import stringutils;
 import hdf5;
 import input_reader;
 import framework;
 import vdwparameters;
 import forcefield;
+import cif_reader;
+import atom;
 import opencl;
 import mc_void_fraction;
 import mc_surface_area;
@@ -58,353 +31,33 @@ import energy_surface_area;
 import integration_surface_area;
 import integration_opencl_surface_area;
 import getopt;
-import tessellation;
 import interpolation_energy_grid;
 import pore_size_distribution_ban_vlugt;
+import opencl_clearance_grid;
+import opencl_connected_components;
+import opencl_pore_analysis;
+import opencl_void_fraction;
+import opencl_surface_area;
+import opencl_pore_size_distribution;
+import opencl_blocking_spheres;
+import voronoi_pore_diameters;
+import voronoi_channels;
+import voronoi_surface_area;
+import voronoi_accessible_volume;
+import voronoi_blocking_spheres;
+import voronoi_pore_size_distribution;
+import apollonius_pore_analysis;
+import apollonius_pore_size_distribution;
+import apollonius_surface_area;
+import apollonius_accessible_volume;
+import apollonius_blocking_spheres;
 #ifdef BUILD_LIBTORCH
 import libtorch_test;
 #endif
 #if !(defined(__has_include) && __has_include(<mdspan>))
-//import mdspan;
+import mdspan;
 #endif
 
-ForceField CommandLine::defaultForceFieldZeolite(double rc, bool shifted, bool tailCorrections, bool useEwald)
-{
-  return ForceField(
-      {{"-", false, 0.0, 0.0, 0.0, 0, false},
-       {"Si", true, 28.0855, 2.05, 0.0, 14, false},
-       {"O", true, 15.999, -1.025, 0.0, 8, false},
-       {"probe-He", false, 4.002602, 0.0, 0.0, 2, false},
-       {"probe-Ar", false, 39.948, 0.0, 0.0, 18, false},
-       {"probe-CH4", false, 16.04246, 0.0, 0.0, 6, false},
-       {"probe-C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-       {"probe-O_co2", false, 15.9994, -0.3256, 0.1, 8, false},
-       {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
-      {{1.0, 1.0}, 
-      {22.0, 2.30}, 
-      {53.0, 3.30}, 
-      {10.9, 2.64},
-      {124.070, 3.38},
-      {158.5, 3.72},
-      {29.933, 2.745},
-      {85.671, 3.017},
-      {91.5, 3.681}},
-      ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
-}
-
-ForceField CommandLine::defaultForceFieldMOF(double rc, bool shifted, bool tailCorrections, bool useEwald)
-{
-  return ForceField({{"-", false, 0.0, 0.0, 0.0, 0, false},
-                     {"O",  true, 15.999, 0.0, 0.0, 8, false},         
-                     {"N",  true, 14.0067, 0.0, 0.0, 7, false},
-                     {"C",  true, 12.011, 0.0, 0.0, 6, false},         
-                     {"F",  true, 18.998403, 0.0, 0.0, 9, false},
-                     {"B",  true, 10.811, 0.0, 0.0, 5, false},         
-                     {"P",  true, 30.973762, 0.0, 0.0, 15, false},
-                     {"S",  true, 32.065, 0.0, 0.0, 16, false},        
-                     {"Cl", true, 35.453, 0.0, 0.0, 17, false},
-                     {"Br", true, 79.904, 0.0, 0.0, 35, false},        
-                     {"H",  true, 1.00784, 0.0, 0.0, 1, false},
-                     {"Al", true, 26.981539, 0.0, 0.0, 13, false},     
-                     {"Si", true, 28.0855, 0.0, 0.0, 14, false},
-                     {"Zn", true, 65.38, 0.0, 0.0, 30, false},         
-                     {"Be", true, 9.012182, 0.0, 0.0, 4, false},
-                     {"Cr", true, 51.9961, 0.0, 0.0, 24, false},       
-                     {"Fe", true, 55.845, 0.0, 0.0, 26, false},
-                     {"Mn", true, 54.938044, 0.0, 0.0, 25, false},     
-                     {"Cu", true, 63.546, 0.0, 0.0, 29, false},
-                     {"Co", true, 58.933195, 0.0, 0.0, 27, false},     
-                     {"Ga", true, 72.64, 0.0, 0.0, 32, false},
-                     {"Ti", true, 47.867, 0.0, 0.0, 22, false},        
-                     {"Sc", true, 44.955912, 0.0, 0.0, 21, false},
-                     {"V",  true, 50.9415, 0.0, 0.0, 23, false},       
-                     {"Ni", true, 58.6934, 0.0, 0.0, 28, false},
-                     {"Zr", true, 91.224, 0.0, 0.0, 40, false},        
-                     {"Mg", true, 24.305, 0.0, 0.0, 12, false},
-                     {"Ne", true, 20.1797, 0.0, 0.0, 10, false},       
-                     {"Ag", true, 107.8682, 0.0, 0.0, 47, false},
-                     {"In", true, 114.818, 0.0, 0.0, 49, false},       
-                     {"Cd", true, 112.41, 0.0, 0.0, 48, false},
-                     {"Sb", true, 121.76, 0.0, 0.0, 51, false},        
-                     {"Te", true, 127.6, 0.0, 0.0, 52, false},
-                     {"probe-He", false, 4.002602, 0.0, 0.0, 2, false},      
-                     {"probe-Ar", true, 39.948, 0.0, 0.0, 18, false},
-                     {"probe-CH4", false, 16.04246, 0.0, 0.0, 6, false},     
-                     {"probe-C_co2", false, 12.0, 0.6512, 0.2, 6, false},
-                     {"probe-O_co2", false, 15.9994, -0.3256, 0.1, 8, false}, 
-                     {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
-                    {{1.0, 1.0},                 // custom
-                     {48.1581, 3.03315},         // O
-                     {38.9492, 3.26256},         // N
-                     {47.8562, 3.47299},         // C
-                     {36.4834, 3.0932},          // F
-                     {47.8058, 3.58141},         // B
-                     {161.03, 3.69723},          // P
-                     {173.107, 3.59032},         // S
-                     {142.562, 3.51932},         // Cl
-                     {186.191, 3.51905},         // Br
-                     {7.64893, 2.84642},         // H
-                     {155.998, 3.91105},         // Al
-                     {155.998, 3.80414},         // Si
-                     {27.677074, 4.04},          // Zn
-                     {42.7736, 2.44552},         // Be
-                     {7.54829, 2.69319},         // Cr
-                     {6.54185, 2.5943},          // Fe
-                     {6.54185, 2.63795},         // Mn
-                     {2.5161, 3.11369},          // Cu
-                     {7.04507, 2.55866},         // Co
-                     {208.836, 3.90481},         // Ga
-                     {8.55473, 2.8286},          // Ti
-                     {9.56117, 2.93551},         // Sc
-                     {8.05151, 2.80099},         // V
-                     {7.54829, 2.52481},         // Ni
-                     {34.7221, 2.78317},         // Zr
-                     {55.8574, 2.69141},         // Mg
-                     {21.1352, 2.88918},         // Ne
-                     {18.1159, 2.80455},         // Ag
-                     {301.428, 3.97608},         // In
-                     {114.734, 2.53728},         // Cd
-                     {225.946, 3.93777},         // Sb
-                     {200.281, 3.98232},         // Te
-                     {10.9, 2.64},               // He
-                     {124.070, 3.38},            // Ar
-                     {158.5, 3.72},              // CH4
-                     {29.933, 2.745},            // C_co2
-                     {85.671, 3.017},            // O_co2
-                     {91.5, 3.681}},             // N2
-                    ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
-}
-
-ForceField CommandLine::forceFieldZeoPlusPlus(double rc, bool shifted, bool tailCorrections, bool useEwald)
-{
-  return ForceField({{"-",  false, 0.0, 0.0, 0.0, 0, false},
-                     {"H",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"D",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"He", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Li", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Be", false, 1.0, 0.0, 0.0, 1, false},
-                     {"B",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"C",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"N",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"O",  false, 15.999, 0.0, 0.0, 1, false},
-                     {"F",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ne", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Na", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Mg", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Al", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Si", false, 28.0855, 0.0, 0.0, 1, false},
-                     {"P",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"S",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cl", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ar", false, 1.0, 0.0, 0.0, 1, false},
-                     {"K",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ca", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sc", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ti", false, 1.0, 0.0, 0.0, 1, false},
-                     {"V",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Mn", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Fe", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Co", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ni", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cu", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Zn", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ga", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ge", false, 1.0, 0.0, 0.0, 1, false},
-                     {"As", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Se", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Br", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Kr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Rb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Y",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Zr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Nb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Mo", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Tc", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ru", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Rh", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pd", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ag", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cd", false, 1.0, 0.0, 0.0, 1, false},
-                     {"In", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sn", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Te", false, 1.0, 0.0, 0.0, 1, false},
-                     {"I",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Xe", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cs", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ba", false, 1.0, 0.0, 0.0, 1, false},
-                     {"La", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ce", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Nd", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pm", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sm", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Eu", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Gd", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Tb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Dy", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ho", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Er", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Tm", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Yb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Lu", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Hf", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ta", false, 1.0, 0.0, 0.0, 1, false},
-                     {"W",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Re", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Os", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ir", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pt", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Au", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Hg", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Tl", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pb", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Bi", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Po", false, 1.0, 0.0, 0.0, 1, false},
-                     {"At", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Rn", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Fr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ra", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ac", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Th", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pa", false, 1.0, 0.0, 0.0, 1, false},
-                     {"U",  false, 1.0, 0.0, 0.0, 1, false},
-                     {"Np", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Pu", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Am", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cm", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Bk", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Cf", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Es", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Fm", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Md", false, 1.0, 0.0, 0.0, 1, false},
-                     {"No", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Lr", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Rf", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Db", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Sg", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Bh", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Hs", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Mt", false, 1.0, 0.0, 0.0, 1, false},
-                     {"Ds", false, 1.0, 0.0, 0.0, 1, false},
-                     {"probe-N2", false, 14.00674, 0.0, 0.0, 6, false}},
-                    {{1.0, 2.0 * 1.00},                 // custom
-                     {1.0, 2.0 * 1.09},
-                     {1.0, 2.0 * 1.09},
-                     {1.0, 2.0 * 1.40},
-                     {1.0, 2.0 * 1.82},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.70},
-                     {1.0, 2.0 * 1.55},
-                     {1.0, 2.0 * 1.52},
-                     {1.0, 2.0 * 1.47},
-                     {1.0, 2.0 * 1.54},
-                     {1.0, 2.0 * 2.27},
-                     {1.0, 2.0 * 1.73},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.10},
-                     {1.0, 2.0 * 1.80},
-                     {1.0, 2.0 * 1.80},
-                     {1.0, 2.0 * 1.75},
-                     {1.0, 2.0 * 1.88},
-                     {1.0, 2.0 * 2.75},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.63},
-                     {1.0, 2.0 * 1.40},
-                     {1.0, 2.0 * 1.39},
-                     {1.0, 2.0 * 1.87},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.85},
-                     {1.0, 2.0 * 1.90},
-                     {1.0, 2.0 * 1.85},
-                     {1.0, 2.0 * 2.02},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.63},
-                     {1.0, 2.0 * 1.72},
-                     {1.0, 2.0 * 1.58},
-                     {1.0, 2.0 * 1.93},
-                     {1.0, 2.0 * 2.17},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.06},
-                     {1.0, 2.0 * 1.98},
-                     {1.0, 2.0 * 2.16},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.72},
-                     {1.0, 2.0 * 1.66},
-                     {1.0, 2.0 * 1.55},
-                     {1.0, 2.0 * 1.96},
-                     {1.0, 2.0 * 2.02},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 1.86},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {1.0, 2.0 * 2.00},
-                     {91.5, 3.681}},             // N2
-                    ForceField::MixingRule::Lorentz_Berthelot, rc, rc, rc, shifted, tailCorrections, useEwald);
- }
 
 void CommandLine::run(int argc, char *argv[])
 {
@@ -415,6 +68,8 @@ void CommandLine::run(int argc, char *argv[])
   bool use_monte_carlo_methods{false};
   bool use_energy_methods{false};
   bool use_integration_methods{false};
+  bool use_voronoi{false};
+  bool use_apollonius{false};
   bool use_cpu{false};
   bool use_gpu{false};
   std::bitset<CommandLine::State::Last> state;
@@ -428,15 +83,15 @@ void CommandLine::run(int argc, char *argv[])
   std::optional<double> probe_strength{};
   double well_depth_factor{ 1.0 };
   double iso_value{ 0.0 };
-  std::optional<ForceField> forceField;
-  bool is_zeolite{false};
-  bool is_mof{true};
-  bool is_zeopp{false};
   uint3 gridSize{128, 128, 128};
   std::optional<std::size_t> number_of_slices{ };
+  std::optional<std::size_t> number_of_bins{ };
   std::vector<std::size_t> pseudoAtomsGrid;
   ForceField::InterpolationScheme order{ForceField::InterpolationScheme::Tricubic};
   ForceField::InterpolationGridType gridType{ForceField::InterpolationGridType::LennardJones};
+  std::optional<ForceField> forceField{};
+  Framework framework{};
+
 
   // definition of command-line switches
   using argparser = argparser::argparser;
@@ -451,17 +106,17 @@ void CommandLine::run(int argc, char *argv[])
            "NUM_ITERATIONS",  // will be used in help to illustrate the argument
            argparser::required_argument,
            "Set number of iterations",  // will be displayed in help
-           [&number_of_iterations](std::string const &arg) { std::print("arg: {}\n",arg); number_of_iterations = std::stoul(arg); std::print("arg: {}\n",arg); })
+           [&number_of_iterations](std::string const &arg) { number_of_iterations = std::stoul(arg); })
       .reg({"-M", "--number-of-inner-steps"},
            "NUM_INNER_ITERATIONS",  // will be used in help to illustrate the argument
            argparser::required_argument,
            "Set number of inner steps",  // will be displayed in help
-           [&number_of_inner_steps](std::string const &arg) { std::print("arg: {}\n",arg); number_of_inner_steps = std::stoul(arg); std::print("arg: {}\n",arg); })
+           [&number_of_inner_steps](std::string const &arg) { number_of_inner_steps = std::stoul(arg); })
       .reg({"--threads"},
            "NUM_THREADS",  // will be used in help to illustrate the argument
            argparser::required_argument,
-           "Set number of threads",  // will be displayed in help
-           [&num_threads](std::string const &arg) { std::print("arg: {}\n",arg); num_threads = std::stoul(arg); })
+           "Set number of threads the analyses may run on (default 1, one thread)",  // will be displayed in help
+           [&num_threads](std::string const &arg) { num_threads = std::stoul(arg); })
       .reg({"-f", "--force-field"},
            "FILE_NAME",  // will be used in help to illustrate the argument
            argparser::required_argument,
@@ -488,14 +143,30 @@ void CommandLine::run(int argc, char *argv[])
       .reg({"--pore-size-distribution-ban-vlugt"}, argparser::no_argument,
            "Use pore size distribution method from Ban, Vlugt paper",
            [&state](std::string const &){state.set(State::PSD_BV);})
+      .reg({"--pore-analysis"}, argparser::no_argument,
+           "Compute the pore diameters Di, Df and Dif and the channel/pocket analysis (as zeo++ -res and -chan)",
+           [&state](std::string const &) { state.set(State::PoreAnalysis); })
+      .reg({"--blocking-spheres"}, argparser::no_argument,
+           "Compute spheres covering the pockets the probe cannot reach, in RASPA .block format",
+           [&state](std::string const &) { state.set(State::BlockingSpheres); })
+      .reg({"--voronoi"}, argparser::no_argument,
+           "Use the Voronoi (radical) pore network for the geometric analyses",
+           [&use_voronoi](std::string const &) { use_voronoi = true; })
+      .reg({"-apollonius", "--apollonius"}, argparser::no_argument,
+           "Use the Apollonius diagram instead of the Voronoi network for the geometric analyses (on its own, "
+           "computes the pore analysis)",
+           [&use_apollonius](std::string const &) { use_apollonius = true; })
       .reg({"--tessellation"}, argparser::no_argument, "Use tessellation method",
            [&state](std::string const &) { state.set(State::TessellationComputation); })
       .reg({"--zeolite"}, argparser::no_argument, "Use generic zeolite model (TraPPE zeo)",
-           [&is_zeolite](std::string const &) { is_zeolite = true; })
+           [&forceField](std::string const &)
+           { forceField = ForceField::makeZeoliteForceField(12.0, true, false, false); })
       .reg({"--mof"}, argparser::no_argument, "Use generic MOF model (TraPPE zeo)",
-           [&is_mof](std::string const &) { is_mof = true; })
+           [&forceField](std::string const &)
+           { forceField = ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false); })
       .reg({"--zeo++"}, argparser::no_argument, "Use zeo++ radii",
-           [&is_zeopp](std::string const &) { is_zeopp = true; })
+           [&forceField](std::string const &)
+           { forceField = ForceField::makeZeoPlusPlusForceField(12.0, true, false, false); })
       .reg({"--grids"}, argparser::no_argument, "Use grid-based methods",
            [&use_gridbased_methods](std::string const &) { use_gridbased_methods = true; })
       .reg({"--geometric"}, argparser::no_argument, "Use geometric methods",
@@ -552,17 +223,29 @@ void CommandLine::run(int argc, char *argv[])
            argparser::required_argument,
            "Sets the isovalue for the iso-surface energy surfaces", 
            [&iso_value](std::string const &arg) { iso_value = std::stod(arg); })
-      .reg({"--number-of-slices"}, argparser::required_argument, "Set number of slices",
+      .reg({"--number-of-slices"}, argparser::required_argument,
+           "Set number of slices: of the energy integration, or of each smooth piece of the exact surface area",
            [&number_of_slices](std::string const &arg)
            {
              std::istringstream iss(arg);
              std::size_t x;
              if (!(iss >> x))
              {
-               throw std::runtime_error(
-                   "Invalid --grid-size: expected three integers separated by spaces wrapped in quotation marks");
+               throw std::runtime_error("Invalid --number-of-slices: expected a single integer");
              }
              number_of_slices = x;
+           })
+      .reg({"--number-of-bins"}, argparser::required_argument,
+           "Set the number of pore sizes the pore-size distribution is evaluated at",
+           [&number_of_bins](std::string const &arg)
+           {
+             std::istringstream iss(arg);
+             std::size_t x;
+             if (!(iss >> x))
+             {
+               throw std::runtime_error("Invalid --number-of-bins: expected a single integer");
+             }
+             number_of_bins = x;
            })
       .reg({"-e", "--energy-grid-computation"}, argparser::required_argument,
            "Compute Energy grid for given list of pseudo atoms",
@@ -628,6 +311,20 @@ void CommandLine::run(int argc, char *argv[])
 
   if (!use_cpu && !use_gpu) use_cpu = true;
 
+  // Serial unless threads were asked for. An analysis that can use them looks the pool up and finds it empty
+  // otherwise, and takes the route it has always taken; see `exact_parallel` for what the threaded routes are
+  // and are not promised to agree with.
+  ThreadPool::ThreadPool<ThreadPool::details::default_function_type, std::jthread>::instance().init(
+      num_threads, num_threads > 1 ? ThreadPool::ThreadingType::ThreadPool : ThreadPool::ThreadingType::Serial);
+
+  // A pore network is only of use to an analysis that reads one, so asking for the Apollonius diagram
+  // without saying what to do with it is asking for the pore analysis.
+  if ((use_apollonius || use_voronoi) && !state.test(State::SurfaceArea) && !state.test(State::VoidFraction) &&
+      !state.test(State::BlockingSpheres))
+  {
+    state.set(State::PoreAnalysis);
+  }
+
   // start running
   std::vector<std::string> filenames =
       std::ranges::to<std::vector<std::string>>(std::string_view(input_files) | std::ranges::views::split(' '));
@@ -643,20 +340,54 @@ void CommandLine::run(int argc, char *argv[])
 
     std::string stem = std::filesystem::path(filename).stem().string();
 
-    // if no force-field specified, use the default one
-    if (!forceField.has_value())
+    const std::string file_content = readFileContent(stem, ".cif");
+
+    if(forceField.has_value())
     {
-      if (is_zeolite)
+      // Case: force field has been manually selected
+      if(const auto cif = CIFReader::readCIFString(file_content, forceField.value(),
+                                                   CIFReader::UseChargesFrom::CIF_File); cif.has_value())
       {
-        forceField = forceField.value_or(defaultForceFieldZeolite(12.0, false, false, false));
+        auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = cif.value();
+        framework = Framework(forceField.value(), stem, simulation_box, space_group_hall_symbol,
+                              defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
       }
-      else if (is_zeopp)
+      else if (cif.error() == CIFReader::ParseError::invalidForceField)
       {
-        forceField = forceField.value_or(forceFieldZeoPlusPlus(12.0, false, false, false));
+        std::print("invalid forcefield\n");
+        std::exit(-1);
       }
-      else
+    }
+    else
+    {
+      // Case: auto-detect force field
+      // First: try with zeolite force field
+      ForceField trial_zeolite_force_field = ForceField::makeZeoliteForceField(12.0, true, false, false);
+      if(const auto zeolite_cif = CIFReader::readCIFString(file_content, trial_zeolite_force_field,
+                                                           CIFReader::UseChargesFrom::CIF_File);
+         zeolite_cif.has_value())
       {
-        forceField = forceField.value_or(defaultForceFieldMOF(12.0, false, false, false));
+        forceField = trial_zeolite_force_field;
+        auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = zeolite_cif.value();
+        framework = Framework(forceField.value(), stem, simulation_box, space_group_hall_symbol,
+                              defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
+      }
+      else if (zeolite_cif.error() == CIFReader::ParseError::invalidForceField)
+      {
+        // Second: try with general MOF force field
+        ForceField trial_mof_force_field =
+            ForceField::makeMetalOrganicFrameworkForceField(12.0, true, false, false);
+        if(const auto mof_cif = CIFReader::readCIFString(file_content, trial_mof_force_field,
+                                                        CIFReader::UseChargesFrom::CIF_File); mof_cif.has_value())
+        {
+          forceField = trial_mof_force_field;
+          auto [simulation_box, space_group_hall_symbol, defined_atoms, fractional_atoms_unit_cell] = mof_cif.value();
+          framework = Framework(forceField.value(), stem, simulation_box, space_group_hall_symbol,
+                                defined_atoms, fractional_atoms_unit_cell, {1, 1, 1});
+        }
+        else if (mof_cif.error() == CIFReader::ParseError::invalidForceField)
+        {
+        }
       }
     }
 
@@ -670,8 +401,16 @@ void CommandLine::run(int argc, char *argv[])
       probe_atom_name = "-";
     }
 
-    Framework framework =
-        Framework(0, forceField.value(), stem, filename, std::nullopt, Framework::UseChargesFrom::CIF_File);
+    // The probe the geometric analyses sample with. Not every force field defines every probe, a
+    // custom one read from a file need define none of them, so an unchosen default falls back to
+    // nitrogen rather than aborting the run over a name the user never asked for. A probe named on
+    // the command line is passed through, and the analysis says so if it does not exist.
+    auto geometricProbe = [&](const std::string &preferred) -> std::string
+    {
+      if (probe_atom_name.has_value()) return probe_atom_name.value();
+      if (forceField->findPseudoAtom(preferred).has_value()) return preferred;
+      return "probe-N2";
+    };
 
     if (state.test(CommandLine::State::TessellationComputation))
     {
@@ -679,14 +418,12 @@ void CommandLine::run(int argc, char *argv[])
 
       if (use_gridbased_methods)
       {
-        if (use_cpu)
-        {
-        }
-
         if (use_gpu)
         {
-          Tessellation s(gridSize);
-          s.run(forceField.value(), framework);
+          // The clearance field already names the nearest atom at every point, that being what its distance is
+          // measured to, so the tessellation is a report on the field rather than a computation of its own.
+          ClearanceGrid grid = ClearanceGrid::compute(forceField.value(), framework, gridSize);
+          grid.writeTessellation(framework);
         }
       }
     }
@@ -713,6 +450,35 @@ void CommandLine::run(int argc, char *argv[])
     {
       std::cout << "Compute surface area" << std::endl;
 
+      if (use_gridbased_methods && use_gpu)
+      {
+        std::cout << "Compute the accessible surface area from the clearance grid" << std::endl;
+
+        GridSurfaceArea sa;
+        sa.run(forceField.value(), framework, geometricProbe("probe-N2"), gridSize);
+      }
+
+      if (use_apollonius)
+      {
+        // The area itself is measured rather than sampled unless the sampled estimate is asked for by
+        // name, there being no reason to prefer a statistical answer to an exact one at the same cost.
+        ApolloniusSurfaceArea sa;
+        sa.run(forceField.value(), framework, geometricProbe("probe-N2"),
+               use_monte_carlo_methods ? ApolloniusSurfaceArea::Method::Sampled
+                                       : ApolloniusSurfaceArea::Method::Exact,
+               number_of_iterations, number_of_slices);
+      }
+      else if (use_voronoi)
+      {
+        // The area is measured against the radical network too: it is the same union of atoms and comes
+        // to the same total, and what the network then decides is only how that total divides.
+        VoronoiSurfaceArea sa;
+        sa.run(forceField.value(), framework, geometricProbe("probe-N2"),
+               use_monte_carlo_methods ? VoronoiSurfaceArea::Method::Sampled
+                                       : VoronoiSurfaceArea::Method::Exact,
+               number_of_iterations, number_of_slices);
+      }
+
       if (use_geometric_methods)
       {
         if (use_monte_carlo_methods)
@@ -720,14 +486,15 @@ void CommandLine::run(int argc, char *argv[])
           if (use_cpu)
           {
             MC_SurfaceArea sa;
-
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_iterations, number_of_inner_steps);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
+                   number_of_iterations, number_of_inner_steps);
           }
 
           if (use_gpu)
           {
             MC_OpenCL_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_iterations, number_of_inner_steps);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
+                   number_of_iterations, number_of_inner_steps);
           }
         }
 
@@ -736,13 +503,15 @@ void CommandLine::run(int argc, char *argv[])
           if (use_cpu)
           {
             Integration_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_slices);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
+                   number_of_slices);
           }
 
           if (use_gpu)
           {
             Integration_OpenCL_SurfaceArea sa;
-            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"), number_of_slices);
+            sa.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-N2"),
+                   number_of_slices);
           }
         }
       }
@@ -767,12 +536,43 @@ void CommandLine::run(int argc, char *argv[])
     {
       std::cout << "Compute void fraction" << std::endl;
 
+      // The geometric void fraction is the probe-accessible void, split from the void closed off in
+      // pockets, which is what zeo++ reports as the accessible volume.
+      if (use_gridbased_methods && use_gpu)
+      {
+        std::cout << "Compute the void volume from the clearance grid" << std::endl;
+
+        GridVoidFraction vf;
+        vf.run(forceField.value(), framework, geometricProbe("probe-He"), gridSize);
+      }
+
+      if (use_apollonius)
+      {
+        // Both how much void there is and how it divides between channels and pockets are measured
+        // rather than sampled, unless the sampled estimate is asked for by name. The division falls
+        // back on sampling only where the surface cannot supply it, and says so when it does.
+        ApolloniusAccessibleVolume av;
+        av.run(forceField.value(), framework, geometricProbe("probe-He"),
+               use_monte_carlo_methods ? ApolloniusAccessibleVolume::Method::Sampled
+                                       : ApolloniusAccessibleVolume::Method::Exact,
+               number_of_iterations, number_of_slices);
+      }
+      else if (use_voronoi)
+      {
+        VoronoiAccessibleVolume av;
+        av.run(forceField.value(), framework, geometricProbe("probe-He"),
+               use_monte_carlo_methods ? VoronoiAccessibleVolume::Method::Sampled
+                                       : VoronoiAccessibleVolume::Method::Exact,
+               number_of_iterations, number_of_slices);
+      }
+
       if (use_monte_carlo_methods)
       {
         if (use_cpu)
         {
           MC_VoidFraction vf;
-          //vf.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-He"), number_of_iterations, number_of_inner_steps);
+          //vf.run(forceField.value(), framework, well_depth_factor, probe_atom_name.value_or("probe-He"),
+          //       number_of_iterations, number_of_inner_steps);
         }
 
         if (use_gpu)
@@ -787,7 +587,8 @@ void CommandLine::run(int argc, char *argv[])
         if (use_cpu)
         {
           EnergyVoidFraction vf;
-          vf.run(forceField.value(), framework, probe_atom_name.value_or("probe-He"), number_of_iterations, number_of_inner_steps);
+          vf.run(forceField.value(), framework, probe_atom_name.value_or("probe-He"), number_of_iterations,
+                 number_of_inner_steps);
         }
 
         if (use_gpu)
@@ -800,24 +601,135 @@ void CommandLine::run(int argc, char *argv[])
 
     if (state.test(CommandLine::State::PSD))
     {
+      // The distribution itself is a closed form over the surface of the framework, so it is evaluated rather
+      // than sampled unless the sampled estimate is asked for by name. Which diagram is named decides only how
+      // the curve is divided between the void a probe can reach and the void it cannot.
+      //
+      // The probe named is the one the accessible distribution is reported for, beside the distribution of the
+      // whole of the void. Helium by default, as for the accessible volume: it is the molecule a void volume is
+      // measured with, and being the smallest of the probes it is the one that separates the pores a molecule
+      // cannot enter at all from the pores it merely finds narrow. A larger probe answers a narrower question,
+      // and answers nothing whatever in a framework whose windows it cannot pass.
+      if (use_gridbased_methods && use_gpu)
+      {
+        std::cout << "Compute the pore-size distribution from the clearance grid" << std::endl;
+
+        GridPoreSizeDistribution psd;
+        psd.run(forceField.value(), framework, geometricProbe("probe-He"), gridSize, maximum_range, number_of_bins);
+      }
+
+      if (use_apollonius)
+      {
+        std::cout << "Compute the pore-size distribution from the Apollonius diagram" << std::endl;
+        ApolloniusPoreSizeDistribution psd;
+        psd.run(forceField.value(), framework, geometricProbe("probe-He"), maximum_range, number_of_bins,
+                number_of_slices.value_or(1));
+      }
+      else if (use_voronoi)
+      {
+        std::cout << "Compute the pore-size distribution from the radical (Voronoi) network" << std::endl;
+        VoronoiPoreSizeDistribution psd;
+        psd.run(forceField.value(), framework, geometricProbe("probe-He"), maximum_range, number_of_bins,
+                number_of_slices.value_or(1));
+      }
+
       if (use_monte_carlo_methods)
       {
         if (use_cpu)
         {
           MC_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps, maximum_range);
+          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps,
+                  maximum_range);
         }
 
         if (use_gpu)
         {
           MC_OpenCL_PoreSizeDistribution psd(1000);
-          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps, maximum_range);
+          psd.run(forceField.value(), framework, well_depth_factor, number_of_iterations, number_of_inner_steps,
+                  maximum_range);
         }
       }
 
       if (use_energy_methods)
       {
         std::print("TODO: not implemented yet\n");
+      }
+    }
+
+    if (state.test(CommandLine::State::PoreAnalysis))
+    {
+      std::string probe = geometricProbe("probe-N2");
+
+      bool onTheGrid = use_gridbased_methods && use_gpu;
+
+      if (onTheGrid)
+      {
+        std::cout << "Compute pore diameters and channels from the clearance grid" << std::endl;
+
+        GridPoreAnalysis analysis;
+        analysis.run(forceField.value(), framework, probe, gridSize);
+      }
+
+      if (use_apollonius)
+      {
+        std::cout << "Compute pore diameters and channels from the Apollonius diagram" << std::endl;
+
+        ApolloniusPoreAnalysis analysis;
+        analysis.run(forceField.value(), framework, probe);
+      }
+      else if (!onTheGrid)
+      {
+        std::cout << "Compute pore diameters and channels from the Voronoi network" << std::endl;
+
+        VoronoiPoreDiameters diameters;
+        diameters.run(forceField.value(), framework);
+
+        // Both analyses read the same network, and building it costs more than either of them.
+        VoronoiChannels channels;
+        channels.run(forceField.value(), framework, probe, diameters.network);
+      }
+    }
+
+    if (state.test(CommandLine::State::BlockingSpheres))
+    {
+      std::string probe = geometricProbe("probe-N2");
+
+      // The spheres come from the surfaces of the pockets themselves; the network is there for the cluster the
+      // surfaces cannot place and for the sampled fallback, so it is worth saying which of the two was used.
+      auto report = [](std::size_t spheres, bool measured, const std::string &reason)
+      {
+        std::cout << spheres << (measured ? " spheres, one per pocket, measured from its own surface"
+                                          : " spheres, sampled: " + reason)
+                  << std::endl;
+      };
+
+      bool onTheGrid = use_gridbased_methods && use_gpu;
+
+      if (onTheGrid)
+      {
+        std::cout << "Compute blocking spheres from the clearance grid" << std::endl;
+
+        GridBlockingSpheres blocks;
+        blocks.run(forceField.value(), framework, probe, gridSize);
+        std::cout << blocks.spheres.size() << " spheres, covering " << blocks.numberOfPockets << " pockets"
+                  << std::endl;
+      }
+
+      if (use_apollonius)
+      {
+        std::cout << "Compute blocking spheres from the Apollonius diagram" << std::endl;
+
+        ApolloniusBlockingSpheres blocks;
+        blocks.run(forceField.value(), framework, probe);
+        report(blocks.spheres.size(), blocks.measured, blocks.fallbackReason);
+      }
+      else if (!onTheGrid)
+      {
+        std::cout << "Compute blocking spheres from the Voronoi network" << std::endl;
+
+        VoronoiBlockingSpheres blocks;
+        blocks.run(forceField.value(), framework, probe);
+        report(blocks.spheres.size(), blocks.measured, blocks.fallbackReason);
       }
     }
 

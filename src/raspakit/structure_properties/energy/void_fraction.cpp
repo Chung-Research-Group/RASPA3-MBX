@@ -1,39 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <istream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
-#include <optional>
-#include "mdspanwrapper.h"
-#endif
-
 module energy_void_fraction;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import opencl;
 import float4;
@@ -45,8 +14,8 @@ import forcefield;
 import framework;
 import simulationbox;
 import atom;
-import potential_energy_vdw;
-import energy_factor;
+import potential_pair_derivatives;
+import potential_pair_vdw;
 import units;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 //import mdspan;
@@ -56,7 +25,7 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
                              std::optional<std::size_t> numberOfIterations, std::optional<std::size_t> numberOfInnersteps)
 {
   RandomNumber random{std::nullopt};
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
   std::optional<std::size_t> probe_type = forceField.findPseudoAtom(probePseudoAtom);
   if (!probe_type.has_value())
@@ -67,7 +36,7 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
   std::size_t number_of_iterations = numberOfIterations.value_or(1000);
   std::size_t number_of_inner_steps = numberOfInnersteps.value_or(1000);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   double cutoff = forceField.cutOffFrameworkVDW;
   int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
@@ -104,8 +73,8 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
               double rr = double3::dot(dr, dr);
               if (rr < cutoff * cutoff)
               {
-                Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
-                  forceField, 0, 0, 1.0, 1.0, rr, probe_type.value(), typeB);
+                Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
+                  forceField, 1.0, 1.0, rr, probe_type.value(), typeB);
 
                 energy += energyFactor.energy;
               }
@@ -119,7 +88,7 @@ void EnergyVoidFraction::run(const ForceField &forceField, const Framework &fram
     }
   }
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

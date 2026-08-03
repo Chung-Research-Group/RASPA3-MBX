@@ -1,24 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cstddef>
-#include <optional>
-#include <string>
-#include <tuple>
-#include <unordered_set>
-#include <vector>
-#endif
-
 export module skspacegroup;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import int3x3;
@@ -72,6 +56,11 @@ export class SKSpaceGroup
   static std::optional<std::size_t> HallNumberFromHMString(std::string inputString);
   static std::optional<std::size_t> HallNumberFromSpaceGroupNumber(std::size_t);
   static std::optional<std::size_t> HallNumber(std::string inputString);
+  static std::optional<SKSeitzMatrix> parseCifSymmetryOperation(std::string expression);
+  static Centring centringFromHMString(std::string hmString);
+  static std::optional<std::size_t> HallNumberFromSymmetryOperations(
+      const std::vector<SKSeitzMatrix>& operations, double3x3 lattice, Centring centering,
+      std::optional<std::size_t> internationalNumber = std::nullopt, double symmetryPrecision = 1e-2);
   static std::optional<FoundPrimitiveCellInfo> SKFindPrimitive(
       double3x3 unitCell, std::vector<std::tuple<double3, std::size_t, double>> atoms, bool allowPartialOccupancies,
       double symmetryPrecision);
@@ -90,7 +79,7 @@ export class SKSpaceGroup
       std::vector<std::tuple<double3, std::size_t, double>> atoms, SKPointSymmetrySet latticeSymmetries,
       bool allowPartialOccupancies, double symmetryPrecision);
   static std::optional<std::pair<double3, SKRotationalChangeOfBasis>> matchSpaceGroup(
-      std::size_t HallNumber, double3x3 lattice, Centring entering, std::vector<SKSeitzMatrix> seitzMatrices,
+      std::size_t HallNumber, double3x3 lattice, Centring centering, std::vector<SKSeitzMatrix> seitzMatrices,
       double symmetryPrecision);
   static std::optional<double3> getOriginShift(std::size_t HallNumber, Centring centering,
                                                SKRotationalChangeOfBasis changeOfBasis,

@@ -1,39 +1,13 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <atomic>
-#include <cmath>
-#include <cstddef>
-#include <deque>
-#include <functional>
-#include <future>
-#include <iostream>
-#include <numbers>
-#include <optional>
-#include <print>
-#include <semaphore>
-#include <span>
-#include <thread>
-#include <type_traits>
-#include <vector>
-#endif
-
 module cbmc_interactions_framework_molecule;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import energy_status;
-import potential_energy_vdw;
-import potential_gradient_vdw;
-import potential_energy_coulomb;
-import potential_gradient_coulomb;
+import potential_pair_derivatives;
+import potential_pair_vdw;
+import potential_pair_coulomb;
 import potential_correction_vdw;
 import framework;
 import simulationbox;
@@ -41,8 +15,6 @@ import double3;
 import double3x3;
 import forcefield;
 import atom;
-import energy_factor;
-import gradient_factor;
 import energy_status_inter;
 import running_energy;
 import units;
@@ -76,7 +48,7 @@ template <>
     {
       double3 posB = atom.position;
       std::size_t typeB = static_cast<std::size_t>(atom.type);
-      bool groupIdB = static_cast<bool>(atom.groupId);
+      std::uint8_t groupIdB = atom.groupId;
       bool isFractional = static_cast<bool>(atom.isFractional);
       double scalingVDWB = atom.scalingVDW;
       double scalingCoulombB = atom.scalingCoulomb;
@@ -101,7 +73,7 @@ template <>
         {
           double3 posA = it1->position;
           std::size_t typeA = static_cast<std::size_t>(it1->type);
-          bool groupIdA = static_cast<bool>(it1->groupId);
+          std::uint8_t groupIdA = it1->groupId;
           double scalingVDWA = it1->scalingVDW;
           double scalingCoulombA = it1->scalingCoulomb;
           double chargeA = it1->charge;
@@ -112,23 +84,23 @@ template <>
 
           if (rr < cutOffVDWSquared)
           {
-            Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
-                forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
+                forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
             if (energyFactor.energy > overlapCriteria)
             {
               return std::nullopt;
             }
             energySum.frameworkMoleculeVDW += energyFactor.energy;
-            energySum.dudlambdaVDW += energyFactor.dUdlambda;
+            energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
           }
           if (useCharge && rr < cutOffChargeSquared)
           {
             double r = std::sqrt(rr);
-            Potentials::EnergyFactor energyFactor = Potentials::potentialCoulombEnergy(
-                forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
+                forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
             energySum.frameworkMoleculeCharge += energyFactor.energy;
-            energySum.dudlambdaCharge += energyFactor.dUdlambda;
+            energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
           }
         }
       }
@@ -171,7 +143,7 @@ template <>
       if (cancel.test()) return energySum;
       double3 posA = it1->position;
       std::size_t typeA = static_cast<std::size_t>(it1->type);
-      bool groupIdA = static_cast<bool>(it1->groupId);
+      std::uint8_t groupIdA = it1->groupId;
       double scalingVDWA = it1->scalingVDW;
       double scalingCoulombA = it1->scalingCoulomb;
       double chargeA = it1->charge;
@@ -182,7 +154,7 @@ template <>
         {
           double3 posB = atom.position;
           std::size_t typeB = static_cast<std::size_t>(atom.type);
-          bool groupIdB = static_cast<bool>(atom.groupId);
+          std::uint8_t groupIdB = atom.groupId;
           double scalingVDWB = atom.scalingVDW;
           double scalingCoulombB = atom.scalingCoulomb;
           double chargeB = atom.charge;
@@ -193,8 +165,8 @@ template <>
 
           if (rr < cutOffVDWSquared)
           {
-            Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
-                forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
+                forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
 
             if (energyFactor.energy > overlapCriteria)
             {
@@ -202,16 +174,16 @@ template <>
               return energySum;
             }
             energySum.frameworkMoleculeVDW += energyFactor.energy;
-            energySum.dudlambdaVDW += energyFactor.dUdlambda;
+            energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
           }
           if (useCharge && rr < cutOffChargeSquared)
           {
             double r = std::sqrt(rr);
-            Potentials::EnergyFactor energyFactor = Potentials::potentialCoulombEnergy(
-                forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
+                forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
             energySum.frameworkMoleculeCharge += energyFactor.energy;
-            energySum.dudlambdaCharge += energyFactor.dUdlambda;
+            energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
           }
         }
         ++index;
@@ -288,7 +260,7 @@ template <>
     {
       double3 posA = it1->position;
       std::size_t typeA = static_cast<std::size_t>(it1->type);
-      bool groupIdA = static_cast<bool>(it1->groupId);
+      std::uint8_t groupIdA = it1->groupId;
       double scalingVDWA = it1->scalingVDW;
       double scalingCoulombA = it1->scalingCoulomb;
       double chargeA = it1->charge;
@@ -299,7 +271,7 @@ template <>
         {
           double3 posB = atom.position;
           std::size_t typeB = static_cast<std::size_t>(atom.type);
-          bool groupIdB = static_cast<bool>(atom.groupId);
+          std::uint8_t groupIdB = atom.groupId;
           double scalingVDWB = atom.scalingVDW;
           double scalingCoulombB = atom.scalingCoulomb;
           double chargeB = atom.charge;
@@ -310,23 +282,23 @@ template <>
 
           if (rr < cutOffVDWSquared)
           {
-            Potentials::EnergyFactor energyFactor = Potentials::potentialVDWEnergy(
-                forceField, groupIdA, groupIdB, scalingVDWA, scalingVDWB, rr, typeA, typeB);
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialVDW<0>(
+                forceField, scalingVDWA, scalingVDWB, rr, typeA, typeB);
             if (energyFactor.energy > overlapCriteria)
             {
               cancel.test_and_set();
             }
             energySum.frameworkMoleculeVDW += energyFactor.energy;
-            energySum.dudlambdaVDW += energyFactor.dUdlambda;
+            energySum.addDudlambdaVDW(groupIdA, groupIdB, scalingVDWA, scalingVDWB, energyFactor.dUdlambda);
           }
           if (useCharge && rr < cutOffChargeSquared)
           {
             double r = std::sqrt(rr);
-            Potentials::EnergyFactor energyFactor = Potentials::potentialCoulombEnergy(
-                forceField, groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
+            Potentials::PairDerivatives<0> energyFactor = Potentials::potentialCoulomb<0>(
+                forceField, scalingCoulombA, scalingCoulombB, r, chargeA, chargeB);
 
             energySum.frameworkMoleculeCharge += energyFactor.energy;
-            energySum.dudlambdaCharge += energyFactor.dUdlambda;
+            energySum.addDudlambdaCharge(groupIdA, groupIdB, scalingCoulombA, scalingCoulombB, energyFactor.dUdlambda);
           }
         }
         ++index;

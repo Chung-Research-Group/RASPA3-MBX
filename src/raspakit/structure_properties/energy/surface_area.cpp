@@ -1,38 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <istream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
-#include "mdspanwrapper.h"
-#endif
-
 module energy_surface_area;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import opencl;
 import float4;
@@ -60,9 +30,9 @@ void EnergySurfaceArea::run(const ForceField& forceField, const Framework& frame
   int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
   std::vector<double3> positions = framework.fractionalAtomPositionsUnitCell();
   std::vector<double2> potentialParameters = framework.atomUnitCellLennardJonesPotentialParameters(forceField);
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   std::size_t numberOfAtoms = positions.size();
   int temp = grid_size.x * grid_size.y * grid_size.z;
@@ -216,7 +186,7 @@ void EnergySurfaceArea::run(const ForceField& forceField, const Framework& frame
     }
   }
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

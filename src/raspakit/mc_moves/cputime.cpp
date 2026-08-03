@@ -1,32 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module mc_moves_cputime;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import stringutils;
@@ -34,193 +10,13 @@ import archive;
 import json;
 import mc_moves_move_types;
 
-MCMoveCpuTime::MCMoveCpuTime()
-    : timingMap{{MoveTypes::Translation,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"ExternalField-Molecule", std::chrono::duration<double>::zero()},
-                     {"Framework-Molecule", std::chrono::duration<double>::zero()},
-                     {"Molecule-Molecule", std::chrono::duration<double>::zero()},
-                     {"Ewald", std::chrono::duration<double>::zero()},
-                     {"MBX", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::RandomTranslation,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"ExternalField-Molecule", std::chrono::duration<double>::zero()},
-                     {"Framework-Molecule", std::chrono::duration<double>::zero()},
-                     {"Molecule-Molecule", std::chrono::duration<double>::zero()},
-                     {"Ewald", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::Rotation,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"ExternalField-Molecule", std::chrono::duration<double>::zero()},
-                     {"Framework-Molecule", std::chrono::duration<double>::zero()},
-                     {"Molecule-Molecule", std::chrono::duration<double>::zero()},
-                     {"Ewald", std::chrono::duration<double>::zero()},
-                     {"MBX", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::RandomRotation,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"ExternalField-Molecule", std::chrono::duration<double>::zero()},
-                     {"Framework-Molecule", std::chrono::duration<double>::zero()},
-                     {"Molecule-Molecule", std::chrono::duration<double>::zero()},
-                     {"Ewald", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::ReinsertionCBMC,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"NonEwald", std::chrono::duration<double>::zero()},
-                     {"Ewald", std::chrono::duration<double>::zero()},
-                     {"MBX", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::PartialReinsertionCBMC,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"NonEwald", std::chrono::duration<double>::zero()},
-                     {"Ewald", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::Swap,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"Insertion-Total", std::chrono::duration<double>::zero()},
-                     {"Deletion-Total", std::chrono::duration<double>::zero()},
-                     {"NonEwald", std::chrono::duration<double>::zero()},
-                     {"Tail", std::chrono::duration<double>::zero()},
-                     {"Ewald", std::chrono::duration<double>::zero()},
-                     {"MBX", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::SwapCBMC,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"Insertion-Total", std::chrono::duration<double>::zero()},
-                     {"Deletion-Total", std::chrono::duration<double>::zero()},
-                     {"NonEwald", std::chrono::duration<double>::zero()},
-                     {"Tail", std::chrono::duration<double>::zero()},
-                     {"Ewald", std::chrono::duration<double>::zero()},
-                     {"MBX", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::SwapCFCMC,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"Insertion-ExternalField", std::chrono::duration<double>::zero()},
-                     {"Insertion-Framework", std::chrono::duration<double>::zero()},
-                     {"Insertion-Molecule", std::chrono::duration<double>::zero()},
-                     {"Insertion-Ewald", std::chrono::duration<double>::zero()},
-                     {"Insertion-Tail", std::chrono::duration<double>::zero()},
-                     {"Deletion-ExternalField", std::chrono::duration<double>::zero()},
-                     {"Deletion-Framework", std::chrono::duration<double>::zero()},
-                     {"Deletion-Molecule", std::chrono::duration<double>::zero()},
-                     {"Deletion-Ewald", std::chrono::duration<double>::zero()},
-                     {"Deletion-Tail", std::chrono::duration<double>::zero()},
-                     {"Lambda-ExternalField", std::chrono::duration<double>::zero()},
-                     {"Lambda-Framework", std::chrono::duration<double>::zero()},
-                     {"Lambda-Molecule", std::chrono::duration<double>::zero()},
-                     {"Lambda-Ewald", std::chrono::duration<double>::zero()},
-                     {"Lambda-Tail", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::SwapCBCFCMC,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"Insertion-ExternalField", std::chrono::duration<double>::zero()},
-                     {"Insertion-Framework", std::chrono::duration<double>::zero()},
-                     {"Insertion-Molecule", std::chrono::duration<double>::zero()},
-                     {"Insertion-NonEwald", std::chrono::duration<double>::zero()},
-                     {"Insertion-Ewald", std::chrono::duration<double>::zero()},
-                     {"Insertion-Tail", std::chrono::duration<double>::zero()},
-                     {"Deletion-ExternalField", std::chrono::duration<double>::zero()},
-                     {"Deletion-Framework", std::chrono::duration<double>::zero()},
-                     {"Deletion-Molecule", std::chrono::duration<double>::zero()},
-                     {"Deletion-NonEwald", std::chrono::duration<double>::zero()},
-                     {"Deletion-Ewald", std::chrono::duration<double>::zero()},
-                     {"Deletion-Tail", std::chrono::duration<double>::zero()},
-                     {"Lambda-ExternalField", std::chrono::duration<double>::zero()},
-                     {"Lambda-Framework", std::chrono::duration<double>::zero()},
-                     {"Lambda-Molecule", std::chrono::duration<double>::zero()},
-                     {"Lambda-NonEwald", std::chrono::duration<double>::zero()},
-                     {"Lambda-Ewald", std::chrono::duration<double>::zero()},
-                     {"Lambda-Tail", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::GibbsSwapCBMC,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"NonEwald", std::chrono::duration<double>::zero()},
-                     {"Tail", std::chrono::duration<double>::zero()},
-                     {"Ewald", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::GibbsSwapCFCMC,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"LambdaInterchange-NonEwald", std::chrono::duration<double>::zero()},
-                     {"LambdaInterchange-Ewald", std::chrono::duration<double>::zero()},
-                     {"LambdaInterchange-Tail", std::chrono::duration<double>::zero()},
-                     {"LambdaChange-NonEwald", std::chrono::duration<double>::zero()},
-                     {"LambdaChange-Ewald", std::chrono::duration<double>::zero()},
-                     {"LambdaChange-Tail", std::chrono::duration<double>::zero()},
-                     {"LambdaShuffle-NonEwald", std::chrono::duration<double>::zero()},
-                     {"LambdaShuffle-Ewald", std::chrono::duration<double>::zero()},
-                     {"LambdaShuffle-Tail", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::Widom,
-                 {{"Total", std::chrono::duration<double>::zero()},
-                  {"NonEwald", std::chrono::duration<double>::zero()},
-                  {"Tail", std::chrono::duration<double>::zero()},
-                  {"Ewald", std::chrono::duration<double>::zero()},
-                  {"MBX", std::chrono::duration<double>::zero()}}},
-                {MoveTypes::WidomCFCMC,
-                 {{"Total", std::chrono::duration<double>::zero()},
-                  {"ExternalField", std::chrono::duration<double>::zero()},
-                  {"Molecule", std::chrono::duration<double>::zero()},
-                  {"Framework", std::chrono::duration<double>::zero()},
-                  {"Ewald", std::chrono::duration<double>::zero()},
-                  {"Tail", std::chrono::duration<double>::zero()}}},
-                {MoveTypes::WidomCBCFCMC,
-                 {{"Total", std::chrono::duration<double>::zero()},
-                  {"ExternalField", std::chrono::duration<double>::zero()},
-                  {"Molecule", std::chrono::duration<double>::zero()},
-                  {"Framework", std::chrono::duration<double>::zero()},
-                  {"Ewald", std::chrono::duration<double>::zero()},
-                  {"NonEwald", std::chrono::duration<double>::zero()},
-                  {"Tail", std::chrono::duration<double>::zero()}}},
-                {MoveTypes::VolumeChange,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"NonEwald", std::chrono::duration<double>::zero()},
-                     {"Tail", std::chrono::duration<double>::zero()},
-                     {"Ewald", std::chrono::duration<double>::zero()},
-                     {"MBX", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::GibbsVolume,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"NonEwald", std::chrono::duration<double>::zero()},
-                     {"Tail", std::chrono::duration<double>::zero()},
-                     {"Ewald", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::ParallelTempering,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"Energy", std::chrono::duration<double>::zero()},
-                     {"Fugacity", std::chrono::duration<double>::zero()},
-                 }},
-                {MoveTypes::HybridMC,
-                 {
-                     {"Total", std::chrono::duration<double>::zero()},
-                     {"Integration", std::chrono::duration<double>::zero()},
-                 }}}
-{
-}
+MCMoveCpuTime::MCMoveCpuTime() {}
 
 void MCMoveCpuTime::clearTimingStatistics()
 {
-  for (auto& [moveType, moveTimings] : timingMap)
+  for (TimingRow& moveTimings : timingMap)
   {
-    for (auto& [timingName, time] : moveTimings)
-    {
-      time = std::chrono::duration<double>::zero();
-    }
+    moveTimings.fill(std::chrono::duration<double>::zero());
   }
 }
 
@@ -228,38 +24,34 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics() const
 {
   std::ostringstream stream;
 
-  for (const MoveTypes& moveType : systemMoves)
+  for (const Move::Types& moveType : systemMoves)
   {
-    if (timingMap.find(moveType) == timingMap.end()) continue;
-    auto& moveTimings = timingMap.at(moveType);
-    if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
+    const TimingRow& moveTimings = timingMap.at(std::to_underlying(moveType));
+    if (moveTimings[std::to_underlying(Move::Timing::Total)] > std::chrono::duration<double>::zero())
     {
       std::print(stream, "\n");
-      std::print(stream, "{:<32} {:14f} [s]\n", moveNames[moveType], moveTimings.at("Total").count());
-      for (auto& [timingName, time] : moveTimings)
+      std::print(stream, "{:<32} {:14f} [s]\n", Move::moveNames[std::to_underlying(moveType)],
+                 moveTimings[std::to_underlying(Move::Timing::Total)].count());
+      for (const Move::Timing& timing : Move::timingKeys[std::to_underlying(moveType)])
       {
-        if (timingName != "Total")
-        {
-          std::print(stream, "    {:<28s} {:14f} [s]\n", timingName, time.count());
-        }
+        std::print(stream, "    {:<28s} {:14f} [s]\n", Move::timingNames[std::to_underlying(timing)],
+                   moveTimings[std::to_underlying(timing)].count());
       }
     }
   }
 
-  for (const MoveTypes& moveType : crossSystemMoves)
+  for (const Move::Types& moveType : crossSystemMoves)
   {
-    if (timingMap.find(moveType) == timingMap.end()) continue;
-    auto& moveTimings = timingMap.at(moveType);
-    if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
+    const TimingRow& moveTimings = timingMap.at(std::to_underlying(moveType));
+    if (moveTimings[std::to_underlying(Move::Timing::Total)] > std::chrono::duration<double>::zero())
     {
       std::print(stream, "\n");
-      std::print(stream, "{:<31} {:14f} [s]\n", moveNames[moveType], moveTimings.at("Total").count());
-      for (auto& [timingName, time] : moveTimings)
+      std::print(stream, "{:<31} {:14f} [s]\n", Move::moveNames[std::to_underlying(moveType)],
+                 moveTimings[std::to_underlying(Move::Timing::Total)].count());
+      for (const Move::Timing& timing : Move::timingKeys[std::to_underlying(moveType)])
       {
-        if (timingName != "Total")
-        {
-          std::print(stream, "    {:<27s} {:14f} [s]\n", timingName, time.count());
-        }
+        std::print(stream, "    {:<27s} {:14f} [s]\n", Move::timingNames[std::to_underlying(timing)],
+                   moveTimings[std::to_underlying(timing)].count());
       }
     }
   }
@@ -277,26 +69,23 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::size_t compon
 {
   std::ostringstream stream;
   std::print(stream, "Component {} {}\n", componentId, componentName);
-  for (const MoveTypes& moveType : componentMoves)
+  for (const Move::Types& moveType : componentMoves)
   {
-    if (timingMap.find(moveType) == timingMap.end()) continue;
-    auto& moveTimings = timingMap.at(moveType);
-    double total = moveTimings.at("Total").count();
+    const TimingRow& moveTimings = timingMap.at(std::to_underlying(moveType));
+    double total = moveTimings[std::to_underlying(Move::Timing::Total)].count();
     if (total > 0.0)
     {
       std::print(stream, "\n");
-      std::print(stream, "{:<31} {:14f} [s]\n", moveNames[moveType], total);
-      for (auto& [timingName, time] : moveTimings)
+      std::print(stream, "{:<31} {:14f} [s]\n", Move::moveNames[std::to_underlying(moveType)], total);
+      for (const Move::Timing& timing : Move::timingKeys[std::to_underlying(moveType)])
       {
-        if (timingName != "Total")
-        {
-          std::print(stream, "    {:<27s} {:14f} [s]\n", timingName, time.count());
+        const std::string& timingName = Move::timingNames[std::to_underlying(timing)];
+        std::print(stream, "    {:<27s} {:14f} [s]\n", timingName, moveTimings[std::to_underlying(timing)].count());
 
-          // skip subtracting keys "...-Total" for overhead (they are summed qts)
-          if (timingName.find("Total") == std::string::npos)
-          {
-            total -= time.count();
-          }
+        // skip subtracting keys "...-Total" for overhead (they are summed qts)
+        if (timingName.find("Total") == std::string::npos)
+        {
+          total -= moveTimings[std::to_underlying(timing)].count();
         }
       }
       std::print(stream, "    {:<27s} {:14f} [s]\n", "Overhead", total);
@@ -309,24 +98,22 @@ const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::size_t compon
 const std::string MCMoveCpuTime::writeMCMoveCPUTimeStatistics(std::chrono::duration<double> totalSimulation) const
 {
   std::ostringstream stream;
-  for (auto& [moveType, moveTimings] : timingMap)
+  for (std::size_t i = 0; i != timingMap.size(); ++i)
   {
-    double total = moveTimings.at("Total").count();
+    double total = timingMap[i][std::to_underlying(Move::Timing::Total)].count();
     if (total > 0.0)
     {
       std::print(stream, "\n");
-      std::print(stream, "{:<31} {:14f} [s]\n", moveNames[moveType], total);
-      for (auto& [timingName, time] : moveTimings)
+      std::print(stream, "{:<31} {:14f} [s]\n", Move::moveNames[i], total);
+      for (const Move::Timing& timing : Move::timingKeys[i])
       {
-        if (timingName != "Total")
-        {
-          std::print(stream, "    {:<27s} {:14f} [s]\n", timingName, time.count());
+        const std::string& timingName = Move::timingNames[std::to_underlying(timing)];
+        std::print(stream, "    {:<27s} {:14f} [s]\n", timingName, timingMap[i][std::to_underlying(timing)].count());
 
-          // skip subtracting keys "...-Total" for overhead (they are summed qts)
-          if (timingName.find("Total") == std::string::npos)
-          {
-            total -= time.count();
-          }
+        // skip subtracting keys "...-Total" for overhead (they are summed qts)
+        if (timingName.find("Total") == std::string::npos)
+        {
+          total -= timingMap[i][std::to_underlying(timing)].count();
         }
       }
       std::print(stream, "    {:<27s} {:14f} [s]\n", "Overhead", total);
@@ -349,29 +136,28 @@ const nlohmann::json MCMoveCpuTime::jsonSystemMCMoveCPUTimeStatistics() const
 {
   nlohmann::json status;
 
-  for (const MoveTypes& moveType : systemMoves)
+  auto writeMove = [&](const Move::Types& moveType)
   {
-    if (timingMap.find(moveType) == timingMap.end()) continue;
-    auto& moveTimings = timingMap.at(moveType);
-    if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
+    const TimingRow& moveTimings = timingMap.at(std::to_underlying(moveType));
+    if (moveTimings[std::to_underlying(Move::Timing::Total)] > std::chrono::duration<double>::zero())
     {
-      for (auto& [timingName, time] : moveTimings)
+      const std::string& moveName = Move::moveNames[std::to_underlying(moveType)];
+      status[moveName]["Total"] = moveTimings[std::to_underlying(Move::Timing::Total)].count();
+      for (const Move::Timing& timing : Move::timingKeys[std::to_underlying(moveType)])
       {
-        status[moveNames[moveType]][timingName] = time.count();
+        status[moveName][Move::timingNames[std::to_underlying(timing)]] =
+            moveTimings[std::to_underlying(timing)].count();
       }
     }
+  };
+
+  for (const Move::Types& moveType : systemMoves)
+  {
+    writeMove(moveType);
   }
-  for (const MoveTypes& moveType : crossSystemMoves)
+  for (const Move::Types& moveType : crossSystemMoves)
   {
-    if (timingMap.find(moveType) == timingMap.end()) continue;
-    auto& moveTimings = timingMap.at(moveType);
-    if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
-    {
-      for (auto& [timingName, time] : moveTimings)
-      {
-        status[moveNames[moveType]][timingName] = time.count();
-      }
-    }
+    writeMove(moveType);
   }
 
   status["propertySampling"] = propertySampling.count();
@@ -383,31 +169,32 @@ const nlohmann::json MCMoveCpuTime::jsonComponentMCMoveCPUTimeStatistics() const
 {
   nlohmann::json status;
 
-  for (auto& [moveType, moveTimings] : timingMap)
+  for (std::size_t i = 0; i != timingMap.size(); ++i)
   {
-    if (moveType == MoveTypes::VolumeChange || moveType == MoveTypes::GibbsVolume || moveType == MoveTypes::HybridMC)
+    if (i == std::to_underlying(Move::Types::VolumeChange) ||
+        i == std::to_underlying(Move::Types::AnisotropicVolumeChange) ||
+        i == std::to_underlying(Move::Types::GibbsVolume) ||
+        i == std::to_underlying(Move::Types::HybridMC))
     {
       continue;
     }
 
-    double total = moveTimings.at("Total").count();
+    double total = timingMap[i][std::to_underlying(Move::Timing::Total)].count();
     if (total > 0.0)
     {
-      status[moveNames[moveType]]["Total"] = total;
-      for (auto& [timingName, time] : moveTimings)
+      status[Move::moveNames[i]]["Total"] = total;
+      for (const Move::Timing& timing : Move::timingKeys[i])
       {
-        if (timingName != "Total")
-        {
-          status[moveNames[moveType]][timingName] = time.count();
+        const std::string& timingName = Move::timingNames[std::to_underlying(timing)];
+        status[Move::moveNames[i]][timingName] = timingMap[i][std::to_underlying(timing)].count();
 
-          // skip subtracting keys "...-Total" for overhead (they are summed qts)
-          if (timingName.find("Total") == std::string::npos)
-          {
-            total -= time.count();
-          }
+        // skip subtracting keys "...-Total" for overhead (they are summed qts)
+        if (timingName.find("Total") == std::string::npos)
+        {
+          total -= timingMap[i][std::to_underlying(timing)].count();
         }
       }
-      status[moveNames[moveType]]["Overhead"] = total;
+      status[Move::moveNames[i]]["Overhead"] = total;
     }
   }
   return status;
@@ -416,16 +203,19 @@ const nlohmann::json MCMoveCpuTime::jsonComponentMCMoveCPUTimeStatistics() const
 const nlohmann::json MCMoveCpuTime::jsonOverallMCMoveCPUTimeStatistics(
     std::chrono::duration<double> totalSimulation) const
 {
-  std::ostringstream stream;
   nlohmann::json status = jsonComponentMCMoveCPUTimeStatistics();
   status.merge_patch(jsonSystemMCMoveCPUTimeStatistics());
 
-  auto& moveTimings = timingMap.at(MoveTypes::ParallelTempering);
-  if (moveTimings.at("Total") > std::chrono::duration<double>::zero())
+  const Move::Types parallelTempering = Move::Types::ParallelTempering;
+  const TimingRow& moveTimings = timingMap.at(std::to_underlying(parallelTempering));
+  if (moveTimings[std::to_underlying(Move::Timing::Total)] > std::chrono::duration<double>::zero())
   {
-    for (auto& [timingName, time] : moveTimings)
+    const std::string& moveName = Move::moveNames[std::to_underlying(parallelTempering)];
+    status[moveName]["Total"] = moveTimings[std::to_underlying(Move::Timing::Total)].count();
+    for (const Move::Timing& timing : Move::timingKeys[std::to_underlying(parallelTempering)])
     {
-      status[moveNames[MoveTypes::ParallelTempering]][timingName] = time.count();
+      status[moveName][Move::timingNames[std::to_underlying(timing)]] =
+          moveTimings[std::to_underlying(timing)].count();
     }
   }
 
@@ -462,11 +252,13 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MCMoveCpuTim
 {
   std::uint64_t versionNumber;
   archive >> versionNumber;
-  if (versionNumber > t.versionNumber)
+  if (versionNumber != t.versionNumber)
   {
     const std::source_location& location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'MCMoveCpuTime' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
+    throw std::runtime_error(
+        std::format("Incompatible version {} reading 'MCMoveCpuTime' version {} at line {} in file {}; "
+                    "restart files from before the MBX timing-layout update cannot be reused\n",
+                    versionNumber, t.versionNumber, location.line(), location.file_name()));
   }
 
   archive >> t.propertySampling;

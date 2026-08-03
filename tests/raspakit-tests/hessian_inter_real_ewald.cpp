@@ -1,23 +1,10 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <complex>
-#include <cstddef>
-#include <numbers>
-#include <span>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
 import std;
-#endif
 
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -27,9 +14,6 @@ import framework;
 import component;
 import system;
 import simulationbox;
-import energy_factor;
-import gradient_factor;
-import hessian_factor;
 import running_energy;
 import interactions_intermolecular;
 import interactions_framework_molecule;
@@ -38,11 +22,11 @@ import energy_status;
 
 TEST(hessian_inter_real_ewald, Test_gradient_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -97,11 +81,11 @@ TEST(hessian_inter_real_ewald, Test_gradient_cartesian_methane_in_CHA_triclinic_
 
 TEST(hessian_inter_real_ewald, Test_gradient_fractional_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -156,11 +140,11 @@ TEST(hessian_inter_real_ewald, Test_gradient_fractional_methane_in_CHA_triclinic
 
 TEST(hessian_inter_real_ewald, Test_hessian_cartesian_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 
@@ -231,11 +215,11 @@ TEST(hessian_inter_real_ewald, Test_hessian_cartesian_methane_in_CHA_triclinic_1
 
 TEST(hessian_inter_real_ewald, Test_hessian_fractional_methane_in_CHA_triclinic_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(11.8, true, false, true);
-  Framework f = TestFactories::makeCHA(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeMethane(forceField, 0);
+  ForceField forceField = ForceField::makeZeoliteForceField(11.8, true, false, true);
+  Framework f = Framework::makeCHA(forceField, int3(1, 1, 1));
+  Component c = Component::makeMethane(forceField, 0);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {0}, 5);
 
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
 

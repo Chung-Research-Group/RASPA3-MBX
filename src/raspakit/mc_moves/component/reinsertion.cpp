@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <iomanip>
-#include <iostream>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 module mc_moves_reinsertion;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import component;
 import atom;
@@ -35,9 +14,9 @@ import simulationbox;
 import cbmc;
 import cbmc_chain_data;
 import cbmc_interactions;
+import cbmc_growth_context;
 import randomnumbers;
 import system;
-import energy_factor;
 import energy_status;
 import energy_status_inter;
 import running_energy;
@@ -50,17 +29,20 @@ import interactions_intermolecular;
 import interactions_ewald;
 import interactions_external_field;
 import interactions_polarization;
+#ifdef BUILD_MBX
 import interactions_mbx;
-import units;
+#endif
 import mc_moves_move_types;
 
 std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, System &system,
-                                                       std::size_t selectedComponent, std::size_t selectedMolecule,
-                                                       Molecule &molecule, std::span<Atom> molecule_atoms)
+                                                       std::size_t selectedComponent, std::size_t selectedMolecule)
 {
+  std::span<Atom> molecule_atoms = system.spanOfMolecule(selectedComponent, selectedMolecule);
+  Molecule &molecule = system.moleculeData[system.moleculeIndexOfComponent(selectedComponent, selectedMolecule)];
+
   // Variables to record timing for performance measurement.
-  std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::ReinsertionCBMC;
+  std::chrono::steady_clock::time_point time_begin, time_end;
+  Move::Types move = Move::Types::ReinsertionCBMC;
   Component &component = system.components[selectedComponent];
 
   // Increment move counts for reinsertion CBMC statistics.
@@ -79,25 +61,25 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffMoleculeVDW;
   double cutOffCoulomb =
       system.forceField.useDualCutOff ? system.forceField.dualCutOff : system.forceField.cutOffCoulomb;
-  Component::GrowType growType = component.growType;
-
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   // Attempt to grow the molecule using CBMC reinsertion.
-  std::optional<ChainGrowData> growData =
-      CBMC::growMoleculeReinsertion(random, component, system.hasExternalField, system.forceField, system.simulationBox,
-                                    system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
-                                    system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta, growType,
-                                    cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, molecule, molecule_atoms);
-  time_end = std::chrono::system_clock::now();
+  std::optional<ChainGrowData> growData = CBMC::growMoleculeReinsertion(
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                        cutOffCoulomb},
+      component, selectedComponent, molecule, molecule_atoms);
+  time_end = std::chrono::steady_clock::now();
   // Record CPU time taken for the non-Ewald part of the move.
-  component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
   // If growth was unsuccessful, exit the move.
   if (!growData) return std::nullopt;
 
   // Get the new molecule configuration.
-  std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
+  std::span<const Atom> newMolecule = std::span(growData->atoms.begin(), growData->atoms.end());
 
   std::vector<Atom> old_molecule = std::vector(molecule_atoms.begin(), molecule_atoms.end());
   std::vector<double3> old_electric_field = std::vector<double3>(old_molecule.size());
@@ -113,124 +95,154 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   component.mc_moves_statistics.addConstructed(move);
 
   // Retrace the old molecule configuration using CBMC retracing.
-  time_begin = std::chrono::system_clock::now();
-  ChainRetraceData retraceData = CBMC::retraceMoleculeReinsertion(
-      random, component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-      system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-      system.spanOfMoleculeAtoms(), system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb,
-      molecule, molecule_atoms, growData->storedR);
-  time_end = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
+  std::optional<ChainRetraceData> retraceData = CBMC::retraceMoleculeReinsertion(
+      random,
+      CBMC::GrowContext{system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
+                        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
+                        system.spanOfMoleculeAtoms(), system.beta, cutOffFrameworkVDW, cutOffMoleculeVDW,
+                        cutOffCoulomb},
+      component, molecule, molecule_atoms, growData->storedR);
+  time_end = std::chrono::steady_clock::now();
 
-  // Record CPU time taken for the retracing step.
-  component.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
-
-  // Compute the energy difference in the Fourier space due to Ewald summation.
-  time_begin = std::chrono::system_clock::now();
-  RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
-      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.totalEik, system.forceField,
-      system.simulationBox, newMolecule, molecule_atoms);
-  time_end = std::chrono::system_clock::now();
-  // Record CPU time taken for the Ewald Fourier part of the move.
-  component.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
-
-  double correctionFactorDualCutOff = 1.0;
-  std::optional<RunningEnergy> energyNew;
-  std::optional<RunningEnergy> energyOld;
-  if (system.forceField.useDualCutOff)
+  if (!retraceData)
   {
-    // If dual cutoff is used, compute correction factor due to non-overlapping energies.
-    energyNew = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-        component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-        system.spanOfMoleculeAtoms(), system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW,
-        system.forceField.cutOffCoulomb, growData->atom);
-    energyOld = CBMC::computeExternalNonOverlappingEnergyDualCutOff(
-        component, system.hasExternalField, system.forceField, system.simulationBox, system.interpolationGrids,
-        system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(),
-        system.spanOfMoleculeAtoms(), system.forceField.cutOffFrameworkVDW, system.forceField.cutOffMoleculeVDW,
-        system.forceField.cutOffCoulomb, old_molecule);
-    correctionFactorDualCutOff =
-        std::exp(-system.beta * (energyNew->potentialEnergy() - growData->energies.potentialEnergy() -
-                                 (energyOld->potentialEnergy() - retraceData.energies.potentialEnergy())));
+    return std::nullopt;
   }
 
+  // Record CPU time taken for the retracing step.
+  component.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
+
+  // Compute the energy difference in the Fourier space due to Ewald summation.
+  time_begin = std::chrono::steady_clock::now();
+  RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
+      system.simulationBox, newMolecule, molecule_atoms);
+  time_end = std::chrono::steady_clock::now();
+  // Record CPU time taken for the Ewald Fourier part of the move.
+  component.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+  system.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
+
+  if (system.forceField.useDualCutOff)
+  {
+    // Dual cut-off scheme: correct the grown and retraced configurations from the inner cut-off to
+    // the full cut-offs, so that Rosenbluth weights and energies behave as if grown at the full
+    // cut-offs.
+    const CBMC::GrowContext context{system.hasExternalField, system.forceField, system.simulationBox,
+                                    system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework,
+                                    system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), system.beta,
+                                    cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb};
+
+    std::optional<RunningEnergy> correctionNew =
+        CBMC::computeDualCutOffCorrection(context, component, growData->atoms);
+    std::optional<RunningEnergy> correctionOld = CBMC::computeDualCutOffCorrection(context, component, old_molecule);
+    if (!correctionNew.has_value() || !correctionOld.has_value()) return std::nullopt;
+
+    growData->energies += correctionNew.value();
+    growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
+    retraceData->energies += correctionOld.value();
+    retraceData->RosenbluthWeight *= std::exp(-system.beta * correctionOld->potentialEnergy());
+  }
+
+  std::vector<double3> electricFieldNeighborDelta;
   RunningEnergy polarizationDifference;
   if (system.forceField.computePolarization)
   {
     Interactions::computeFrameworkMoleculeElectricFieldDifference(system.forceField, system.simulationBox,
                                                                   system.spanOfFrameworkAtoms(), new_electric_field,
-                                                                  old_electric_field, growData->atom, old_molecule);
+                                                                  old_electric_field, growData->atoms, old_molecule);
 
     Interactions::computeEwaldFourierElectricFieldDifference(
         system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.fixedFrameworkStoredEik, system.storedEik,
-        system.totalEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field,
-        growData->atom, old_molecule);
+        system.trialEik, system.forceField, system.simulationBox, new_electric_field, old_electric_field,
+        growData->atoms, old_molecule);
+
+    // Molecule-molecule polarization: add the inter-molecular field on the reinserted molecule and the change of
+    // the field on every other molecule (the inter-molecular energy is already accounted for through CBMC, so the
+    // returned energy is intentionally discarded here).
+    if (!system.forceField.omitInterPolarization)
+    {
+      electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
+      [[maybe_unused]] std::optional<RunningEnergy> interPolarizationEnergy =
+          Interactions::computeInterMolecularPolarizationElectricFieldDifference(
+              system.forceField, system.simulationBox, electricFieldNeighborDelta, new_electric_field,
+              old_electric_field, system.spanOfMoleculeAtoms(), growData->atoms, old_molecule);
+    }
 
     // Compute polarization energy difference
     polarizationDifference = Interactions::computePolarizationEnergyDifference(
-        system.forceField, new_electric_field, old_electric_field, growData->atom, old_molecule);
+        system.forceField, new_electric_field, old_electric_field, growData->atoms, old_molecule);
+
+    if (!system.forceField.omitInterPolarization)
+    {
+      polarizationDifference += Interactions::computePolarizationEnergyNeighborDifference(
+          system.forceField, system.spanOfMoleculeElectricField(), electricFieldNeighborDelta,
+          system.spanOfMoleculeAtoms());
+    }
   }
 
   // Compute correction factor from the Fourier energy difference.
-  double correctionFactorFourier =
-      std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+  double correctionFactorFourier = 1.0;
+#ifdef BUILD_MBX
+  if (!system.useMBX)
+#endif
+  {
+    correctionFactorFourier =
+        std::exp(-system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()));
+  }
 
-  double Pacc =
-      correctionFactorDualCutOff * correctionFactorFourier * growData->RosenbluthWeight / retraceData.RosenbluthWeight;
+  double Pacc = 0.0;
+#ifdef BUILD_MBX
+  if (!system.useMBX)
+#endif
+  {
+    Pacc = correctionFactorFourier * growData->RosenbluthWeight / retraceData->RosenbluthWeight;
+  }
+  RunningEnergy energyDifference =
+      (growData->energies - retraceData->energies) + energyFourierDifference + polarizationDifference;
 
-  // Big question here: original implementation did not include tail energy here. Also no tail correction factor.
-  // But we need to g-g tail correction for MBX energy comparison. So let's calculate here.
-  // Compute tail energy difference due to long-range corrections
-  time_begin = std::chrono::system_clock::now();
-  RunningEnergy tailEnergyDifferenceInterMolecule = Interactions::computeInterMolecularTailEnergyDifference(
-      system.forceField, system.simulationBox, system.spanOfMoleculeAtoms(), newMolecule, molecule_atoms);
-  RunningEnergy tailEnergyDifferenceFrameworkMolecule = Interactions::computeFrameworkMoleculeTailEnergyDifference(
-      system.forceField, system.simulationBox, system.spanOfFrameworkAtoms(), newMolecule, molecule_atoms);
-  RunningEnergy tailEnergyDifference = tailEnergyDifferenceInterMolecule + tailEnergyDifferenceFrameworkMolecule;
-  time_end = std::chrono::system_clock::now();
-
-  // Update CPU time statistics for the tail corrections
-  component.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
-  system.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
-
-  // Energy of the system before the insertion of trial molecule
-  RunningEnergy oldTotalEnergy = system.runningEnergies;
-
-  RunningEnergy energyDifferenceFF = (growData->energies - retraceData.energies) + energyFourierDifference +
-                                     polarizationDifference + tailEnergyDifference;
-  RunningEnergy energyDifferenceMBX;
-  RunningEnergy newTotalEnergy = RunningEnergy();
-  std::vector<double> mbxEnergyLog(7, 0.0);
+  std::vector<double> mbxEnergyTerms;
+  std::optional<double> exactNewMBXEnergy;
+#ifdef BUILD_MBX
   if (system.useMBX)
   {
-    // Compute the total energy difference from FF. Now it just calculates everything all again, no matter it has been
-    // calculated before or not. We can optimize this later by reusing the calculated energy difference from the CBMC
-    // growth and retrace steps. But it's not taking much time anyway, so we can leave it for now. Now we calculate the
-    // MBX energy difference. We calculate the system energy difference before and after the CMBC Reinsertion
+    mbxEnergyTerms.resize(7, 0.0);
 
-    time_begin = std::chrono::system_clock::now();
-    newTotalEnergy = Interactions::computeMBXEnergy(
+    time_begin = std::chrono::steady_clock::now();
+    const RunningEnergy oldMBXTotalEnergy = Interactions::computeMBXEnergy(
         system, system.components, system.simulationBox, system.framework, selectedComponent,
-        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), newMolecule, true, &mbxEnergyLog);
+        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), {}, false);
+    const RunningEnergy newMBXTotalEnergy = Interactions::computeMBXEnergy(
+        system, system.components, system.simulationBox, system.framework, selectedComponent,
+        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), newMolecule, true, &mbxEnergyTerms);
+    exactNewMBXEnergy = newMBXTotalEnergy.mbxEnergy;
+    time_end = std::chrono::steady_clock::now();
+    component.mc_moves_cputime[move][Move::Timing::MBX] += (time_end - time_begin);
+    system.mc_moves_cputime[move][Move::Timing::MBX] += (time_end - time_begin);
 
-    time_end = std::chrono::system_clock::now();
-    component.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
-    system.mc_moves_cputime[move]["MBX"] += (time_end - time_begin);
+    RunningEnergy mbxEnergyDifference;
+    mbxEnergyDifference.externalFieldVDW =
+        growData->energies.externalFieldVDW - retraceData->energies.externalFieldVDW;
+    mbxEnergyDifference.externalFieldCharge =
+        growData->energies.externalFieldCharge - retraceData->energies.externalFieldCharge;
+    mbxEnergyDifference.frameworkMoleculeVDW =
+        growData->energies.frameworkMoleculeVDW - retraceData->energies.frameworkMoleculeVDW;
+    mbxEnergyDifference.mbxEnergy = newMBXTotalEnergy.mbxEnergy - oldMBXTotalEnergy.mbxEnergy;
 
-    // MBX energy difference before and after the insertion move old and new configuration
-    energyDifferenceMBX.mbxEnergy = newTotalEnergy.mbxEnergy - oldTotalEnergy.mbxEnergy;
-
-    // The energyDifference for frameworkMoleculeVDW contribution as obtained from forceField
-    energyDifferenceMBX.frameworkMoleculeVDW =
-        growData->energies.frameworkMoleculeVDW - retraceData.energies.frameworkMoleculeVDW;
-    energyDifferenceMBX.tail = tailEnergyDifferenceFrameworkMolecule.tail;
-
-    // Add the correction factor, exp(-beta*DeltaDeltaE)
-    Pacc *= std::exp(-system.beta * (energyDifferenceMBX.potentialEnergy() - energyDifferenceFF.potentialEnergy()));
-    
+    // Combine the force-field-to-MBX reweighting with the native correction
+    // exponent before evaluating exp().  The Ewald and polarization terms
+    // cancel algebraically, and evaluating the ratio in log space avoids a
+    // numerically undefined 0 * infinity product.
+    const double forceFieldNonEwaldDifference =
+        growData->energies.potentialEnergy() - retraceData->energies.potentialEnergy();
+    const double logPacc =
+        std::log(growData->RosenbluthWeight) - std::log(retraceData->RosenbluthWeight) -
+        system.beta * (mbxEnergyDifference.potentialEnergy() - forceFieldNonEwaldDifference);
+    Pacc = std::exp(logPacc);
+    energyDifference = mbxEnergyDifference;
   }
+#endif
 
   // Apply Metropolis acceptance criterion.
   if (random.uniform() < Pacc)
@@ -238,52 +250,29 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     // Move is accepted; update statistics and state.
     component.mc_moves_statistics.addAccepted(move);
 
-    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
+    Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
     std::copy(newMolecule.begin(), newMolecule.end(), molecule_atoms.begin());
+
+    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    {
+      std::span<double3> storedElectricField = system.spanOfMoleculeElectricField();
+      for (std::size_t i = 0; i < storedElectricField.size(); ++i)
+      {
+        storedElectricField[i] += electricFieldNeighborDelta[i];
+      }
+    }
 
     std::span<double3> electricFieldMolecule = system.spanElectricFieldOld(selectedComponent, selectedMolecule);
     std::copy(new_electric_field.begin(), new_electric_field.end(), electricFieldMolecule.begin());
 
     molecule = growData->molecule;
 
-    if (system.useMBX)
-    {
-        // Energy logging
-        std::cerr << "reinsertion" << "," << selectedComponent << ","
-                << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ","
-                << (oldTotalEnergy.potentialEnergy() + energyDifferenceMBX.potentialEnergy()) << ","
-                << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceMBX.frameworkMoleculeVDW) << ","
-                << (oldTotalEnergy.tail + energyDifferenceMBX.tail) << "," << newTotalEnergy.mbxEnergy << ","
-                << (mbxEnergyLog[1] /= Units::EnergyToKCalPerMol) << ","  // e2b
-                << (mbxEnergyLog[2] /= Units::EnergyToKCalPerMol) << ","  // e3b
-                << (mbxEnergyLog[3] /= Units::EnergyToKCalPerMol) << ","  // e4b
-                << (mbxEnergyLog[4] /= Units::EnergyToKCalPerMol) << ","  // edisp
-                << (mbxEnergyLog[5] /= Units::EnergyToKCalPerMol) << ","  // eelec_perm
-                << (mbxEnergyLog[6] /= Units::EnergyToKCalPerMol) << ","  // eelec_ind
-                << energyDifferenceMBX.potentialEnergy() << "," << Pacc << "\n";
-        return energyDifferenceMBX;
-    }
+    RunningEnergy totalEnergyForLog = system.runningEnergies + energyDifference;
+    if (exactNewMBXEnergy) totalEnergyForLog.mbxEnergy = *exactNewMBXEnergy;
+    system.writeAcceptedEnergyLog("reinsertion", selectedComponent, totalEnergyForLog,
+                                  std::span<const double>(mbxEnergyTerms), energyDifference.potentialEnergy(), Pacc);
 
-    if (system.forceField.useDualCutOff)
-    {
-      return (energyNew.value() - energyOld.value()) + energyFourierDifference + polarizationDifference;
-    }
-
-    std::cerr << "reinsertion" << "," << selectedComponent << ","
-              << system.numberOfIntegerMoleculesPerComponent[selectedComponent] << ","
-              << (oldTotalEnergy.potentialEnergy() + energyDifferenceFF.potentialEnergy()) << ","
-              << (oldTotalEnergy.frameworkMoleculeVDW + energyDifferenceFF.frameworkMoleculeVDW) << ","
-              << (oldTotalEnergy.moleculeMoleculeVDW + energyDifferenceFF.moleculeMoleculeVDW) << ","
-              << (oldTotalEnergy.tail + energyDifferenceFF.tail) << ","
-              << (oldTotalEnergy.frameworkMoleculeCharge + energyDifferenceFF.frameworkMoleculeCharge) << ","
-              << (oldTotalEnergy.moleculeMoleculeCharge + energyDifferenceFF.moleculeMoleculeCharge) << ","
-              << ((oldTotalEnergy.ewald_fourier + energyDifferenceFF.ewald_fourier) +
-                  (oldTotalEnergy.ewald_self + energyDifferenceFF.ewald_self) +
-                  (oldTotalEnergy.ewald_exclusion + energyDifferenceFF.ewald_exclusion))
-              << "," << energyDifferenceFF.potentialEnergy() << "," << Pacc << "\n";
-
-    // Should we add the tail energy back here?
-    return (growData->energies - retraceData.energies) + energyFourierDifference + polarizationDifference;
+    return energyDifference;
   };
 
   // Move is rejected.

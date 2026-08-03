@@ -1,32 +1,13 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <format>
-#include <fstream>
-#include <optional>
-#include <print>
-#include <span>
-#include <string_view>
-#include <tuple>
-#include <utility>
-#include <vector>
-#endif
-
 export module intra_molecular_potentials;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3x3;
 import atom;
+import atom_dynamics;
 import chiral_center;
 import bond_potential;
 import urey_bradley_potential;
@@ -76,6 +57,18 @@ struct IntraMolecularPotentials
 
   RunningEnergy computeInternalEnergies(const std::span<const Atom> atoms) const;
 
+  /**
+   * \brief Computes the internal interactions that are not sampled during CBMC / recoil-growth.
+   *
+   * During growing/retracing only the bond, bend, and torsion potentials are sampled, and the
+   * intramolecular van der Waals and Coulomb interactions enter through the selection of the
+   * beads. This routine computes all remaining internal interactions: Urey-Bradley,
+   * inversion-bend, out-of-plane-bend, improper torsion, and the cross-terms (bond-bond,
+   * bond-bend, bond-torsion, bend-bend, bend-torsion). The Boltzmann factor of this energy is
+   * used to correct the Rosenbluth weight of the grown/retraced chain.
+   */
+  RunningEnergy computeInternalEnergiesNotSampledDuringGrowth(const std::span<const Atom> atoms) const;
+
   RunningEnergy computeInternalBondEnergies(const std::span<const Atom> atoms) const;
   RunningEnergy computeInternalUreyBradleyEnergies(const std::span<const Atom> atoms) const;
   RunningEnergy computeInternalBendEnergies(const std::span<const Atom> atoms) const;
@@ -91,7 +84,18 @@ struct IntraMolecularPotentials
   RunningEnergy computeInternalIntraVanDerWaalsEnergies(const std::span<const Atom> atoms) const;
   RunningEnergy computeInternalIntraCoulombEnergies(const std::span<const Atom> atoms) const;
 
-  RunningEnergy computeInternalGradient(const std::span<Atom> atoms) const;
+  /**
+   * \brief Intramolecular van der Waals and Coulomb energy of the beads.
+   *
+   * Convenience sum of computeInternalIntraVanDerWaalsEnergies and computeInternalIntraCoulombEnergies.
+   * These are the intramolecular non-bonded terms that enter the CBMC / recoil-growth bead selection.
+   */
+  RunningEnergy computeInternalIntraVanDerWaalsAndCoulombEnergies(const std::span<const Atom> atoms) const;
+
+  RunningEnergy computeInternalGradient(std::span<const Atom> atoms, std::span<AtomDynamics> dynamics) const;
+
+  std::pair<RunningEnergy, double3x3> computeInternalStrainDerivative(std::span<const Atom> atoms,
+                                                                      std::span<AtomDynamics> dynamics) const;
 
   Potentials::IntraMolecularPotentials filteredInteractions(std::size_t numberOfBeads,
                                                             const std::span<std::size_t> beadsAlreadyPlaced,

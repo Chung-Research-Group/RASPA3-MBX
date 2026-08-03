@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <chrono>
-#include <cstddef>
-#include <exception>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <numbers>
-#include <optional>
-#include <print>
-#include <string>
-#include <vector>
-#endif
-
 module mc_surface_area;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import atom;
@@ -37,9 +16,9 @@ void MC_SurfaceArea::run(const ForceField &forceField, const Framework &framewor
                          std::string probePseudoAtom, std::optional<std::size_t> numberOfIterations, std::optional<std::size_t> numberOfInnerSteps) const
 {
   RandomNumber random{std::nullopt};
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
 
@@ -82,7 +61,7 @@ void MC_SurfaceArea::run(const ForceField &forceField, const Framework &framewor
     }
   }
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

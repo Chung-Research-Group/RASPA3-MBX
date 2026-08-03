@@ -1,0 +1,39 @@
+{
+  "SimulationType": "Minimization",
+  "MaximumNumberOfMinimizationSteps": 1000,
+  "MaximumStepLength": 0.3,
+  "MaximumCellStepLength": 0.02,
+  "RMSGradientTolerance": 1.0e-6,
+  "MaxGradientTolerance": 1.0e-6,
+  "MinimizationConvergenceFactor": 1.0,
+  "MinimumEigenvalue": 1.0e-3,
+  "ComputeElasticConstants": true,
+  "ElasticEigenvalueTolerance": 1.0e-8,
+  "ComputeNormalModes": true,
+  "ComputePhononDispersion": true,
+  "PhononDispersionPointsPerSegment": 20,
+  "PhononUsePrimitiveCell": true,
+  "ComputePhononDensityOfStates": true,
+  "PhononDOSMesh": [16, 16, 16],
+  "PhononDOSNumberOfBins": 600,
+  "PhononDOSBroadening": 8.0,
+  "ThreadingType": "ThreadPool",
+  "NumberOfThreads": 8,
+  "PrintEvery": 1,
+
+  "Systems": [
+    {
+      "Type": "Framework",
+      "Name": "IRMOF-1",
+      "FrameworkDefinition": "framework",
+      "FrameworkType": "Flexible",
+      "Ensemble": "NPTPR",
+      "CellType": "RegularUpperTriangle",
+      "NumberOfUnitCells": [1, 1, 1],
+      "HeliumVoidFraction": 0.81,
+      "ChargeMethod": "Ewald",
+      "ExternalTemperature": 298.0,
+      "ExternalPressure": 0.0
+    }
+  ]
+}

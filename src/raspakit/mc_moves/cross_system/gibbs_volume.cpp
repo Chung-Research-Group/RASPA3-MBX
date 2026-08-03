@@ -1,30 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <iomanip>
-#include <iostream>
-#include <numeric>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 module mc_moves_gibbs_volume;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import component;
 import atom;
@@ -37,7 +15,6 @@ import simulationbox;
 import cbmc;
 import randomnumbers;
 import system;
-import energy_factor;
 import energy_status;
 import energy_status_inter;
 import running_energy;
@@ -51,11 +28,20 @@ import interactions_ewald;
 import interactions_external_field;
 import mc_moves_move_types;
 
-std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(RandomNumber &random, System &systemA,
-                                                                                 System &systemB)
+std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove(RandomNumber& random, System& systemA,
+                                                                                 System& systemB,
+                                                                                 std::size_t selectedComponent)
 {
-  std::chrono::system_clock::time_point time_begin, time_end;
-  MoveTypes move = MoveTypes::GibbsVolume;
+  std::chrono::steady_clock::time_point time_begin, time_end;
+  Move::Types move = Move::Types::GibbsVolume;
+
+  // Volume moves do not change either particle-number macrostate.  Record the
+  // selected cross-system trial here so every exit path (including overlaps)
+  // contributes exactly one neutral TMMC transition for each box.
+  const std::size_t oldNA = systemA.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  const std::size_t oldNB = systemB.numberOfIntegerMoleculesPerComponent[selectedComponent];
+  systemA.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNA);
+  systemB.tmmc.updateMatrix(double3(0.0, 1.0, 0.0), oldNB);
 
   systemA.mc_moves_statistics.addTrial(move);
   systemB.mc_moves_statistics.addTrial(move);
@@ -75,7 +61,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
       systemA.numberOfIntegerMoleculesPerComponent.begin(), systemA.numberOfIntegerMoleculesPerComponent.end(), 0));
   double scaleA = std::pow(newVolumeA / oldVolumeA, 1.0 / 3.0);
   SimulationBox newBoxA = systemA.simulationBox.scaled(scaleA);
-  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsA = systemA.scaledCenterOfMassPositions(scaleA);
+  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsA =
+      systemA.scaledCenterOfMassPositions(systemA.simulationBox, newBoxA);
 
   double cutOffFrameworkVDW_stored_A = systemA.forceField.cutOffFrameworkVDW;
   double cutOffMoleculeVDW_stored_A = systemA.forceField.cutOffMoleculeVDW;
@@ -86,29 +73,47 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   systemA.forceField.initializeAutomaticCutOff(newBoxA);
 
   // Compute new intermolecular energy for systemA
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalInterEnergyA =
       Interactions::computeInterMolecularEnergy(systemA.forceField, newBoxA, newPositionsA.second);
-  time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  time_end = std::chrono::steady_clock::now();
+  systemA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  // Compute new tail corrections for systemA
-  time_begin = std::chrono::system_clock::now();
-  RunningEnergy newTotalTailEnergyA =
-      Interactions::computeInterMolecularTailEnergy(systemA.forceField, newBoxA, newPositionsA.second);
-  time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  // Compute new tail corrections for systemA. Tail energy is position-independent; reuse the maintained
+  // effective pseudo-atom-type counts (O(nType^2)).
+  time_begin = std::chrono::steady_clock::now();
+  RunningEnergy newTotalTailEnergyA = Interactions::computeInterMolecularTailEnergyAggregated(
+      systemA.forceField, newBoxA, systemA.effectiveNumberOfPseudoAtomsVDW, systemA.fractionalPseudoAtomCountsPerGroup);
+  time_end = std::chrono::steady_clock::now();
+  systemA.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
   // Compute new Ewald Fourier energy for systemA
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalEwaldEnergyA = Interactions::computeEwaldFourierEnergy(
-      systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.fixedFrameworkStoredEik, systemA.totalEik,
-      systemA.forceField, newBoxA, systemA.components, systemA.numberOfMoleculesPerComponent, newPositionsA.second);
-  time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+      systemA.eik_x, systemA.eik_y, systemA.eik_z, systemA.eik_xy, systemA.fixedFrameworkStoredEik, systemA.trialEik,
+      systemA.forceField, newBoxA, systemA.components, systemA.numberOfMoleculesPerComponent, newPositionsA.second,
+      systemA.netChargeFramework);
+  time_end = std::chrono::steady_clock::now();
+  systemA.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   // Update energy and statistics for systemA
   RunningEnergy newTotalEnergyA = newTotalInterEnergyA + newTotalTailEnergyA + newTotalEwaldEnergyA;
+
+  // The intra-molecular energies have not changed by the com-scaling
+  newTotalEnergyA.bond = oldTotalEnergyA.bond;
+  newTotalEnergyA.ureyBradley = oldTotalEnergyA.ureyBradley;
+  newTotalEnergyA.bend = oldTotalEnergyA.bend;
+  newTotalEnergyA.inversionBend = oldTotalEnergyA.inversionBend;
+  newTotalEnergyA.outOfPlaneBend = oldTotalEnergyA.outOfPlaneBend;
+  newTotalEnergyA.torsion = oldTotalEnergyA.torsion;
+  newTotalEnergyA.improperTorsion = oldTotalEnergyA.improperTorsion;
+  newTotalEnergyA.bondBond = oldTotalEnergyA.bondBond;
+  newTotalEnergyA.bondBend = oldTotalEnergyA.bondBend;
+  newTotalEnergyA.bondTorsion = oldTotalEnergyA.bondTorsion;
+  newTotalEnergyA.bendBend = oldTotalEnergyA.bendBend;
+  newTotalEnergyA.bendTorsion = oldTotalEnergyA.bendTorsion;
+  newTotalEnergyA.intraVDW = oldTotalEnergyA.intraVDW;
+  newTotalEnergyA.intraCoul = oldTotalEnergyA.intraCoul;
 
   if (newTotalInterEnergyA.potentialEnergy() > systemA.forceField.energyOverlapCriteria)
   {
@@ -123,7 +128,8 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
       systemB.numberOfIntegerMoleculesPerComponent.begin(), systemB.numberOfIntegerMoleculesPerComponent.end(), 0));
   double scaleB = std::pow(newVolumeB / oldVolumeB, 1.0 / 3.0);
   SimulationBox newBoxB = systemB.simulationBox.scaled(scaleB);
-  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsB = systemB.scaledCenterOfMassPositions(scaleB);
+  std::pair<std::vector<Molecule>, std::vector<Atom>> newPositionsB =
+      systemB.scaledCenterOfMassPositions(systemB.simulationBox, newBoxB);
 
   double cutOffFrameworkVDW_stored_B = systemB.forceField.cutOffFrameworkVDW;
   double cutOffMoleculeVDW_stored_B = systemB.forceField.cutOffMoleculeVDW;
@@ -134,29 +140,47 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
   systemB.forceField.initializeAutomaticCutOff(newBoxB);
 
   // Compute new intermolecular energy for systemB
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalInterEnergyB =
       Interactions::computeInterMolecularEnergy(systemB.forceField, newBoxB, newPositionsB.second);
-  time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime[move]["NonEwald"] += (time_end - time_begin);
+  time_end = std::chrono::steady_clock::now();
+  systemA.mc_moves_cputime[move][Move::Timing::NonEwald] += (time_end - time_begin);
 
-  // Compute new tail corrections for systemB
-  time_begin = std::chrono::system_clock::now();
-  RunningEnergy newTotalTailEnergyB =
-      Interactions::computeInterMolecularTailEnergy(systemB.forceField, newBoxB, newPositionsB.second);
-  time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime[move]["Tail"] += (time_end - time_begin);
+  // Compute new tail corrections for systemB. Tail energy is position-independent; reuse the maintained
+  // effective pseudo-atom-type counts (O(nType^2)).
+  time_begin = std::chrono::steady_clock::now();
+  RunningEnergy newTotalTailEnergyB = Interactions::computeInterMolecularTailEnergyAggregated(
+      systemB.forceField, newBoxB, systemB.effectiveNumberOfPseudoAtomsVDW, systemB.fractionalPseudoAtomCountsPerGroup);
+  time_end = std::chrono::steady_clock::now();
+  systemA.mc_moves_cputime[move][Move::Timing::Tail] += (time_end - time_begin);
 
   // Compute new Ewald Fourier energy for systemB
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
   RunningEnergy newTotalEwaldEnergyB = Interactions::computeEwaldFourierEnergy(
-      systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.fixedFrameworkStoredEik, systemB.totalEik,
-      systemB.forceField, newBoxB, systemB.components, systemB.numberOfMoleculesPerComponent, newPositionsB.second);
-  time_end = std::chrono::system_clock::now();
-  systemA.mc_moves_cputime[move]["Ewald"] += (time_end - time_begin);
+      systemB.eik_x, systemB.eik_y, systemB.eik_z, systemB.eik_xy, systemB.fixedFrameworkStoredEik, systemB.trialEik,
+      systemB.forceField, newBoxB, systemB.components, systemB.numberOfMoleculesPerComponent, newPositionsB.second,
+      systemB.netChargeFramework);
+  time_end = std::chrono::steady_clock::now();
+  systemA.mc_moves_cputime[move][Move::Timing::Ewald] += (time_end - time_begin);
 
   // Update energy and statistics for systemB
   RunningEnergy newTotalEnergyB = newTotalInterEnergyB + newTotalTailEnergyB + newTotalEwaldEnergyB;
+
+  // The intra-molecular energies have not changed by the com-scaling
+  newTotalEnergyB.bond = oldTotalEnergyB.bond;
+  newTotalEnergyB.ureyBradley = oldTotalEnergyB.ureyBradley;
+  newTotalEnergyB.bend = oldTotalEnergyB.bend;
+  newTotalEnergyB.inversionBend = oldTotalEnergyB.inversionBend;
+  newTotalEnergyB.outOfPlaneBend = oldTotalEnergyB.outOfPlaneBend;
+  newTotalEnergyB.torsion = oldTotalEnergyB.torsion;
+  newTotalEnergyB.improperTorsion = oldTotalEnergyB.improperTorsion;
+  newTotalEnergyB.bondBond = oldTotalEnergyB.bondBond;
+  newTotalEnergyB.bondBend = oldTotalEnergyB.bondBend;
+  newTotalEnergyB.bondTorsion = oldTotalEnergyB.bondTorsion;
+  newTotalEnergyB.bendBend = oldTotalEnergyB.bendBend;
+  newTotalEnergyB.bendTorsion = oldTotalEnergyB.bendTorsion;
+  newTotalEnergyB.intraVDW = oldTotalEnergyB.intraVDW;
+  newTotalEnergyB.intraCoul = oldTotalEnergyB.intraCoul;
 
   if (newTotalInterEnergyB.potentialEnergy() > systemB.forceField.energyOverlapCriteria)
   {
@@ -170,24 +194,26 @@ std::optional<std::pair<RunningEnergy, RunningEnergy>> MC_Moves::GibbsVolumeMove
                   (newTotalEnergyB.potentialEnergy() - oldTotalEnergyB.potentialEnergy());
 
   // apply acceptance/rejection rule
-  if (random.uniform() < std::exp(-systemA.beta * deltaU +
-                                  ((numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
-                                  ((numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
+  if (random.uniform() <
+      std::exp(-systemA.beta * deltaU + ((numberOfMoleculesA + 1.0) * std::log(newVolumeA / oldVolumeA)) +
+               ((numberOfMoleculesB + 1.0) * std::log(newVolumeB / oldVolumeB))))
   {
     // Accept the move: update systems A and B with new configurations and energies
     systemA.mc_moves_statistics.addAccepted(move);
 
     systemA.simulationBox = newBoxA;
     std::copy(newPositionsA.first.begin(), newPositionsA.first.end(), systemA.moleculeData.begin());
-    std::copy(newPositionsA.second.begin(), newPositionsA.second.end(), systemA.atomData.begin());
-    Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.totalEik);
+    // scaledCenterOfMassPositions returns molecule atoms only; framework atoms are untouched.
+    std::copy(newPositionsA.second.begin(), newPositionsA.second.end(), systemA.spanOfMoleculeAtoms().begin());
+    Interactions::acceptEwaldMove(systemA.forceField, systemA.storedEik, systemA.trialEik);
 
     systemB.mc_moves_statistics.addAccepted(move);
 
     systemB.simulationBox = newBoxB;
     std::copy(newPositionsB.first.begin(), newPositionsB.first.end(), systemB.moleculeData.begin());
-    std::copy(newPositionsB.second.begin(), newPositionsB.second.end(), systemB.atomData.begin());
-    Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.totalEik);
+    // scaledCenterOfMassPositions returns molecule atoms only; framework atoms are untouched.
+    std::copy(newPositionsB.second.begin(), newPositionsB.second.end(), systemB.spanOfMoleculeAtoms().begin());
+    Interactions::acceptEwaldMove(systemB.forceField, systemB.storedEik, systemB.trialEik);
 
     return std::make_pair(newTotalEnergyA - oldTotalEnergyA, newTotalEnergyB - oldTotalEnergyB);
   }

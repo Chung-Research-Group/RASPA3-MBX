@@ -1,39 +1,25 @@
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <cstddef>
-#include <deque>
-#include <exception>
-#include <fstream>
-#include <iostream>
-#include <locale>
-#include <mutex>
-#include <optional>
-#include <semaphore>
-#include <span>
-#include <string_view>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
 #include <locale.h>
 import std;
-#endif
 
 import archive;
+import graceful_shutdown;
 import threadpool;
 import input_reader;
 import monte_carlo;
 import monte_carlo_transition_matrix;
 import molecular_dynamics;
+import minimization;
+import thermodynamic_integration;
+import parallel_thermodynamic_integration;
+import parallel_tempering;
+import hyper_parallel_tempering;
+import reweighted_histogram;
+import parallel_tmmc;
 //import breakthrough;
 //import breakthrough_simulation;
-import mixture_prediction_simulation;
-import isotherm_fitting_simulation;
-import multi_site_isotherm;
+//import mixture_prediction_simulation;
+//import isotherm_fitting_simulation;
+//import multi_site_isotherm;
 import opencl;
 #ifdef BUILD_LIBTORCH
 import libtorch_test;
@@ -44,6 +30,9 @@ int main(int argc, char* argv[])
   using namespace std::literals;
 
   setlocale(LC_ALL, "en-US");
+
+  // SIGTERM/SIGINT/SIGUSR1 request a final binary restart file at the next cycle boundary
+  GracefulShutdown::install();
 
   OpenCL::initialize();
 
@@ -87,15 +76,10 @@ int main(int argc, char* argv[])
         MonteCarlo mc(inputReader);
         if (inputReader.restartFromBinary)
         {
-          std::ifstream ifile(inputReader.restartFromBinaryFileName, std::ios::binary);
-          if (!ifile.is_open())
-          {
-            throw std::runtime_error("Restart file doesn't exist..\n");
-          }
-          Archive<std::ifstream> archive(ifile);
-          archive >> mc;
+          readBinaryRestartFile(mc, inputReader.restartFromBinaryFileName);
+          // the output files are opened in append mode (the header is already in the file), and
+          // the interpolation grids are not stored in the restart file and must be rebuilt
           mc.createOutputFiles();
-          mc.writeOutputHeader();
           mc.createInterpolationGrids();
         }
 
@@ -105,6 +89,12 @@ int main(int argc, char* argv[])
       case InputReader::SimulationType::MonteCarloTransitionMatrix:
       {
         MonteCarloTransitionMatrix mc(inputReader);
+        if (inputReader.restartFromBinary)
+        {
+          readBinaryRestartFile(mc, inputReader.restartFromBinaryFileName);
+          // the resumed stage jumps past the header block, so the output streams must exist
+          mc.createOutputFiles();
+        }
         mc.run();
         break;
       }
@@ -113,35 +103,79 @@ int main(int argc, char* argv[])
         MolecularDynamics md(inputReader);
         if (inputReader.restartFromBinary)
         {
-          std::ifstream ifile("restart_data.bin", std::ios::binary);
-          if (!ifile.is_open())
-          {
-            throw std::runtime_error("Restart file doesn't exist..\n");
-          }
-          Archive<std::ifstream> archive(ifile);
-          archive >> md;
+          readBinaryRestartFile(md, inputReader.restartFromBinaryFileName);
           md.createOutputFiles();
+          // the grids are not stored in the restart file and must be rebuilt
+          md.createInterpolationGrids();
         }
 
         md.run();
         break;
       }
-      case InputReader::SimulationType::Breakthrough:
+      case InputReader::SimulationType::Minimization:
       {
-        //BreakthroughSimulation breakthrough(inputReader);
-        //breakthrough.run();
+        Minimization minimization(inputReader);
+        if (inputReader.restartFromBinary)
+        {
+          readBinaryRestartFile(minimization, inputReader.restartFromBinaryFileName);
+        }
+        minimization.run();
         break;
       }
-      case InputReader::SimulationType::MixturePrediction:
+      case InputReader::SimulationType::ThermodynamicIntegration:
       {
-        MixturePredictionSimulation mixture(inputReader);
-        mixture.run();
+        ThermodynamicIntegration ti(inputReader);
+        ti.run();
         break;
       }
-      case InputReader::SimulationType::Fitting:
+      case InputReader::SimulationType::ParallelThermodynamicIntegration:
       {
-        IsothermFittingSimulation fitting(inputReader);
-        fitting.run();
+        ParallelThermodynamicIntegration parallel_ti(inputReader);
+        if (inputReader.restartFromBinary)
+        {
+          readBinaryRestartFile(parallel_ti, inputReader.restartFromBinaryFileName);
+        }
+        parallel_ti.run();
+        break;
+      }
+      case InputReader::SimulationType::ParallelTempering:
+      {
+        ParallelTempering parallel_tempering(inputReader);
+        if (inputReader.restartFromBinary)
+        {
+          readBinaryRestartFile(parallel_tempering, inputReader.restartFromBinaryFileName);
+        }
+        parallel_tempering.run();
+        break;
+      }
+      case InputReader::SimulationType::HyperParallelTempering:
+      {
+        HyperParallelTempering hyper_parallel_tempering(inputReader);
+        if (inputReader.restartFromBinary)
+        {
+          readBinaryRestartFile(hyper_parallel_tempering, inputReader.restartFromBinaryFileName);
+        }
+        hyper_parallel_tempering.run();
+        break;
+      }
+      case InputReader::SimulationType::ReweightedHistogram:
+      {
+        ReweightedHistogram reweighted_histogram(inputReader);
+        if (inputReader.restartFromBinary)
+        {
+          readBinaryRestartFile(reweighted_histogram, inputReader.restartFromBinaryFileName);
+        }
+        reweighted_histogram.run();
+        break;
+      }
+      case InputReader::SimulationType::ParallelTMMC:
+      {
+        ParallelTMMC parallel_tmmc(inputReader);
+        if (inputReader.restartFromBinary)
+        {
+          readBinaryRestartFile(parallel_tmmc, inputReader.restartFromBinaryFileName);
+        }
+        parallel_tmmc.run();
         break;
       }
       default:

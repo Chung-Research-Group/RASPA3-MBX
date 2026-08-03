@@ -21,6 +21,10 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/non_basic/6_mc_adsorption_co2_in_lta4a_sodium/run)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/non_basic/7_md_diffusion_co2_in_lta4a_sodium/run)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/non_basic/8_mc_adsorption_c6_isomers_in_mfi/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/non_basic/11_flexible_irmof_1_variable_cell_minimization/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/non_basic/14_md_muvt_methane_box/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/non_basic/15_md_mupt_methane_box/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/non_basic/16_md_muptpr_methane_box/run)
 
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/advanced/1_mc_gibbs_co2/run)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/advanced/2_mc_cfcmc_co2_in_mfi/run)
@@ -49,6 +53,8 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_D
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/density_grids/5_mc_adsorption_of_c2h2_in_cpl_1_split_density_equitable_binning/run)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/density_grids/6_mc_adsorption_of_co2_in_calf_20_split_density_equitable_binning/run)
 
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/external_fields/1_mc_water_in_cylinder_channel/run)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/run.cmake.in ${CMAKE_CURRENT_SOURCE_DIR}/external_fields/2_mc_water_in_square_channel/run)
 
 install(DIRECTORY basic DESTINATION share/raspa3/examples 
         COMPONENT examples
@@ -106,6 +112,16 @@ install(DIRECTORY density_grids DESTINATION share/raspa3/examples
         PERMISSIONS OWNER_READ GROUP_READ)
 
 install(DIRECTORY density_grids DESTINATION share/raspa3/examples 
+        COMPONENT examples
+        PATTERN "run" 
+        PERMISSIONS  OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+
+install(DIRECTORY external_fields DESTINATION share/raspa3/examples 
+        COMPONENT examples
+        PATTERN "run" EXCLUDE
+        PERMISSIONS OWNER_READ GROUP_READ)
+
+install(DIRECTORY external_fields DESTINATION share/raspa3/examples 
         COMPONENT examples
         PATTERN "run" 
         PERMISSIONS  OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)

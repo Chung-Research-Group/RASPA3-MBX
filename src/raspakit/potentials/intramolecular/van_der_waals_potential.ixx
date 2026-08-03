@@ -1,32 +1,14 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstring>
-#include <fstream>
-#include <map>
-#include <print>
-#include <string>
-#include <type_traits>
-#include <vector>
-#endif
-
 export module van_der_waals_potential;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import archive;
 import randomnumbers;
 import double3;
+import double3x3;
 import units;
 
 /**
@@ -108,6 +90,9 @@ export struct VanDerWaalsPotential
       {"LENNARD_JONES", VanDerWaalsType::LennardJones}};
 
   double calculateEnergy(const double3 &posA, const double3 &posB) const;
+
+  std::tuple<double, std::array<double3, 2>, double3x3> potentialEnergyGradientStrain(const double3 &posA,
+                                                                                      const double3 &posB) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const VanDerWaalsPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, VanDerWaalsPotential &b);

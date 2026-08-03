@@ -1,30 +1,13 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <format>
-#include <iostream>
-#include <ostream>
-#include <print>
-#include <span>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module lammps_io;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import component;
 import atom;
+import atom_dynamics;
 import simulationbox;
 import forcefield;
 import pseudo_atom;
@@ -36,6 +19,7 @@ import bend_potential;
 import torsion_potential;
 
 std::string IO::WriteLAMMPSDataFile(std::span<const Component> components, std::span<const Atom> atomData,
+                                    std::span<const AtomDynamics> atomDynamics,
                                     std::span<const Molecule> moleculeData, const SimulationBox simulationBox,
                                     const ForceField forceField,
                                     std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
@@ -197,11 +181,13 @@ std::string IO::WriteLAMMPSDataFile(std::span<const Component> components, std::
 
   std::print(out, "\nVelocities\n\n");
   idx = 1;  // lammps works with 1-indexing
-  for (const Atom& atom : atomData)
+  for (std::size_t i = 0; i < atomData.size(); ++i)
   {
-    if (components[atom.componentId].growType == Component::GrowType::Flexible)
+    const Atom& atom = atomData[i];
+    if (!components[atom.componentId].rigid)
     {
-      std::print(out, "  {} {} {} {}\n", idx++, atom.velocity.x, atom.velocity.y, atom.velocity.z);
+      const double3 velocity = atomDynamics[i].velocity;
+      std::print(out, "  {} {} {} {}\n", idx++, velocity.x, velocity.y, velocity.z);
     }
     else
     {

@@ -1,35 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <numbers>
-#include <print>
-#include <source_location>
-#include <span>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 module property_msd;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;
@@ -39,12 +12,31 @@ import simulationbox;
 import forcefield;
 import component;
 import averages;
+import mean_squared_displacement_data;
 
-void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const std::vector<Component> &components,
-                                                const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-                                                std::vector<Molecule> &moleculeData)
+// exact integer power, avoids floating-point round-off of std::pow
+static std::size_t integerPower(std::size_t base, std::size_t exponent)
+{
+  std::size_t result{1uz};
+  for (std::size_t i = 0; i < exponent; ++i)
+  {
+    result *= base;
+  }
+  return result;
+}
+
+void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, std::vector<Molecule> &moleculeData)
 {
   if (currentCycle % sampleEvery != 0uz) return;
+
+  // the order-N MSD algorithm tracks molecules by index and requires a fixed number of molecules
+  if (moleculeData.size() != numberOfParticles)
+  {
+    throw std::runtime_error(std::format(
+        "PropertyMeanSquaredDisplacement: the number of molecules changed from {} to {}; computing the MSD requires "
+        "a fixed number of molecules (do not combine 'ComputeMSD' with insertion/deletion moves)\n",
+        numberOfParticles, moleculeData.size()));
+  }
 
   // determine current number of blocks
   numberOfBlocksMSD = 1;
@@ -86,7 +78,7 @@ void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const 
   for (std::size_t currentBlock = 0; currentBlock < numberOfBlocksMSD; currentBlock++)
   {
     // test for blocking operation: CountMSD is a multiple of NumberOfBlockElementsMSD^CurrentBlock
-    if (countMSD % static_cast<std::size_t>(std::pow(numberOfBlockElementsMSD, currentBlock)) == 0)
+    if (countMSD % integerPower(numberOfBlockElementsMSD, currentBlock) == 0)
     {
       // increase the current block-length
       blockLengthMSD[currentBlock]++;
@@ -95,7 +87,7 @@ void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const 
       std::size_t currentBlocklength = std::min(blockLengthMSD[currentBlock], numberOfBlockElementsMSD);
 
       std::size_t molecule_index{0};
-      for (std::size_t i = 0; i != components.size(); ++i)
+      for (std::size_t i = 0; i != numberOfComponents; ++i)
       {
         // self diffusion
         for (std::size_t m = 0; m != numberOfMoleculesPerComponent[i]; ++m)
@@ -107,7 +99,8 @@ void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const 
 
           blockDataMSDSelf[currentBlock][molecule_index][0] = value;
 
-          for (std::size_t k = 0; k < currentBlocklength; ++k)
+          // k = 0 is the zero-lag displacement and is never output, skip it
+          for (std::size_t k = 1; k < currentBlocklength; ++k)
           {
             // msd for each component
             ++msdSelfCount[currentBlock][i][k];
@@ -132,7 +125,7 @@ void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const 
 
       molecule_index = 0;
       std::vector<double3> value_onsager(numberOfComponents);
-      for (std::size_t i = 0; i != components.size(); ++i)
+      for (std::size_t i = 0; i != numberOfComponents; ++i)
       {
         // self diffusion
         for (std::size_t m = 0; m != numberOfMoleculesPerComponent[i]; ++m)
@@ -143,18 +136,19 @@ void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const 
         }
       }
 
-      for (std::size_t i = 0; i != components.size(); ++i)
+      for (std::size_t i = 0; i != numberOfComponents; ++i)
       {
         std::shift_right(begin(blockDataMSDOnsager[currentBlock][i]), end(blockDataMSDOnsager[currentBlock][i]), 1);
         blockDataMSDOnsager[currentBlock][i][0] = value_onsager[i];
       }
 
-      for (std::size_t k = 0; k < currentBlocklength; k++)
+      // k = 0 is the zero-lag displacement and is never output, skip it
+      for (std::size_t k = 1; k < currentBlocklength; k++)
       {
-        for (std::size_t i = 0; i != components.size(); ++i)
+        for (std::size_t i = 0; i != numberOfComponents; ++i)
         {
           ++msdOnsagerCount[currentBlock][i][k];
-          for (std::size_t j = 0; j != components.size(); ++j)
+          for (std::size_t j = 0; j != numberOfComponents; ++j)
           {
             double msd_x = (blockDataMSDOnsager[currentBlock][i][k].x - value_onsager[i].x) *
                            (blockDataMSDOnsager[currentBlock][j][k].x - value_onsager[j].x);
@@ -176,17 +170,49 @@ void PropertyMeanSquaredDisplacement::addSample(std::size_t currentCycle, const 
   ++countMSD;
 }
 
-void PropertyMeanSquaredDisplacement::writeOutput(std::size_t systemId, const std::vector<Component> &components,
-                                                  const std::vector<std::size_t> &numberOfMoleculesPerComponent,
-                                                  double deltaT, std::size_t currentCycle)
+std::vector<std::vector<MeanSquaredDisplacementData>> PropertyMeanSquaredDisplacement::result()
 {
-  if (currentCycle % writeEvery != 0uz) return;
+  std::vector<std::vector<MeanSquaredDisplacementData>> results(numberOfComponents);
+
+  for (std::size_t i = 0; i != numberOfComponents; ++i)
+  {
+    for (std::size_t currentBlock = 0; currentBlock < numberOfBlocksMSD; ++currentBlock)
+    {
+      std::size_t currentBlocklength = std::min(blockLengthMSD[currentBlock], numberOfBlockElementsMSD);
+      double dt = static_cast<double>(sampleEvery) * timeStep *
+                  static_cast<double>(integerPower(numberOfBlockElementsMSD, currentBlock));
+      for (std::size_t k = 1; k < currentBlocklength; ++k)
+      {
+        if (msdSelfCount[currentBlock][i][k] > 0)
+        {
+          double fac = 1.0 / static_cast<double>(msdSelfCount[currentBlock][i][k]);
+
+          results[i].push_back(MeanSquaredDisplacementData(
+                               static_cast<double>(k) * dt, 
+                               fac * msdSelf[currentBlock][i][k].w,
+                               fac * msdSelf[currentBlock][i][k].x, 
+                               fac * msdSelf[currentBlock][i][k].y,
+                               fac * msdSelf[currentBlock][i][k].z, 
+                               static_cast<double>(msdSelfCount[currentBlock][i][k])));
+        }
+      }
+    }
+  }
+  return results;
+}
+
+void PropertyMeanSquaredDisplacement::writeOutput(std::size_t systemId, const std::vector<Component> &components,
+                                                  std::size_t currentCycle)
+{
+  if (!writeEvery.has_value()) return;
+
+  if (currentCycle % writeEvery.value() != 0uz) return;
 
   if (countMSD == 0uz) return;
 
   std::filesystem::create_directory("msd");
 
-  for (std::size_t i = 0; i < components.size(); ++i)
+  for (std::size_t i = 0; i < numberOfComponents; ++i)
   {
     std::ofstream stream_msd_self_output(std::format("msd/msd_self_{}.s{}.txt", components[i].name, systemId));
 
@@ -201,7 +227,8 @@ void PropertyMeanSquaredDisplacement::writeOutput(std::size_t systemId, const st
     for (std::size_t currentBlock = 0; currentBlock < numberOfBlocksMSD; ++currentBlock)
     {
       std::size_t currentBlocklength = std::min(blockLengthMSD[currentBlock], numberOfBlockElementsMSD);
-      double dt = static_cast<double>(sampleEvery) * deltaT * std::pow(numberOfBlockElementsMSD, currentBlock);
+      double dt = static_cast<double>(sampleEvery) * timeStep *
+                  static_cast<double>(integerPower(numberOfBlockElementsMSD, currentBlock));
       for (std::size_t k = 1; k < currentBlocklength; ++k)
       {
         if (msdSelfCount[currentBlock][i][k] > 0)
@@ -217,14 +244,21 @@ void PropertyMeanSquaredDisplacement::writeOutput(std::size_t systemId, const st
     }
   }
 
-  for (std::size_t i = 0; i < components.size(); ++i)
+  // Onsager MSDs are normalized by the total number of molecules, making them symmetric in (i,j)
+  std::size_t totalNumberOfMolecules =
+      std::accumulate(numberOfMoleculesPerComponent.begin(), numberOfMoleculesPerComponent.end(), 0uz);
+
+  for (std::size_t i = 0; i < numberOfComponents; ++i)
   {
-    for (std::size_t j = 0; j < components.size(); ++j)
+    for (std::size_t j = 0; j < numberOfComponents; ++j)
     {
       std::ofstream stream_msd_collective_output(
           std::format("msd/msd_onsager_{}_{}.s{}.txt", components[i].name, components[j].name, systemId));
 
       stream_msd_collective_output << std::format("# msd, number of counts: {}\n", countMSD);
+      stream_msd_collective_output << std::format(
+          "# normalization: 1/N with N the total number of molecules ({}), symmetric in the components\n",
+          totalNumberOfMolecules);
       stream_msd_collective_output << "# column 1: time [ps]\n";
       stream_msd_collective_output << "# column 2: msd xyz [A^2]\n";
       stream_msd_collective_output << "# column 3: msd x [A^2]\n";
@@ -235,13 +269,13 @@ void PropertyMeanSquaredDisplacement::writeOutput(std::size_t systemId, const st
       for (std::size_t currentBlock = 0; currentBlock < numberOfBlocksMSD; ++currentBlock)
       {
         std::size_t currentBlocklength = std::min(blockLengthMSD[currentBlock], numberOfBlockElementsMSD);
-        double dt = static_cast<double>(sampleEvery) * deltaT * std::pow(numberOfBlockElementsMSD, currentBlock);
+        double dt = static_cast<double>(sampleEvery) * timeStep *
+                    static_cast<double>(integerPower(numberOfBlockElementsMSD, currentBlock));
         for (std::size_t k = 1; k < currentBlocklength; ++k)
         {
           if (msdOnsagerCount[currentBlock][i][k] > 0)
           {
-            double fac =
-                1.0 / static_cast<double>(numberOfMoleculesPerComponent[i] * msdOnsagerCount[currentBlock][i][k]);
+            double fac = 1.0 / static_cast<double>(totalNumberOfMolecules * msdOnsagerCount[currentBlock][i][k]);
 
             stream_msd_collective_output << std::format(
                 "{} {} {} {} {} (count: {})\n", static_cast<double>(k) * dt, fac * msdOnsager[currentBlock][i][j][k].w,
@@ -258,17 +292,22 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 {
   archive << msd.versionNumber;
 
-  archive << msd.numberOfBlocks;
+  archive << msd.numberOfMoleculesPerComponent;
+  archive << msd.numberOfComponents;
+  archive << msd.numberOfParticles;
+  archive << msd.timeStep;
+  archive << msd.numberOfBlockElementsMSD;
   archive << msd.sampleEvery;
   archive << msd.writeEvery;
+  archive << msd.maxNumberOfBlocksMSD;
   archive << msd.countMSD;
   archive << msd.numberOfBlocksMSD;
-  archive << msd.maxNumberOfBlocksMSD;
-  archive << msd.numberOfBlockElementsMSD;
   archive << msd.blockLengthMSD;
+
   archive << msd.msdSelfCount;
   archive << msd.blockDataMSDSelf;
   archive << msd.msdSelf;
+
   archive << msd.msdOnsagerCount;
   archive << msd.blockDataMSDOnsager;
   archive << msd.msdOnsager;
@@ -288,21 +327,26 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyMean
   {
     const std::source_location &location = std::source_location::current();
     throw std::runtime_error(
-        std::format("Invalid version reading 'PropertyRadialDistributionFunction' at line {} in file {}\n",
+        std::format("Invalid version reading 'PropertyMeanSquaredDisplacement' at line {} in file {}\n",
                     location.line(), location.file_name()));
   }
 
-  archive >> msd.numberOfBlocks;
+  archive >> msd.numberOfMoleculesPerComponent;
+  archive >> msd.numberOfComponents;
+  archive >> msd.numberOfParticles;
+  archive >> msd.timeStep;
+  archive >> msd.numberOfBlockElementsMSD;
   archive >> msd.sampleEvery;
   archive >> msd.writeEvery;
+  archive >> msd.maxNumberOfBlocksMSD;
   archive >> msd.countMSD;
   archive >> msd.numberOfBlocksMSD;
-  archive >> msd.maxNumberOfBlocksMSD;
-  archive >> msd.numberOfBlockElementsMSD;
   archive >> msd.blockLengthMSD;
+
   archive >> msd.msdSelfCount;
   archive >> msd.blockDataMSDSelf;
   archive >> msd.msdSelf;
+
   archive >> msd.msdOnsagerCount;
   archive >> msd.blockDataMSDOnsager;
   archive >> msd.msdOnsager;

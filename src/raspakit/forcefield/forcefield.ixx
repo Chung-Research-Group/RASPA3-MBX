@@ -1,33 +1,10 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cstddef>
-#include <cstdint>
-#include <cstring>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <optional>
-#include <ostream>
-#include <set>
 #include <string>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <string>
-#endif
 
 export module forcefield;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double4;
@@ -53,10 +30,12 @@ export struct ForceField
    */
   enum class ChargeMethod : int
   {
-    Ewald = 0,        ///< Ewald summation method.
-    Coulomb = 1,      ///< Direct Coulomb interactions.
-    Wolf = 2,         ///< Wolf summation method.
-    ModifiedWolf = 3  ///< Modified Wolf method.
+    Ewald = 0,                 ///< Ewald summation method.
+    Coulomb = 1,               ///< Direct Coulomb interactions.
+    Wolf = 2,                  ///< Original damped shifted-potential Wolf summation.
+    DampedShiftedForce = 3,    ///< Fennell-Gezelter damped shifted-force method.
+    ModifiedShiftedForce = 4,  ///< Waibel-Feinler-Gross modified shifted-force method.
+    ZeroDipole = 5             ///< Fukuda zero-dipole summation method.
   };
 
   /**
@@ -80,7 +59,13 @@ export struct ForceField
     ExponentialNonPolynomialTestFunction = 7,
     MullerBrown = 8,
     Eckhardt = 9,
-    GonzalezSchlegel = 10  // https://sci-hub.se/https://doi.org/10.1063/1.465995
+    GonzalezSchlegel = 10,  // https://sci-hub.se/https://doi.org/10.1063/1.465995
+    CylinderX = 11,
+    CylinderY = 12,
+    CylinderZ = 13,
+    RectangleX = 14,
+    RectangleY = 15,
+    RectangleZ = 16
   };
 
   enum class InterpolationGridType : std::size_t
@@ -113,6 +98,8 @@ export struct ForceField
   double cutOffCoulomb{12.0};  ///< Cut-off distance for Coulomb interactions.
   double dualCutOff{6.0};      ///< Inner cut-off distance when using dual cut-off scheme.
 
+  double temperature{300.0};  ///< External temperature, used by temperature-dependent potentials (Feynman-Hibbs).
+
   std::size_t numberOfPseudoAtoms{0};     ///< Number of pseudo-atoms defined in the force field.
   std::vector<PseudoAtom> pseudoAtoms{};  ///< List of pseudo-atoms in the force field.
 
@@ -120,6 +107,7 @@ export struct ForceField
 
   double EwaldPrecision{1e-6};        ///< Desired precision for Ewald summation.
   double EwaldAlpha{0.265058};        ///< Ewald convergence parameter alpha.
+  double modifiedShiftedForceBeta{0.3};  ///< Exponential switching parameter beta (inverse length).
   int3 numberOfWaveVectors{8, 8, 8};  ///< Number of wave vectors in each direction for Ewald summation.
   std::size_t reciprocalIntegerCutOffSquared{
       std::numeric_limits<std::size_t>::max()};  ///< Squared integer cut-off in reciprocal space.
@@ -130,6 +118,22 @@ export struct ForceField
   bool useCharge{true};          ///< Indicates if charges are used in calculations.
   bool omitEwaldFourier{false};  ///< If true, omits the Fourier component in Ewald summation.
 
+  [[nodiscard]] bool usesEwaldFourier() const
+  {
+    return useCharge && chargeMethod == ChargeMethod::Ewald && !omitEwaldFourier;
+  }
+
+  /// Finite-cutoff shifted-potential charge methods (Wolf, damped-shifted-force, modified-shifted-force,
+  /// zero-dipole) require the real-space per-atom self-energy and the intra-molecular exclusion / completion
+  /// of the shifted pair sum. Plain Coulomb and the Ewald method (including the real-space-only debugging mode
+  /// with omitted Fourier part) must NOT receive these corrections.
+  [[nodiscard]] bool usesRealSpaceChargeCorrections() const
+  {
+    return useCharge && (chargeMethod == ChargeMethod::Wolf || chargeMethod == ChargeMethod::DampedShiftedForce ||
+                         chargeMethod == ChargeMethod::ModifiedShiftedForce ||
+                         chargeMethod == ChargeMethod::ZeroDipole);
+  }
+
   double energyOverlapCriteria{1e6};  ///< Energy criteria for considering overlaps.
 
   std::size_t numberOfTrialDirections{ 10 };
@@ -137,6 +141,21 @@ export struct ForceField
   std::size_t numberOfFirstBeadPositions{ 10 };
   std::size_t numberOfTrialMovesPerOpenBead{ 150 };
   double minimumRosenbluthFactor{ 1e-150 };  ///< Minimum allowed Rosenbluth factor.
+
+  // Internal ring-closure Monte-Carlo tuning (CBMC growth of cyclic clusters). Per internal-MC trial,
+  // the conformer-hopping crankshaft is attempted with probability 'cbmcRingCrankshaftProbability';
+  // otherwise a whole-ring junction tilt is attempted with probability 'cbmcRingTiltProbability' and a
+  // local displacement/rotation with the remainder. These affect sampling efficiency only (the moves
+  // carry no Rosenbluth weight), so any value in [0, 1] is valid.
+  double cbmcRingCrankshaftProbability{0.2};  ///< Attempt probability of the large-angle ring crankshaft.
+  double cbmcRingTiltProbability{0.25};       ///< Attempt probability of the whole-ring junction tilt.
+
+  // Recoil-growth (RG) options for flexible molecules (Consta et al., Mol. Phys. 97, 1243 (1999)).
+  // When 'useRecoilGrowth' is true, the flexible-molecule chain is grown/retraced with the recoil
+  // growth algorithm instead of configurational-bias Monte Carlo (CBMC).
+  bool useRecoilGrowth{false};                        ///< Use recoil growth instead of CBMC for flexible molecules.
+  std::size_t recoilGrowthMaximumRecoilLength{2};     ///< Feeler / recoil length 'l' (look-ahead depth).
+  std::size_t recoilGrowthNumberOfTrialDirections{5}; ///< Number of trial directions 'k' per segment in RG.
 
   bool useDualCutOff{false};          ///< Indicates if dual cut-off scheme is used.
   bool omitInterInteractions{false};  ///< If true, omits interactions between molecules.
@@ -161,6 +180,7 @@ export struct ForceField
   std::string externalFieldGridFileName{ "external_field.cube" };
   uint3 numberOfExternalFieldGridPoints{8, 8, 8};
   bool writeExternalFieldInterpolationGrid{ false };
+  double4 externalFieldGeometryParameters{5.0, 5.0, 0.0, 0.0};
 
   /**
    * \brief Default constructor for the ForceField struct.
@@ -220,6 +240,16 @@ export struct ForceField
    * \return The cut-off distance for VDW interactions.
    */
   double cutOffVDW(std::size_t i, std::size_t j) const;
+
+  /**
+   * \brief Pre-computes derived constants for each pair interaction.
+   *
+   * Computes per-pair derived constants: the Feynman-Hibbs temperature pre-factor, the
+   * shifted-force cutoff constants, and the soft-core reference diameter used in the
+   * continuous-fractional lambda-scaling. Must be called before preComputePotentialShift()
+   * and preComputeTailCorrection(), and re-called when the temperature changes.
+   */
+  void preComputeDerivedParameters();
 
   /**
    * \brief Pre-computes the potential shift for interactions.
@@ -317,6 +347,9 @@ export struct ForceField
 
   void initializeAutomaticCutOff(const SimulationBox &simulationBox);
 
+  static ChargeMethod chargeMethodFromString(const std::string &value);
+  static std::string_view chargeMethodName(ChargeMethod method);
+
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const ForceField &f);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, ForceField &f);
 
@@ -338,6 +371,19 @@ export struct ForceField
    */
   struct InsensitiveCompare
   {
+inline int SGA_stricmp(const char *a, const char *b) const {
+  int ca, cb;
+  do {
+     ca = *reinterpret_cast<const unsigned char *>(a);
+     cb = *reinterpret_cast<const unsigned char *>(b);
+     ca = std::tolower(std::toupper(ca));
+     cb = std::tolower(std::toupper(cb));
+     a++;
+     b++;
+   } while (ca == cb && ca != '\0');
+   return ca - cb;
+}
+
     /**
      * \brief Compares two strings in a case-insensitive manner.
      *
@@ -353,7 +399,7 @@ export struct ForceField
 #if defined(WIN32) || defined(_WIN32) || defined(__WIN32__) || defined(__NT__)
       return _stricmp(a.c_str(), b.c_str()) < 0;
 #else
-      return strcasecmp(a.c_str(), b.c_str()) < 0;
+      return SGA_stricmp(a.c_str(), b.c_str()) < 0;
 #endif
     }
   };
@@ -370,4 +416,8 @@ export struct ForceField
    * of only known keys.
    */
   static const std::set<std::string, InsensitiveCompare> options;
+
+  static ForceField makeZeoliteForceField(double rc = 12.0, bool shifted = true, bool tailCorrections = false, bool useEwald = false);
+  static ForceField makeMetalOrganicFrameworkForceField(double rc = 12.0, bool shifted = true, bool tailCorrections = false, bool useEwald = false);
+  static ForceField makeZeoPlusPlusForceField(double rc = 12.0, bool shifted = true, bool tailCorrections = false, bool useEwald = false);
 };

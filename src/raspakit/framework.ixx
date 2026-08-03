@@ -1,32 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <chrono>
-#include <cstddef>
-#include <cstdint>
-#include <format>
-#include <fstream>
-#include <map>
-#include <optional>
-#include <ostream>
-#include <print>
-#include <span>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module framework;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import archive;
@@ -39,10 +15,79 @@ import atom;
 import forcefield;
 import simulationbox;
 import property_widom;
-import isotherm;
-import multi_site_isotherm;
-import bond_potential;
+import connectivity_table;
+import intra_molecular_potentials;
+import molecule;
+export import fragment;
 import json;
+
+/**
+ * \brief Kind of framework group for mixed rigid/flexible frameworks.
+ *
+ * Fixed atoms stay frozen in the laboratory (crystal) frame and contribute to the precomputed
+ * Ewald structure factor. Rigid groups move as free rigid bodies (COM + quaternion). Flexible
+ * atoms are integrated in Cartesian coordinates.
+ */
+export enum class FrameworkGroupType : std::uint8_t {
+  Fixed = 0,
+  Rigid = 1,
+  Flexible = 2,
+};
+
+/**
+ * \brief A subset of framework atoms that is Fixed, Rigid, or Flexible.
+ *
+ * A framework group is a 'Fragment' (atom subset plus rigid-body reference data: mass, principal-axis
+ * body frame, inertia) tagged with a Fixed/Rigid/Flexible kind. The rigid-body data is meaningful
+ * only for Rigid groups; Fixed and Flexible groups use just the atom subset. When Groups are present
+ * they must partition every supercell atom exactly once.
+ */
+export struct FrameworkGroup : Fragment
+{
+  FrameworkGroupType type{FrameworkGroupType::Flexible};
+
+  FrameworkGroup() = default;
+  FrameworkGroup(FrameworkGroupType type, std::vector<std::size_t> atoms)
+      : Fragment(std::move(atoms)), type(type)
+  {
+  }
+
+  bool isFixed() const { return type == FrameworkGroupType::Fixed; }
+  /// Deliberately shadows 'Fragment::isRigidBody' (atom count): here rigidity is a declared kind,
+  /// and a Flexible framework group may contain many atoms.
+  bool isRigidBody() const { return type == FrameworkGroupType::Rigid; }
+  bool isFlexible() const { return type == FrameworkGroupType::Flexible; }
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const FrameworkGroup &g);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, FrameworkGroup &g);
+};
+
+export struct FrameworkIntraMolecularImageShifts
+{
+  std::vector<std::array<int3, 2>> bonds{};
+  std::vector<std::array<int3, 3>> bends{};
+  std::vector<std::array<int3, 4>> torsions{};
+  std::vector<std::array<int3, 4>> improperTorsions{};
+  std::vector<std::array<int3, 2>> vanDerWaals{};
+  std::vector<std::array<int3, 2>> coulombs{};
+};
+
+/**
+ * \brief A type-based intramolecular potential definition parsed from a flexible-framework definition.
+ *
+ * Stores the pseudo-atom types the potential applies to, the potential-type keyword (e.g. "HARMONIC"),
+ * and its numeric parameters. These definitions are retained on the Framework so the concrete
+ * intramolecular potentials can be re-derived on a different atom set (e.g. a reduced primitive cell)
+ * without re-reading the definition file. \tparam N Number of atoms the potential couples (2 bond, 3 bend,
+ * 4 torsion/improper).
+ */
+export template <std::size_t N>
+struct FrameworkPotentialDefinition
+{
+  std::array<std::size_t, N> atomTypes{};
+  std::string potentialType{};
+  std::vector<double> parameters{};
+};
 
 /**
  * \brief Represents a framework in the simulation system.
@@ -56,43 +101,11 @@ import json;
 export struct Framework
 {
   /**
-   * \brief Enumeration for specifying the source of atomic charges.
-   *
-   * UseChargesFrom defines the source from which atomic charges should be obtained.
-   * Options include using charges from pseudo-atoms, the CIF file, or by performing
-   * charge equilibration calculations.
-   */
-  enum class UseChargesFrom : std::size_t
-  {
-    PseudoAtoms = 0,     ///< Use charges from pseudo-atoms defined in the force field.
-    CIF_File = 1,        ///< Use charges specified in the CIF file.
-    ChargeEquilibration  ///< Compute charges using charge equilibration methods.
-  };
-
-  /**
    * \brief Default constructor for the Framework struct.
    *
    * Initializes an empty Framework object with default values.
    */
   Framework();
-
-  /**
-   * \brief Constructs a Framework from a file with specified parameters.
-   *
-   * Initializes a Framework using data from a specified file, setting up the simulation
-   * box, atoms, and other properties based on the provided force field and unit cell
-   * information.
-   *
-   * \param currentComponent Identifier for the current framework component.
-   * \param forceField Reference to the force field containing pseudo-atom definitions.
-   * \param componentName Name of the framework component.
-   * \param fileName Optional file name containing framework data (e.g., a CIF file).
-   * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
-   * \param useChargesFrom Source of atomic charges (pseudo-atoms, CIF file, or charge equilibration).
-   */
-  Framework(std::size_t currentComponent, const ForceField &forceField, const std::string &componentName,
-            std::optional<const std::string> fileName, std::optional<int3> numberOfUnitCells,
-            Framework::UseChargesFrom useChargesFrom) noexcept(false);
 
   /**
    * \brief Constructs a Framework programmatically with specified parameters.
@@ -105,11 +118,30 @@ export struct Framework
    * \param componentName Name of the framework component.
    * \param simulationBox Simulation box defining the unit cell dimensions.
    * \param spaceGroupHallNumber Space group number according to the Hall notation.
-   * \param definedAtoms Vector of atoms defining the positions and types within the unit cell.
+   * \param definedAtoms Vector of atoms defining the fractional positions and types within the asymmetric unit cell.
+   * \param fractionalAtoms Vector of atoms defining the fractional positions and types within the unit cell.
    * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
    */
-  Framework(std::size_t componentId, const ForceField &forceField, std::string componentName,
-            SimulationBox simulationBox, std::size_t spaceGroupHallNumber, std::vector<Atom> definedAtoms,
+  Framework(const ForceField& forceField, std::string componentName, SimulationBox simulationBox,
+            std::size_t spaceGroupHallNumber, const std::vector<Atom>& definedAtoms,
+            const std::vector<Atom>& fractionalAtoms, int3 numberOfUnitCells) noexcept(false);
+
+  /**
+   * \brief Constructs a Framework programmatically with specified parameters.
+   *
+   * Initializes a Framework using provided simulation box, space group number, defined atoms,
+   * and unit cell information, allowing for programmatic creation of frameworks without file input.
+   *
+   * \param componentId Identifier for the framework component.
+   * \param forceField Reference to the force field containing pseudo-atom definitions.
+   * \param componentName Name of the framework component.
+   * \param simulationBox Simulation box defining the unit cell dimensions.
+   * \param spaceGroupHallNumber Space group number according to the Hall notation.
+   * \param definedAtoms Vector of atoms defining the fractional positions and types within the asymmetric unit cell.
+   * \param numberOfUnitCells Number of unit cells in each dimension to construct the supercell.
+   */
+  Framework(const ForceField& forceField, std::string componentName, SimulationBox simulationBox,
+            std::size_t spaceGroupHallNumber, const std::vector<Atom>& definedAtoms,
             int3 numberOfUnitCells) noexcept(false);
 
   std::uint64_t versionNumber{1};  ///< Version number for serialization purposes.
@@ -118,73 +150,132 @@ export struct Framework
   std::size_t spaceGroupHallNumber{1};  ///< Space group number according to the Hall notation.
   int3 numberOfUnitCells{1, 1, 1};      ///< Number of unit cells in each dimension for the supercell.
 
-  std::size_t frameworkId{0};                 ///< Identifier for the framework.
-  std::string name{};                         ///< Name of the framework component.
-  std::optional<std::string> filenameData{};  ///< Optional file name containing framework data.
-  std::string filename{};                     ///< File name of the framework.
+  std::string name{};      ///< Name of the framework component.
+  std::string filename{};  ///< File name of the framework.
   std::size_t numberOfComponents{1};
 
-  bool rigid{true};  ///< Flag indicating if the framework is rigid.
+  bool rigid{true};  ///< Flag indicating if the framework is fully lab-frozen (legacy all-or-nothing).
 
   double mass{0.0};          ///< Total mass of the framework.
   double unitCellMass{0.0};  ///< Mass of the unit cell.
 
-  UseChargesFrom useChargesFrom{UseChargesFrom::PseudoAtoms};  ///< Source of atomic charges.
-  double netCharge{0.0};                                       ///< Net charge of the framework.
-  double smallestCharge{0.0};                                  ///< Smallest atomic charge in the framework.
-  double largestCharge{0.0};                                   ///< Largest atomic charge in the framework.
+  double netCharge{0.0};       ///< Net charge of the framework.
+  double smallestCharge{0.0};  ///< Smallest atomic charge in the framework.
+  double largestCharge{0.0};   ///< Largest atomic charge in the framework.
 
-  std::vector<Atom> definedAtoms{};            ///< Fractional Atoms defining the unit cell before symmetry operations.
-  std::vector<Atom> fractionalUnitCellAtoms;   ///< Fractional atoms in the unit cell after applying symmetry operations.
-  std::vector<Atom> unitCellAtoms;             ///< Cartesian atoms in the unit cell after applying symmetry operations.
-  std::vector<Atom> atoms{};                   ///< All Cartesian atoms in the framework after constructing the supercell.
+  std::vector<Atom> definedAtoms{};           ///< Fractional Atoms defining the unit cell before symmetry operations.
+  std::vector<Atom> fractionalUnitCellAtoms;  ///< Fractional atoms in the unit cell after applying symmetry operations.
+  std::vector<Atom> unitCellAtoms;            ///< Cartesian atoms in the unit cell after applying symmetry operations.
+  std::vector<Atom> atoms{};  ///< All Cartesian atoms in the framework after constructing the supercell.
+  /// Atom order when Groups are present: [Fixed | Rigid-group atoms | Flexible atoms].
+  std::unordered_set<std::size_t> uniqueAtomTypes{};
 
-  std::vector<std::size_t> chiralCenters{};                        ///< Indices of chiral centers in the framework.
-  std::vector<BondPotential> bonds{};                              ///< Bonds within the framework.
-  std::vector<std::pair<std::size_t, std::size_t>> bondDipoles{};  ///< Pairs of atoms forming bond dipoles.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t>> bends{};  ///< Triplets of atoms forming angle bends.
-  std::vector<std::pair<std::size_t, std::size_t>> UreyBradley{};  ///< Pairs of atoms for Urey-Bradley interactions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      inversionBends{};  ///< Quartets of atoms for inversion bends.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      Torsion{};  ///< Quartets of atoms forming torsions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      ImproperTorsions{};  ///< Quartets of atoms forming improper torsions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t>>
-      bondBonds{};  ///< Triplets of atoms for bond-bond interactions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t>>
-      stretchBends{};  ///< Triplets of atoms for stretch-bend interactions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      bendBends{};  ///< Quartets of atoms for bend-bend interactions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      stretchTorsions{};  ///< Quartets of atoms for stretch-torsion interactions.
-  std::vector<std::tuple<std::size_t, std::size_t, std::size_t, std::size_t>>
-      bendTorsions{};  ///< Quartets of atoms for bend-torsion interactions.
-  std::vector<std::pair<std::size_t, std::size_t>>
-      intraVDW{};  ///< Pairs of atoms for intramolecular van der Waals interactions.
-  std::vector<std::pair<std::size_t, std::size_t>>
-      intraCoulomb{};  ///< Pairs of atoms for intramolecular Coulomb interactions.
-  std::vector<std::pair<std::size_t, std::size_t>>
-      excludedIntraCoulomb{};  ///< Pairs of atoms excluded from intramolecular Coulomb interactions.
+  std::vector<FrameworkGroup> groups{};
+  std::vector<std::size_t> atomGroupIds{};  ///< Per-atom index into groups (empty when no Groups).
+  std::size_t fixedAtomCount{0};
+  std::size_t rigidGroupAtomCount{0};
+  std::size_t flexibleAtomCount{0};
+  std::size_t rigidGroupCount{0};
+  bool mixed{false};  ///< True when Groups are defined (mixed Fixed/Rigid/Flexible layout).
 
-  /**
-   * \brief Reads framework data from a file.
-   *
-   * Reads the framework structure, including atoms and simulation box, from the specified file,
-   * applying symmetry operations and setting up the framework for simulation.
-   *
-   * \param forceField Reference to the force field containing pseudo-atom definitions.
-   * \param fileName File name containing the framework data (e.g., a CIF file).
-   */
-  void readFramework(const ForceField &forceField, const std::string &fileName);
+  ConnectivityTable connectivityTable{};                            ///< Periodic framework bond connectivity.
+  Potentials::IntraMolecularPotentials intraMolecularPotentials{};  ///< Indexed internal framework potentials.
+  FrameworkIntraMolecularImageShifts intraMolecularImageShifts{};   ///< Periodic images for internal potentials.
+
+  ///@{
+  /// Retained nonbonded intra-framework generation options. Stored so the van der Waals pair list can
+  /// be regenerated for a finalized simulation box and cutoff (e.g. with periodic-image replicas when a
+  /// cell is smaller than twice the cutoff).
+  bool excludeIntra12Interactions{true};
+  bool excludeIntra13Interactions{true};
+  bool excludeIntraBondInteractions{false};
+  bool excludeIntraBendInteractions{false};
+  double intra14VanDerWaalsScaling{0.0};
+  double intra14ChargeChargeScaling{0.0};
+  /// Name/path of the flexible-framework intramolecular definition (empty for rigid or programmatic
+  /// frameworks). Retained so the intramolecular topology can be re-derived on a reduced primitive cell.
+  std::string frameworkDefinitionName{};
+  /// Parsed type-based potential definitions retained from the framework definition. Together with the
+  /// exclusion/scaling options above these are the complete input to generateIntraMolecularPotentials(),
+  /// so the intramolecular topology can be re-derived on any atom set without re-reading the file.
+  std::vector<FrameworkPotentialDefinition<2>> bondDefinitions{};
+  std::vector<FrameworkPotentialDefinition<3>> bendDefinitions{};
+  std::vector<FrameworkPotentialDefinition<4>> torsionDefinitions{};
+  std::vector<FrameworkPotentialDefinition<4>> improperTorsionDefinitions{};
+  ///@}
+
+  void determineUniqueAtomTypes();
 
   /**
-   * \brief Expands defined atoms to fill the unit cell using symmetry operations.
+   * \brief Derives connectivity and all intramolecular potentials from the stored type-based definitions.
    *
-   * Applies space group symmetry operations to the defined atoms to generate all atoms
-   * within the unit cell.
+   * Detects the framework bond connectivity from covalent radii, matches every bond/bend/torsion/improper
+   * against the retained potential definitions, and generates the nonbonded (van der Waals / Coulomb) pair
+   * list honoring the retained exclusion and 1-4 scaling options. The periodic-image shifts for every
+   * potential are recomputed for the current simulation box. Operates on the current \c atoms using the
+   * stored \c bondDefinitions / \c bendDefinitions / \c torsionDefinitions / \c improperTorsionDefinitions,
+   * so it can be re-run after reducing the framework to a primitive cell without touching the file system.
+   *
+   * \param forceField Force field providing pseudo-atom radii, van der Waals parameters, and charge usage.
    */
-  void expandDefinedAtomsToUnitCell();
+  void generateIntraMolecularPotentials(const ForceField& forceField);
+
+  /**
+   * \brief Rebuilds the intra-framework van der Waals pair list with periodic-image replicas if needed.
+   *
+   * When the smallest perpendicular width of \p box is at least twice \p cutOffFrameworkVDW a single
+   * minimum image is sufficient and the list is left unchanged. Otherwise the van der Waals potentials
+   * and their periodic-image shifts are regenerated so that every atom pair (including an atom with its
+   * own periodic images) contributes one entry per replica cell that falls within the cutoff. The 1-2/1-3
+   * exclusions and 1-4 scaling apply only to the covalently bonded (minimum) image; all other images are
+   * treated as full van der Waals neighbors. The real-space Coulomb list is unaffected, since Ewald always
+   * uses a half-box cutoff for which the minimum image is exact.
+   *
+   * \param forceField Force field providing the van der Waals parameters.
+   * \param box Finalized simulation box.
+   * \param cutOffFrameworkVDW Finalized framework van der Waals cutoff distance.
+   */
+  void regenerateVanDerWaalsImageList(const ForceField& forceField, const SimulationBox& box,
+                                      double cutOffFrameworkVDW);
+
+  /**
+   * Reads type-based intramolecular definitions and expands them over the framework supercell.
+   */
+  void readFrameworkDefinition(const ForceField& forceField, const std::string& definitionName);
+
+  /**
+   * \brief Reads Fixed/Rigid/Flexible Groups from a framework definition and reorders atoms Fixed-first.
+   */
+  void readGroups(const nlohmann::basic_json<nlohmann::raspa_map> &parsed_data);
+
+  /// Computes rigid-body mass/inertia/body frame for every Rigid group from current atom positions.
+  void computeGroupRigidProperties(const ForceField& forceField);
+
+  void finalizeGroupCache();
+
+  /// True when Groups are present (mixed Fixed/Rigid/Flexible host).
+  bool isMixed() const { return mixed; }
+
+  /// Lab-fixed atom count for Ewald (all atoms when fully rigid, Fixed prefix when mixed, else 0).
+  std::size_t numberOfFixedAtoms() const;
+
+  /// Atoms that are not lab-fixed (Rigid-group members + Flexible atoms).
+  std::size_t numberOfMobileAtoms() const;
+
+  bool hasMobileAtoms() const { return numberOfMobileAtoms() > 0; }
+
+  std::size_t numberOfRigidGroups() const { return rigidGroupCount; }
+
+  /// True when every listed atom lies in the same Fixed or Rigid group (skip internal potentials).
+  bool isInsideFixedOrRigidGroup(std::span<const std::size_t> ids) const;
+
+  std::optional<std::size_t> rigidGroupContaining(std::size_t atom) const;
+  std::optional<std::size_t> fixedGroupContaining(std::size_t atom) const;
+  bool isFixedAtom(std::size_t atom) const;
+  bool isFlexibleAtom(std::size_t atom) const;
+
+  void regenerateGroupAtoms(const GroupState &state, std::size_t groupIndex, std::span<Atom> frameworkAtoms) const;
+  GroupState deriveGroupState(std::size_t groupIndex, std::span<const Atom> frameworkAtoms) const;
 
   /**
    * \brief Constructs the supercell by replicating the unit cell atoms.
@@ -198,12 +289,12 @@ export struct Framework
 
   std::vector<double3> fractionalAtomPositionsUnitCell() const;
   std::vector<double3> cartesianAtomPositionsUnitCell() const;
-  std::vector<double2> atomUnitCellLennardJonesPotentialParameters(const ForceField &forceField) const;
+  std::vector<double2> atomUnitCellLennardJonesPotentialParameters(const ForceField& forceField) const;
 
-  std::optional<double> computeLargestNonOverlappingFreeRadius(const ForceField &forceField, double3 probe_position,
+  std::optional<double> computeLargestNonOverlappingFreeRadius(const ForceField& forceField, double3 probe_position,
                                                                double well_depth_factor) const;
-  bool computeVanDerWaalsRadiusOverlap(const ForceField &forceField, double3 probe_position) const;
-  bool computeOverlap(const ForceField &forceField, double3 probe_position, double well_depth_factor,
+  bool computeVanDerWaalsRadiusOverlap(const ForceField& forceField, double3 probe_position) const;
+  bool computeOverlap(const ForceField& forceField, double3 probe_position, double well_depth_factor,
                       std::size_t probe_type, std::make_signed_t<std::size_t> skip) const;
 
   /**
@@ -215,7 +306,7 @@ export struct Framework
    * \param forceField Reference to the force field containing pseudo-atom definitions.
    * \return A string representing the framework status.
    */
-  std::string printStatus(const ForceField &forceField) const;
+  std::string printStatus(const ForceField& forceField) const;
 
   /**
    * \brief Generates a string representation of the breakthrough status.
@@ -234,8 +325,8 @@ export struct Framework
    */
   nlohmann::json jsonStatus() const;
 
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Framework &c);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Framework &c);
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const Framework& c);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, Framework& c);
 
   /**
    * \brief Returns a string representation of the Framework.
@@ -246,6 +337,11 @@ export struct Framework
    * \return A string representing the Framework.
    */
   std::string repr() const;
+
+  static Framework makeFAU(const ForceField& forceField, int3 replicate = {1, 1, 1});
+  static Framework makeITQ29(const ForceField& forceField, int3 replicate = {1, 1, 1});
+  static Framework makeMFI(const ForceField& forceField, int3 replicate = {1, 1, 1});
+  static Framework makeCHA(const ForceField& forceField, int3 replicate = {1, 1, 1});
 };
 
 /**
@@ -262,7 +358,7 @@ export struct Framework
  * \throws std::runtime_error If no values could be read.
  */
 template <typename T>
-std::vector<T> parseListOfParameters(const std::string &arguments, std::size_t lineNumber)
+std::vector<T> parseListOfParameters(const std::string& arguments, std::size_t lineNumber)
 {
   std::vector<T> list{};
 

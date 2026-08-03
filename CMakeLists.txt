@@ -1,9 +1,12 @@
 # CMakeLists.txt
-# cmake_minimum_required(VERSION 4.0.3)
+cmake_minimum_required(VERSION 4.0.3)
 
-cmake_minimum_required(VERSION 3.29)
-# set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD d0edc3af-4c50-42ea-a356-e2862fe7a444)
-# set(CMAKE_CXX_MODULE_STD 1)
+if(CMAKE_VERSION VERSION_LESS 4.3)
+  set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+else()
+  set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+endif()
+set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Set the version of C++ for the project
@@ -17,31 +20,72 @@ endif()
 # clang 17 and greater can avoid this setting
 set(CMAKE_CXX_EXTENSIONS OFF)
 
+# Keep all internal functions (including the static C++ library) private.
+# Only show the specific Python entry point.
+set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
+
 project(raspa3
-  VERSION 3.0.21
+  VERSION 3.1.0
   DESCRIPTION ""
   HOMEPAGE_URL "https://github.com/iraspa/raspa3"
   LANGUAGES C CXX)
 
+option(BUILD_MBX "Build the MBX integration" ON)
+option(RASPA_USE_SYSTEM_GTEST "Use an installed GoogleTest package instead of FetchContent" OFF)
+option(RASPA_USE_SYSTEM_HDF5 "Use an installed HDF5 package instead of FetchContent" OFF)
+if(BUILD_MBX AND DEFINED BUILD_TESTING_RASPAKIT)
+  set(_build_testing_mbx_default ${BUILD_TESTING_RASPAKIT})
+else()
+  set(_build_testing_mbx_default OFF)
+endif()
+option(BUILD_TESTING_MBX "Build the MBX integration tests" ${_build_testing_mbx_default})
+unset(_build_testing_mbx_default)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
-add_definitions(-DUSE_LEGACY_HEADERS -DVERSION=${PROJECT_VERSION})
+add_definitions(-DVERSION=${PROJECT_VERSION})
 
-# add_definitions(-DUSE_STD_IMPORT -DVERSION=${PROJECT_VERSION})
 
-# add_definitions( -DUSE_PRECOMPILED_HEADERS -DVERSION=${PROJECT_VERSION})
-# add_definitions(-DVERSION=${PROJECT_VERSION})
 find_package(ZLIB)
 find_package(BLAS REQUIRED)
 find_package(LAPACK)
 find_package(OpenMP)
-find_package(HDF5 REQUIRED COMPONENTS CXX)
-include_directories(${HDF5_INCLUDE_DIRS})
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_CXX_FLAGS}")
+  #add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fopenmp>")
+  #add_link_options("-fopenmp")
 find_package(OpenCL)
 include_directories(${OpenCL_INCLUDE_DIRS})
 
-include_directories(${MBX_INCLUDES})
-include_directories(${FFTW_INCLUDES})
+set(RASPA_MBX_LIBRARIES)
+if(BUILD_MBX)
+  add_compile_definitions(BUILD_MBX)
+  find_path(MBX_INCLUDE_DIR
+    NAMES bblock/system.h
+    DOC "Directory containing the MBX headers"
+    REQUIRED)
+  find_path(MBX_CONFIG_INCLUDE_DIR
+    NAMES mbx_version.h
+    HINTS "${MBX_INCLUDE_DIR}/.." "${MBX_INCLUDE_DIR}/../include"
+    DOC "Directory containing the generated MBX configuration headers"
+    REQUIRED)
+  find_library(MBX_LIBRARY
+    NAMES mbx
+    DOC "MBX library"
+    REQUIRED)
+  find_path(FFTW_INCLUDE_DIR
+    NAMES fftw3.h
+    DOC "Directory containing the FFTW headers"
+    REQUIRED)
+  find_library(FFTW_LIBRARY
+    NAMES fftw3
+    DOC "FFTW double-precision library"
+    REQUIRED)
+
+  include_directories(SYSTEM ${MBX_INCLUDE_DIR} ${MBX_CONFIG_INCLUDE_DIR} ${FFTW_INCLUDE_DIR})
+  list(APPEND RASPA_MBX_LIBRARIES ${MBX_LIBRARY} ${FFTW_LIBRARY})
+endif()
 
 set(MSVC_WARNINGS /W4 /w14242 /w14254 /w14263 /w14265 /w14287 /we4289 /w14296 /w14311 /w14545 /w14546 /w14547 /w14549 /w14555 /w14619 /w14640 /w14826 /w14826 /w14905 /w14906 /w14928 /permissive-)
 
@@ -66,105 +110,113 @@ if(BUILD_LIBTORCH)
   )
 endif()
 
-include(FetchContent)
-FetchContent_Declare(voro++
-  GIT_REPOSITORY https://github.com/chr1shr/voro.git
-  EXCLUDE_FROM_ALL)
-FetchContent_MakeAvailable(voro++)
 
 if(BUILD_TESTING)
   enable_testing()
 
-  include(FetchContent)
-  FetchContent_Declare(googletest
-    GIT_REPOSITORY https://github.com/google/googletest.git
-    GIT_TAG v1.16.0
-    EXCLUDE_FROM_ALL)
+  if(RASPA_USE_SYSTEM_GTEST)
+    find_package(GTest CONFIG REQUIRED)
+  else()
+    include(FetchContent)
+    FetchContent_Declare(googletest
+      GIT_REPOSITORY https://github.com/google/googletest.git
+      GIT_TAG v1.17.0
+      EXCLUDE_FROM_ALL)
 
-  # For Windows: Prevent overriding the parent project's compiler/linker settings
-  set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
-  FetchContent_MakeAvailable(googletest)
+    # For Windows: Prevent overriding the parent project's compiler/linker settings
+    set(gtest_force_shared_crt ON CACHE BOOL "" FORCE)
+    FetchContent_MakeAvailable(googletest)
 
+    include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+    include_directories(${gmock_SOURCE_DIR}/include ${gmock_SOURCE_DIR})
+  endif()
   include(GoogleTest)
-
-  include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
-  include_directories(${gmock_SOURCE_DIR}/include ${gmock_SOURCE_DIR})
 endif()
 
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/src)
 
+include(FetchContent)
+
+if(RASPA_USE_SYSTEM_HDF5)
+  find_package(HDF5 REQUIRED COMPONENTS C CXX HL)
+  set(RASPA_HDF5_LIBRARIES ${HDF5_LIBRARIES})
+else()
+  set(BUILD_SHARED_LIBS OFF CACHE BOOL "Build shared libraries" FORCE)
+  set(BUILD_STATIC_LIBS ON CACHE BOOL "Build static libraries" FORCE)
+  set(HDF5_BUILD_CPP_LIB ON CACHE BOOL "Build static libraries" FORCE)
+  set(HDF5_ENABLE_NONSTANDARD_FEATURE_FLOAT16 OFF CACHE BOOL "Build static libraries" FORCE)
+  FetchContent_Declare(hdf5
+    GIT_REPOSITORY https://github.com/HDFGroup/hdf5.git
+    GIT_TAG 2.1.1
+    EXCLUDE_FROM_ALL)
+  FetchContent_MakeAvailable(hdf5)
+  set(HDF5_INCLUDE_DIRS "$<BUILD_INTERFACE:${hdf5_SOURCE_DIR}/src/;${hdf5_SOURCE_DIR}/src/H5FDsubfiling;${hdf5_SOURCE_DIR}/c++/src;${hdf5_BINARY_DIR};${hdf5_BINARY_DIR}/src>")
+  set(RASPA_HDF5_LIBRARIES
+    hdf5-static
+    hdf5_tools-static
+    hdf5_hl-static
+    hdf5_cpp-static
+    hdf5_hl_cpp-static)
+endif()
+include_directories(${HDF5_INCLUDE_DIRS})
+
 function(raspa_target_link_libraries target_name)
   if(CONDA)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
-      libs::raspakit
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
-      ${HDF5_LIBRARIES}
-      voro++
+      ${RASPA_HDF5_LIBRARIES}
       ${TORCH_LIBRARIES}
-      ${MBX_LIBRARY}
-      ${FFTW_LIBRARY}
+      ${RASPA_MBX_LIBRARIES}
       OpenMP::OpenMP_CXX
       OpenCL::OpenCL
       ZLIB::ZLIB
       -lpthread)
   elseif(LINUX)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
-      libs::raspakit
       -static-libgcc
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
-      ${HDF5_CXX_LIBRARIES}
-      ${HDF5_LIBRARIES}
-      voro++
+      ${RASPA_HDF5_LIBRARIES}
       ${TORCH_LIBRARIES}
-      ${MBX_LIBRARY}
-      ${FFTW_LIBRARY}
+      ${RASPA_MBX_LIBRARIES}
       OpenMP::OpenMP_CXX
-      OpenCL::OpenCL
+      -Wl,--as-needed OpenCL::OpenCL
       -nostdlib++
       -l:libc++.a
       -l:libc++abi.a
+      -l:libunwind.a
       -lm
       -ldl
       ${ZLIB_LIBRARIES}
       -lpthread)
   elseif(WIN32)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
-      libs::raspakit
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
-      ${HDF5_CXX_LIBRARIES}
-      voro++
+      ${RASPA_HDF5_LIBRARIES}
       ${TORCH_LIBRARIES}
-      ${MBX_LIBRARY}
-      ${FFTW_LIBRARY}
+      ${RASPA_MBX_LIBRARIES}
       OpenMP::OpenMP_CXX
       OpenCL::OpenCL
       -nostdlib++
       ${ZLIB_LIBRARIES})
   elseif(APPLE)
-    target_link_libraries(${PROJECT_NAME}
+    target_link_libraries(${target_name}
       PUBLIC
-      libs::raspakit
       ${BLAS_LIBRARIES}
       ${LAPACK_LIBRARIES}
-      voro++
+      ${RASPA_HDF5_LIBRARIES}
       ${TORCH_LIBRARIES}
-      ${MBX_LIBRARY}
-      ${FFTW_LIBRARY}
-      $ENV{HOMEBREW_PREFIX}/lib/libhdf5_cpp.a
-      $ENV{HOMEBREW_PREFIX}/lib/libhdf5.a
-      $ENV{HOMEBREW_PREFIX}/lib/libaec.a
-      $ENV{HOMEBREW_PREFIX}/lib/libsz.a
+      ${RASPA_MBX_LIBRARIES}
       $ENV{HOMEBREW_PREFIX}/opt/libomp/lib/libomp.a
       OpenCL::OpenCL
       ${ZLIB_LIBRARIES}
       -static-libstdc++
-      -nostdlib++
+      -nostdlib++  # Prevent linking system libstdc++ or system libc++
       $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++.a
       $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/c++/libc++abi.a
       $ENV{HOMEBREW_PREFIX}/opt/llvm/lib/unwind/libunwind.a
@@ -174,9 +226,14 @@ endfunction()
 
 add_subdirectory(src)
 
+if(BUILD_PYTHON)
+  add_subdirectory(raspa)
+endif()
+
 if(BUILD_APP)
-  # add_subdirectory(data)
-  # add_subdirectory(examples)
+  add_subdirectory(data)
+  add_subdirectory(examples)
+
   add_subdirectory(app)
 endif()
 
@@ -188,15 +245,12 @@ if(BUILD_DOXYGEN)
   add_subdirectory(docs)
 endif()
 
-# add_subdirectory(packaging)
+add_subdirectory(packaging)
+
 if(BUILD_TESTING)
   add_subdirectory(tests)
 endif()
 
 if(BUILD_BENCHMARKS)
   add_subdirectory(benchmarks)
-endif()
-
-if(BUILD_PYTHON)
-  add_subdirectory(raspa)
 endif()

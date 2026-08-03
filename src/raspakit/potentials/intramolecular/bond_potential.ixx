@@ -1,38 +1,14 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstring>
-#include <format>
-#include <fstream>
-#include <map>
-#include <print>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#endif
-
 export module bond_potential;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import archive;
 import randomnumbers;
 import double3;
 import double3x3;
-import gradient_factor;
 import units;
 
 /**
@@ -136,6 +112,9 @@ export struct BondPotential
 
   std::tuple<double, std::array<double3, 2>, double3x3> potentialEnergyGradientStrain(const double3 &posA,
                                                                                       const double3 &posB) const;
+
+  std::tuple<double, std::array<double3, 2>, double3x3, double, double> potentialEnergyGradientHessianStrain(
+      const double3 &posA, const double3 &posB) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BondPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, BondPotential &b);

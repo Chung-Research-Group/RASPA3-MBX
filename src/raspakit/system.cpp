@@ -1,47 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <numbers>
-#include <numeric>
-#include <optional>
-#include <ostream>
-#include <print>
-#include <ranges>
-#include <source_location>
-#include <span>
-#include <streambuf>
-#include <string>
-#include <string_view>
-#include <tuple>
-#include <vector>
-#pragma push_macro("__SSE3__")
-#undef __SSE3__
-#include <random>
-#pragma pop_macro("__SSE3__")
-#include "mdspanwrapper.h"
-#endif
-
 module system;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import randomnumbers;
@@ -56,11 +17,11 @@ import cubic;
 import atom;
 import framework;
 import component;
+import cbmc_move_statistics;
 import simulationbox;
 import forcefield;
-import double3x3;
 import units;
-import loadings;
+import property_loading;
 import averages;
 import skparser;
 import skposcarparser;
@@ -68,26 +29,25 @@ import skstructure;
 import skatom;
 import skcell;
 import sample_movies;
-import enthalpy_of_adsorption;
-import energy_factor;
+import property_enthalpy;
+import property_pressure;
+import energy_dudlambda;
 import energy_status;
 import energy_status_inter;
 import energy_status_intra;
 import property_simulationbox;
+import average_energy_type;
 import property_energy;
-import property_pressure;
-import property_loading;
-import property_enthalpy;
+import property_partial_molar_properties;
 import property_lambda_probability_histogram;
 import property_widom;
 import property_temperature;
 import property_msd;
-import energy_factor;
 import running_energy;
 import threadpool;
-import isotherm;
-import multi_site_isotherm;
-import pressure_range;
+// import isotherm;
+// import multi_site_isotherm;
+// import pressure_range;
 import bond_potential;
 import move_statistics;
 import mc_moves_probabilities;
@@ -100,18 +60,27 @@ import cbmc_chain_data;
 import interactions_framework_molecule;
 import interactions_framework_molecule_grid;
 import interactions_intermolecular;
+import interactions_pair_kernel;
 import interactions_ewald;
-import interactions_mbx;
 import interactions_internal;
 import interactions_external_field;
 import interactions_external_field_grid;
+#ifdef BUILD_MBX
+import interactions_mbx;
+#endif
+import interactions_polarization_derivatives;
 import equation_of_states;
 import thermostat;
+import thermobarostat;
 import json;
 import integrators;
 import integrators_compute;
 import integrators_update;
 import interpolation_energy_grid;
+import property_number_of_molecules_evolution;
+import property_volume_evolution;
+import property_conserved_energy_evolution;
+import minimization_cell_layout;
 #if !(defined(__has_include) && __has_include(<mdspan>))
 // import mdspan;
 #endif
@@ -122,14 +91,12 @@ import interpolation_energy_grid;
  *
  *  Detailed description starts here.
  */
-System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBox> box, double T,
+System::System(ForceField forcefield, std::optional<SimulationBox> box, bool hasExternalField, double T,
                std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f, std::vector<Component> c,
                std::vector<std::vector<double3>> initialpositions, std::vector<std::size_t> initialNumberOfMolecules,
-               std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities,
-               std::optional<bool> useMBXCalculator, std::optional<std::string> mbxFilePath,
-               std::optional<std::size_t> sampleMoviesEvery)
-    : systemId(id),
-      temperature(T),
+               std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities, bool useMBXCalculator,
+               std::optional<std::string> mbxFilePath, bool writeEnergyLog)
+    : temperature(T),
       pressure(P.value_or(0.0) / Units::PressureConversionFactor),
       input_pressure(P.value_or(0.0)),
       beta(1.0 / (Units::KB * T)),
@@ -144,11 +111,21 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
       numberOfFractionalMoleculesPerComponent(c.size()),
       numberOfGCFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfPairGCFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfPairSwapFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfGibbsFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC(c.size()),
+      numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC(c.size()),
       numberOfReactionFractionalMoleculesPerComponent_CFCMC(),
       idealGasEnergiesPerComponent(c.size()),
       forceField(forcefield),
-      hasExternalField(false),
+      hasExternalField(hasExternalField),
+      useMBX(useMBXCalculator),
+      mbxSettingsFilePath(mbxFilePath.value_or(std::string{})),
+      writeEnergyLog(writeEnergyLog),
       numberOfPseudoAtoms(c.size(), std::vector<std::size_t>(forceField.pseudoAtoms.size())),
       totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
       atomData({}),
@@ -163,6 +140,7 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
       averageEnergies(numberOfBlocks, 1, f.has_value() ? 1 : 0, c.size()),
       averageLoadings(numberOfBlocks, c.size()),
       averageEnthalpiesOfAdsorption(numberOfBlocks, c.size()),
+      averagePartialMolarProperties(numberOfBlocks, c.size()),
       averageTemperature(numberOfBlocks),
       averageTranslationalTemperature(numberOfBlocks),
       averageRotationalTemperature(numberOfBlocks),
@@ -170,60 +148,73 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
       averageSimulationBox(numberOfBlocks),
       interpolationGrids(forceField.pseudoAtoms.size() + 1, std::nullopt)
 {
+  if (useMBX)
+  {
+#ifndef BUILD_MBX
+    throw std::runtime_error(
+        "[System]: UseMBX was requested, but this RASPA binary was built without BUILD_MBX support");
+#else
+    if (!mbxFilePath.has_value() || mbxFilePath->empty())
+    {
+      throw std::runtime_error("[System]: UseMBX requires MBXSettingsFile");
+    }
+
+    const std::filesystem::path settingsPath(*mbxFilePath);
+    std::error_code error;
+    if (!std::filesystem::is_regular_file(settingsPath, error))
+    {
+      throw std::runtime_error(
+          std::format("[System]: MBX settings file '{}' is not a readable regular file{}", settingsPath.string(),
+                      error ? std::format(" ({})", error.message()) : std::string{}));
+    }
+    std::ifstream settings(settingsPath, std::ios::binary);
+    if (!settings || settings.peek() == std::ifstream::traits_type::eof())
+    {
+      throw std::runtime_error(std::format("[System]: MBX settings file '{}' is unreadable or empty",
+                                           settingsPath.string()));
+    }
+
+    const std::filesystem::path canonicalPath = std::filesystem::canonical(settingsPath, error);
+    mbxSettingsFilePath = error ? std::filesystem::absolute(settingsPath).lexically_normal().string()
+                                : canonicalPath.string();
+#endif
+  }
+  currentEnergyStatus.useMBX = useMBX;
+
+  input_pressureTensorDiagonal = double3(input_pressure, input_pressure, input_pressure);
+  pressureTensorDiagonal = double3(pressure, pressure, pressure);
+
+  // Temperature-dependent potentials (Feynman-Hibbs) require the external temperature;
+  // recompute the derived constants, shifts, and tail-corrections with the system temperature.
+  if (forceField.temperature != T)
+  {
+    forceField.temperature = T;
+    forceField.preComputeDerivedParameters();
+    forceField.preComputePotentialShift();
+    forceField.preComputeTailCorrection();
+  }
+
   if (box.has_value())
   {
     simulationBox = box.value();
   }
 
-  // MBX related system member variables
-  this->useMBX = false;                // Default value
-  this->mbxSettingsFilePath = "None";  // Default value
-
-  if (useMBXCalculator.has_value())
-  {
-    if (useMBXCalculator.value())
-    {
-      if (!mbxFilePath.has_value())
-      {
-        throw std::runtime_error(std::format("[System]: MBX Settings File Note Found!"));
-      }
-      this->useMBX = true;
-      this->mbxSettingsFilePath = mbxFilePath.value();
-
-      // Enable MBX in currentEnergyStatus
-      this->currentEnergyStatus.useMBX = true;
-
-      std::cerr
-          << "type,component,N,total,hg_VDW,hg_tail,mbx_tot,E2b,E3b,E4b,Edisp,Eelec_perm,Eelec_ind,E_diff,Pacc\n";  // Header for MBX energy log
-    }
-    else
-    {
-      std::cerr
-          << "type,component,N,total,hg_VDW,gg_VDW,tail,hg_Charge,gg_Charge,E_ewald,E_diff,Pacc\n";  // Header for FF
-      // energy log
-    }
-  }
-
   removeRedundantMoves();
   determineSwappableComponents();
   determineFractionalComponents();
+  assignDUdlambdaGroups();
   rescaleMoveProbabilities();
   rescaleMolarFractions();
   computeNumberOfPseudoAtoms();
+  computeTailCorrectionCounts();
 
   createFrameworks();
   if (framework.has_value())
   {
     simulationBox = framework->simulationBox.scaled(framework->numberOfUnitCells);
-
-    // Precompute the MBX permanent electrostatic interactions of the framework atoms
-    if (useMBX)
-    {
-      // std::cerr << "Pre-computing MBX intra-molecule permanent electrostatics interactions for framework..." <<
-      // std::endl;
-      preComputeElecPermFrameworkMBX();
-    }
   }
+
+  if (useMBX) preComputeElecPermFrameworkMBX();
 
   forceField.initializeEwaldParameters(simulationBox);
 
@@ -235,32 +226,36 @@ System::System(std::size_t id, ForceField forcefield, std::optional<SimulationBo
   translationalCenterOfMassConstraint = 0;
   translationalDegreesOfFreedom = 0;
   rotationalDegreesOfFreedom = 0;
+  if (framework && framework->hasMobileAtoms())
+  {
+    if (framework->isMixed())
+    {
+      translationalDegreesOfFreedom += 3 * framework->flexibleAtomCount + 3 * framework->numberOfRigidGroups();
+      for (const FrameworkGroup& group : framework->groups)
+      {
+        if (group.isRigidBody()) rotationalDegreesOfFreedom += group.rotationalDegreesOfFreedom;
+      }
+    }
+    else
+    {
+      translationalDegreesOfFreedom += 3 * numberOfFrameworkAtoms;
+    }
+  }
 
   createInitialMolecules(initialpositions);
+  initializeFixedLambdaFractionalMolecules();
+  computeTailCorrectionCounts();
 
-  equationOfState =
-      EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MultiComponentMixingRules::VanDerWaals, T,
-                      P.value_or(0.0), simulationBox, heliumVoidFraction, components);
+  // Build the per-component ideal-gas conformation reservoirs used to seed CBMC growth. Done after the
+  // initial molecules are placed so their placement keeps using the cold-start seed (unchanged initial
+  // geometry); the reservoir is only consulted by the production Monte-Carlo moves.
+  buildConformationReservoirs();
+
+  equationOfState = EquationOfState(EquationOfState::Type::PengRobinson, EquationOfState::MixingRules::VanDerWaals, T,
+                                    P.value_or(0.0), simulationBox, heliumVoidFraction, components);
 
   averageEnthalpiesOfAdsorption.resize(swappableComponents.size());
-
-  if (sampleMoviesEvery.has_value())
-  {
-    samplePDBMovie = SampleMovie(id, sampleMoviesEvery.value());
-  }
-}
-
-System::System(std::size_t id, double T, std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f,
-               std::vector<Component> c)
-    : systemId(id),
-      temperature(T),
-      pressure(P.value_or(0.0) / Units::PressureConversionFactor),
-      input_pressure(P.value_or(0.0)),
-      beta(1.0 / (Units::KB * T)),
-      heliumVoidFraction(heliumVoidFraction),
-      framework(f),
-      components(c)
-{
+  averagePartialMolarProperties.resize(swappableComponents.size());
 }
 
 void System::createFrameworks()
@@ -272,696 +267,153 @@ void System::createFrameworks()
     for (const Atom& atom : atoms)
     {
       atomData.push_back(atom);
+      atomDynamics.push_back(AtomDynamics{});
       electricPotential.push_back(0.0);
       electricField.push_back(double3(0.0, 0.0, 0.0));
       electricFieldNew.push_back(double3(0.0, 0.0, 0.0));
     }
     numberOfFrameworkAtoms += atoms.size();
-    numberOfRigidFrameworkAtoms += atoms.size();
+    // Lab-fixed prefix for Ewald: all atoms when fully rigid, Fixed groups when mixed, else none.
+    numberOfRigidFrameworkAtoms += framework->numberOfFixedAtoms();
     netChargeFramework += framework->netCharge;
     netCharge += framework->netCharge;
   }
 }
 
-std::optional<double> System::frameworkMass() const
+void System::rebuildForFramework(const Framework& newFramework, const SimulationBox& newSimulationBox)
 {
-  if (!framework.has_value()) return std::nullopt;
-
-  double mass = framework->mass;
-  for (std::size_t i = 0; i < components.size(); ++i)
+  const std::size_t previousTranslationalFrameworkDof =
+      (framework.has_value() && framework->hasMobileAtoms())
+          ? (framework->isMixed() ? 3 * framework->flexibleAtomCount + 3 * framework->numberOfRigidGroups()
+                                  : 3 * numberOfFrameworkAtoms)
+          : 0;
+  std::size_t previousRotationalFrameworkDof = 0;
+  if (framework.has_value() && framework->isMixed())
   {
-    if (components[i].type == Component::Type::Cation)
+    for (const FrameworkGroup& group : framework->groups)
     {
-      mass += components[i].totalMass * static_cast<double>(numberOfIntegerMoleculesPerComponent[i]);
+      if (group.isRigidBody()) previousRotationalFrameworkDof += group.rotationalDegreesOfFreedom;
     }
   }
-  return mass;
-}
+  const std::size_t previousFrameworkAtoms = numberOfFrameworkAtoms;
 
-void System::insertFractionalMolecule(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
-                                      std::vector<Atom> atoms, std::size_t moleculeId)
-{
-  double l = 0.0;
-  for (Atom& atom : atoms)
+  // Detach any guest-molecule storage (the suffix after the framework prefix) so it can be re-appended once
+  // the new framework atoms are in place. For a framework-only system these are empty.
+  const auto moleculeOffset = static_cast<std::vector<Atom>::difference_type>(previousFrameworkAtoms);
+  std::vector<Atom> moleculeAtoms(atomData.begin() + moleculeOffset, atomData.end());
+  std::vector<AtomDynamics> moleculeDynamics(atomDynamics.begin() + moleculeOffset, atomDynamics.end());
+
+  framework = newFramework;
+  simulationBox = newSimulationBox;
+
+  const std::vector<Atom>& frameworkAtoms = framework->atoms;
+  numberOfFrameworkAtoms = frameworkAtoms.size();
+  numberOfRigidFrameworkAtoms = framework->numberOfFixedAtoms();
+
+  // Rebuild the per-atom storage as [new framework atoms] ++ [preserved molecule atoms]; the field/potential
+  // buffers are reset to the new size (they are recomputed on the next energy/field evaluation).
+  atomData.assign(frameworkAtoms.begin(), frameworkAtoms.end());
+  atomData.insert(atomData.end(), moleculeAtoms.begin(), moleculeAtoms.end());
+  atomDynamics.assign(frameworkAtoms.size(), AtomDynamics{});
+  atomDynamics.insert(atomDynamics.end(), moleculeDynamics.begin(), moleculeDynamics.end());
+  electricPotential.assign(atomData.size(), 0.0);
+  electricField.assign(atomData.size(), double3(0.0, 0.0, 0.0));
+  electricFieldNew.assign(atomData.size(), double3(0.0, 0.0, 0.0));
+
+  // Swap the old framework net-charge contribution for the new one (adsorbate contribution is unchanged).
+  netCharge -= netChargeFramework;
+  netChargeFramework = framework->netCharge;
+  netCharge += netChargeFramework;
+
+  // Adjust framework degrees of freedom for the replacement host.
+  translationalDegreesOfFreedom -= previousTranslationalFrameworkDof;
+  rotationalDegreesOfFreedom -= previousRotationalFrameworkDof;
+  if (framework->hasMobileAtoms())
   {
-    atom.moleculeId = static_cast<std::uint16_t>(moleculeId);
-    atom.groupId = components[selectedComponent].lambdaGC.computeDUdlambda;
-    atom.isFractional = true;
-    atom.setScaling(l);
-  }
-  std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, 0);
-  atomData.insert(iterator, atoms.begin(), atoms.end());
-
-  std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, 0);
-  moleculeData.insert(moleculeIterator, molecule);
-
-  electricPotential.resize(electricPotential.size() + atoms.size());
-  electricField.resize(electricField.size() + atoms.size());
-  electricFieldNew.resize(electricFieldNew.size() + atoms.size());
-
-  numberOfMoleculesPerComponent[selectedComponent] += 1;
-
-  netCharge += components[selectedComponent].netCharge;
-  netChargeAdsorbates += components[selectedComponent].netCharge;
-  netChargePerComponent[selectedComponent] += components[selectedComponent].netCharge;
-
-  translationalDegreesOfFreedom += components[selectedComponent].translationalDegreesOfFreedom;
-  rotationalDegreesOfFreedom += components[selectedComponent].rotationalDegreesOfFreedom;
-
-  updateMoleculeAtomInformation();
-}
-
-/// Inserts a molecule into the vector of atoms.
-///
-/// Note: updates the numberOfMoleculesPerComponent, numberOfIntegerMoleculesPerComponent,
-///       numberOfPseudoAtoms, totalNumberOfPseudoAtoms.
-/// - Parameters:
-///   - selectedComponent: the index of the component
-///   - atoms: vector of atoms to be inserted
-/// - returns:
-void System::insertMolecule(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
-                            std::vector<Atom> atoms)
-{
-  std::vector<Atom>::const_iterator iterator =
-      iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
-  atomData.insert(iterator, atoms.begin(), atoms.end());
-
-  std::vector<Molecule>::iterator moleculeIterator =
-      indexForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
-  moleculeData.insert(moleculeIterator, molecule);
-
-  electricPotential.resize(electricPotential.size() + atoms.size());
-  electricField.resize(electricField.size() + atoms.size());
-  electricFieldNew.resize(electricFieldNew.size() + atoms.size());
-
-  numberOfMoleculesPerComponent[selectedComponent] += 1;
-  numberOfIntegerMoleculesPerComponent[selectedComponent] += 1;
-
-  netCharge += components[selectedComponent].netCharge;
-  netChargeAdsorbates += components[selectedComponent].netCharge;
-  netChargePerComponent[selectedComponent] += components[selectedComponent].netCharge;
-
-  translationalDegreesOfFreedom += components[selectedComponent].translationalDegreesOfFreedom;
-  rotationalDegreesOfFreedom += components[selectedComponent].rotationalDegreesOfFreedom;
-
-  // Update the number of pseudo atoms per type (used for tail-corrections)
-  for (Atom& atom : atoms)
-  {
-    atom.moleculeId = static_cast<std::uint16_t>(numberOfMoleculesPerComponent[selectedComponent]);
-    numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] += 1;
-    totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] += 1;
-  }
-
-  updateMoleculeAtomInformation();
-}
-
-void System::insertMoleculePolarization(std::size_t selectedComponent, [[maybe_unused]] const Molecule& molecule,
-                                        std::vector<Atom> atoms, std::span<double3> electric_field)
-{
-  std::vector<Atom>::const_iterator iterator =
-      iteratorForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
-  atomData.insert(iterator, atoms.begin(), atoms.end());
-
-  std::vector<double3>::const_iterator iterator_electric_field =
-      iteratorForElectricField(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
-  electricField.insert(iterator_electric_field, electric_field.begin(), electric_field.end());
-
-  std::vector<Molecule>::iterator moleculeIterator =
-      indexForMolecule(selectedComponent, numberOfMoleculesPerComponent[selectedComponent]);
-  moleculeData.insert(moleculeIterator, molecule);
-
-  electricPotential.resize(electricPotential.size() + atoms.size());
-  electricFieldNew.resize(electricFieldNew.size() + atoms.size());
-
-  numberOfMoleculesPerComponent[selectedComponent] += 1;
-  numberOfIntegerMoleculesPerComponent[selectedComponent] += 1;
-
-  netCharge += components[selectedComponent].netCharge;
-  netChargeAdsorbates += components[selectedComponent].netCharge;
-  netChargePerComponent[selectedComponent] += components[selectedComponent].netCharge;
-
-  translationalDegreesOfFreedom += components[selectedComponent].translationalDegreesOfFreedom;
-  rotationalDegreesOfFreedom += components[selectedComponent].rotationalDegreesOfFreedom;
-
-  // Update the number of pseudo atoms per type (used for tail-corrections)
-  for (Atom& atom : atoms)
-  {
-    atom.moleculeId = static_cast<std::uint16_t>(numberOfMoleculesPerComponent[selectedComponent]);
-    numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] += 1;
-    totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] += 1;
-  }
-
-  updateMoleculeAtomInformation();
-}
-
-void System::deleteMolecule(std::size_t selectedComponent, std::size_t selectedMolecule, const std::span<Atom> molecule)
-{
-  // Update the number of pseudo atoms per type (used for tail-corrections)
-  for (const Atom& atom : molecule)
-  {
-    numberOfPseudoAtoms[selectedComponent][static_cast<std::size_t>(atom.type)] -= 1;
-    totalNumberOfPseudoAtoms[static_cast<std::size_t>(atom.type)] -= 1;
-  }
-
-  std::vector<Atom>::const_iterator iterator = iteratorForMolecule(selectedComponent, selectedMolecule);
-  atomData.erase(iterator, iterator + static_cast<std::vector<Atom>::difference_type>(molecule.size()));
-
-  std::vector<double3>::const_iterator iterator_electric_field =
-      iteratorForElectricField(selectedComponent, selectedMolecule);
-  electricField.erase(iterator_electric_field,
-                      iterator_electric_field + static_cast<std::vector<double3>::difference_type>(molecule.size()));
-
-  std::vector<Molecule>::iterator moleculeIterator = indexForMolecule(selectedComponent, selectedMolecule);
-  moleculeData.erase(moleculeIterator, moleculeIterator + 1);
-
-  electricPotential.resize(electricPotential.size() - molecule.size());
-  electricFieldNew.resize(electricFieldNew.size() - molecule.size());
-
-  numberOfMoleculesPerComponent[selectedComponent] -= 1;
-  numberOfIntegerMoleculesPerComponent[selectedComponent] -= 1;
-
-  netCharge -= components[selectedComponent].netCharge;
-  netChargeAdsorbates -= components[selectedComponent].netCharge;
-  netChargePerComponent[selectedComponent] -= components[selectedComponent].netCharge;
-
-  translationalDegreesOfFreedom -= components[selectedComponent].translationalDegreesOfFreedom;
-  rotationalDegreesOfFreedom -= components[selectedComponent].rotationalDegreesOfFreedom;
-
-  updateMoleculeAtomInformation();
-}
-
-void System::updateMoleculeAtomInformation()
-{
-  std::size_t atom_index = numberOfFrameworkAtoms;
-  std::size_t molecule_index{};
-
-  for (std::size_t componentId = 0; componentId < components.size(); componentId++)
-  {
-    std::size_t numberOfAtoms = components[componentId].atoms.size();
-
-    for (std::size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
+    if (framework->isMixed())
     {
-      moleculeData[molecule_index].atomIndex = atom_index - numberOfFrameworkAtoms;
-      moleculeData[molecule_index].numberOfAtoms = numberOfAtoms;
-
-      for (std::size_t j = 0; j < numberOfAtoms; ++j)
+      translationalDegreesOfFreedom += 3 * framework->flexibleAtomCount + 3 * framework->numberOfRigidGroups();
+      for (const FrameworkGroup& group : framework->groups)
       {
-        atomData[atom_index].moleculeId = static_cast<std::uint16_t>(i);
-        atomData[atom_index].componentId = static_cast<std::uint8_t>(componentId);
-        ++atom_index;
-      }
-      ++molecule_index;
-    }
-  }
-}
-
-void System::checkMoleculeIds()
-{
-  std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
-
-  std::size_t index = 0;  // indexOfFirstMolecule(selectedComponent);
-  for (std::size_t componentId = 0; componentId < components.size(); componentId++)
-  {
-    for (std::size_t i = 0; i < numberOfMoleculesPerComponent[componentId]; ++i)
-    {
-      for (std::size_t j = 0; j < components[componentId].atoms.size(); ++j)
-      {
-        if (moleculeAtoms[index].moleculeId != static_cast<std::uint32_t>(i))
-        {
-          throw std::runtime_error(std::format("Wrong molecule-id detected {} for component {} molecule {}\n",
-                                               moleculeAtoms[index].moleculeId, componentId, i));
-        }
-        if (moleculeAtoms[index].componentId != static_cast<std::uint8_t>(componentId))
-        {
-          throw std::runtime_error(std::format("Wrong component-id detected {} for component {} molecule {}\n",
-                                               moleculeAtoms[index].componentId, componentId, i));
-        }
-        ++index;
+        if (group.isRigidBody()) rotationalDegreesOfFreedom += group.rotationalDegreesOfFreedom;
       }
     }
-  }
-
-  for (std::size_t componentId = 0; componentId < components.size(); componentId++)
-  {
-    if (numberOfGCFractionalMoleculesPerComponent_CFCMC[componentId] > 0)
+    else
     {
-      std::size_t indexFractionalMolecule = indexOfGCFractionalMoleculesPerComponent_CFCMC(componentId);
-      std::span<Atom> fractionalMolecule = spanOfMolecule(componentId, indexFractionalMolecule);
-
-      for (const Atom& atom : fractionalMolecule)
-      {
-        if (components[componentId].lambdaGC.computeDUdlambda)
-        {
-          if (static_cast<std::size_t>(atom.groupId) == 0)
-          {
-            throw std::runtime_error(std::format("Wrong group-id detected! (0 where it should be 1)\n"));
-          }
-        }
-        else
-        {
-          if (static_cast<std::size_t>(atom.groupId) == 1)
-          {
-            throw std::runtime_error(std::format("Wrong group-id detected! (1 where it should be 0)\n"));
-          }
-        }
-      }
+      translationalDegreesOfFreedom += 3 * numberOfFrameworkAtoms;
     }
   }
-  std::print("check complete\n");
-}
 
-void System::createInitialMolecules(const std::vector<std::vector<double3>>& initialPositions)
-{
-  // keep a fixed seed
-  RandomNumber random(1200);
+  // Note: pseudo-atom counts intentionally track only component (guest) atoms, matching the constructor which
+  // computes them before the framework atoms are appended; the preserved guest counts stay valid, so framework
+  // atoms are not (re)counted here.
 
-  for (std::size_t componentId = 0; const Component& component : components)
-  {
-    if (component.swappable)
-    {
-      numberOfMoleculesPerComponent[componentId] = 0;
-      for (std::size_t i = 0; i < numberOfFractionalMoleculesPerComponent[componentId]; ++i)
-      {
-        std::optional<ChainGrowData> growData = std::nullopt;
-        do
-        {
-          bool groupId = components[componentId].lambdaGC.computeDUdlambda;
-          Component::GrowType growType = components[componentId].growType;
-          growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], hasExternalField, forceField, simulationBox, interpolationGrids,
-              externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
-              forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb,
-              numberOfMoleculesPerComponent[componentId], 0.0, groupId, true);
-        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
+  forceField.initializeEwaldParameters(simulationBox);
+  CoulombicFourierEnergySingleIon = Interactions::computeEwaldFourierEnergySingleIon(
+      eik_x, eik_y, eik_z, eik_xy, forceField, simulationBox, double3(0.0, 0.0, 0.0), 1.0);
 
-        insertFractionalMolecule(componentId, growData->molecule, growData->atom, i);
-      }
-    }
-
-    // Add atom position passed to 'createInitialMolecules'
-    if (componentId < initialPositions.size())
-    {
-      std::vector<double3> positions = initialPositions[componentId];
-      for (std::size_t i = 0; i < positions.size(); i += component.atoms.size())
-      {
-        std::span<double3> position_view = std::span<double3>(&positions[i], component.atoms.size());
-
-        double3 com(0.0, 0.0, 0.0);
-        simd_quatd orientation{};
-
-        if (components[componentId].rigid)
-        {
-          // Compute center of mass
-          double totalMass = 0.0;
-          for (std::size_t k = 0; k < position_view.size(); ++k)
-          {
-            double mass = forceField.pseudoAtoms[static_cast<std::size_t>(components[componentId].atoms[k].type)].mass;
-            com += mass * position_view[k];
-            totalMass += mass;
-          }
-          com /= totalMass;
-
-          double3 reference_com = double3{0.0, 0.0, 0.0};
-
-          std::vector<double3> reference_positions =
-              components[componentId].atoms | std::views::transform(&Atom::position) | std::ranges::to<std::vector>();
-
-          // Compute rotation matrix that describes going from the space-fixed frame to the body-fixed frame
-          double3x3 rotation_matrix =
-              double3x3::computeRotationMatrix(com, position_view, reference_com, reference_positions);
-
-          // Get orientation
-          orientation = rotation_matrix.quaternion();
-        }
-
-        Molecule molecule =
-            Molecule(com, orientation, component.totalMass, componentId, components[componentId].atoms.size());
-
-        std::vector<Atom> molecule_atoms = components[componentId].atoms;
-        for (std::size_t k = 0; k < position_view.size(); ++k)
-        {
-          molecule_atoms[k].position = position_view[k];
-        }
-
-        insertMolecule(componentId, molecule, molecule_atoms);
-      }
-    }
-
-    for (std::size_t i = 0; i < initialNumberOfMolecules[componentId]; ++i)
-    {
-      std::optional<ChainGrowData> growData = std::nullopt;
-      bool inside_blocked_pocket{false};
-      do
-      {
-        do
-        {
-          Component::GrowType growType = components[componentId].growType;
-          growData = CBMC::growMoleculeSwapInsertion(
-              random, components[componentId], hasExternalField, forceField, simulationBox, interpolationGrids,
-              externalFieldInterpolationGrid, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms(), beta, growType,
-              forceField.cutOffFrameworkVDW, forceField.cutOffMoleculeVDW, forceField.cutOffCoulomb,
-              numberOfMoleculesPerComponent[componentId], 1.0, false, false);
-
-        } while (!growData || growData->energies.potentialEnergy() > forceField.energyOverlapCriteria);
-
-        std::span<const Atom> newMolecule = std::span(growData->atom.begin(), growData->atom.end());
-        inside_blocked_pocket = insideBlockedPockets(components[componentId], newMolecule);
-
-      } while (inside_blocked_pocket);
-
-      insertMolecule(componentId, growData->molecule, growData->atom);
-    }
-    componentId++;
-  }
-}
-
-bool System::insideBlockedPockets(const Component& component, std::span<const Atom> molecule_atoms) const
-{
-  if (framework.has_value())
-  {
-    for (std::size_t i = 0; i != component.blockingPockets.size(); ++i)
-    {
-      double radius_squared = component.blockingPockets[i].w * component.blockingPockets[i].w;
-      double3 pos =
-          framework->simulationBox.cell *
-          double3(component.blockingPockets[i].x, component.blockingPockets[i].y, component.blockingPockets[i].z);
-      for (const Atom& atom : molecule_atoms)
-      {
-        double lambda = atom.scalingVDW;
-        double3 dr = atom.position - pos;
-        dr = framework->simulationBox.applyPeriodicBoundaryConditions(dr);
-        if (dr.length_squared() < lambda * radius_squared)
-        {
-          return true;
-        }
-      }
-    }
-  }
-  return false;
-}
-
-std::size_t System::randomMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent)
-{
-  return std::size_t(random.uniform() * static_cast<double>(numberOfMoleculesPerComponent[selectedComponent]));
-}
-
-std::size_t System::randomIntegerMoleculeOfComponent(RandomNumber& random, std::size_t selectedComponent)
-{
-  return numberOfFractionalMoleculesPerComponent[selectedComponent] +
-         std::size_t(random.uniform() * static_cast<double>(numberOfIntegerMoleculesPerComponent[selectedComponent]));
-}
-
-std::vector<Atom>::iterator System::iteratorForMolecule(std::size_t selectedComponent, std::size_t selectedMolecule)
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    std::size_t size = components[i].atoms.size();
-    index += size * numberOfMoleculesPerComponent[i];
-  }
-  std::size_t size = components[selectedComponent].atoms.size();
-  index += size * selectedMolecule + numberOfFrameworkAtoms;
-  return atomData.begin() + static_cast<std::vector<Atom>::difference_type>(index);
-}
-
-std::vector<double3>::iterator System::iteratorForElectricField(std::size_t selectedComponent,
-                                                                std::size_t selectedMolecule)
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    std::size_t size = components[i].atoms.size();
-    index += size * numberOfMoleculesPerComponent[i];
-  }
-  std::size_t size = components[selectedComponent].atoms.size();
-  index += size * selectedMolecule + numberOfFrameworkAtoms;
-  return electricField.begin() + static_cast<std::vector<double3>::difference_type>(index);
-}
-
-std::vector<Molecule>::iterator System::indexForMolecule(std::size_t selectedComponent, std::size_t selectedMolecule)
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    index += numberOfMoleculesPerComponent[i];
-  }
-  index += selectedMolecule;
-  return moleculeData.begin() + static_cast<std::vector<Atom>::difference_type>(index);
-}
-
-std::size_t System::moleculeIndexOfComponent(std::size_t selectedComponent, std::size_t selectedMolecule)
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    index += numberOfMoleculesPerComponent[i];
-  }
-  index += selectedMolecule;
-  return index;
-}
-
-std::span<const Atom> System::spanOfFrameworkAtoms() const
-{
-  return std::span(atomData.begin(), numberOfFrameworkAtoms);
-}
-
-std::span<Atom> System::spanOfFrameworkAtoms() { return std::span(atomData.begin(), numberOfFrameworkAtoms); }
-
-std::span<const Atom> System::spanOfRigidFrameworkAtoms() const
-{
-  return std::span(atomData.begin(), numberOfFrameworkAtoms);
-}
-
-std::span<const Atom> System::spanOfFlexibleAtoms() const
-{
-  return std::span(atomData.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
-                   atomData.end());
-}
-
-std::span<const Atom> System::spanOfMoleculeAtoms() const
-{
-  return std::span(atomData.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
-                   atomData.end());
-}
-
-std::span<Atom> System::spanOfMoleculeAtoms()
-{
-  return std::span(atomData.begin() + static_cast<std::vector<Atom>::difference_type>(numberOfFrameworkAtoms),
-                   atomData.end());
-}
-
-std::span<double> System::spanOfMoleculeElectrostaticPotential()
-{
-  return std::span(
-      electricPotential.begin() + static_cast<std::vector<double3>::difference_type>(numberOfFrameworkAtoms),
-      electricPotential.end());
-}
-
-std::span<double3> System::spanOfMoleculeElectricField()
-{
-  return std::span(electricField.begin() + static_cast<std::vector<double3>::difference_type>(numberOfFrameworkAtoms),
-                   electricField.end());
-}
-
-std::span<double3> System::spanOfMoleculeElectricFieldNew()
-{
-  return std::span(
-      electricFieldNew.begin() + static_cast<std::vector<double3>::difference_type>(numberOfFrameworkAtoms),
-      electricFieldNew.end());
-}
-
-std::span<Atom> System::spanOfMolecule(std::size_t selectedComponent, std::size_t selectedMolecule)
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    std::size_t size = components[i].atoms.size();
-    index += size * numberOfMoleculesPerComponent[i];
-  }
-  std::size_t size = components[selectedComponent].atoms.size();
-  index += size * selectedMolecule;
-  return std::span(&atomData[index + numberOfFrameworkAtoms], size);
-}
-
-const std::span<const Atom> System::spanOfMolecule(std::size_t selectedComponent, std::size_t selectedMolecule) const
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    std::size_t size = components[i].atoms.size();
-    index += size * numberOfMoleculesPerComponent[i];
-  }
-  std::size_t size = components[selectedComponent].atoms.size();
-  index += size * selectedMolecule;
-  return std::span(&atomData[index + numberOfFrameworkAtoms], size);
-}
-
-const std::span<const Atom> System::spanOfIntegerAtomsOfComponent(std::size_t selectedComponent) const
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    std::size_t size = components[i].atoms.size();
-    index += size * numberOfMoleculesPerComponent[i];
-  }
-  std::size_t size = components[selectedComponent].atoms.size();
-  index += size * numberOfFractionalMoleculesPerComponent[selectedComponent];
-  std::size_t number_of_atoms = size * (numberOfMoleculesPerComponent[selectedComponent] -
-                                        numberOfFractionalMoleculesPerComponent[selectedComponent]);
-  return std::span(&atomData[index + numberOfFrameworkAtoms], number_of_atoms);
-}
-
-std::span<double3> System::spanElectricFieldNew(std::size_t selectedComponent, std::size_t selectedMolecule)
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    std::size_t size = components[i].atoms.size();
-    index += size * numberOfMoleculesPerComponent[i];
-  }
-  std::size_t size = components[selectedComponent].atoms.size();
-  index += size * selectedMolecule;
-  return std::span(&electricFieldNew[index + numberOfFrameworkAtoms], size);
-}
-
-const std::span<const double3> System::spanElectricFieldNew(std::size_t selectedComponent,
-                                                            std::size_t selectedMolecule) const
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    std::size_t size = components[i].atoms.size();
-    index += size * numberOfMoleculesPerComponent[i];
-  }
-  std::size_t size = components[selectedComponent].atoms.size();
-  index += size * selectedMolecule;
-  return std::span(&electricFieldNew[index + numberOfFrameworkAtoms], size);
-}
-
-std::span<double3> System::spanElectricFieldOld(std::size_t selectedComponent, std::size_t selectedMolecule)
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    std::size_t size = components[i].atoms.size();
-    index += size * numberOfMoleculesPerComponent[i];
-  }
-  std::size_t size = components[selectedComponent].atoms.size();
-  index += size * selectedMolecule;
-  return std::span(&electricField[index + numberOfFrameworkAtoms], size);
-}
-
-const std::span<const double3> System::spanElectricFieldOld(std::size_t selectedComponent,
-                                                            std::size_t selectedMolecule) const
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    std::size_t size = components[i].atoms.size();
-    index += size * numberOfMoleculesPerComponent[i];
-  }
-  std::size_t size = components[selectedComponent].atoms.size();
-  index += size * selectedMolecule;
-  return std::span(&electricField[index + numberOfFrameworkAtoms], size);
-}
-
-std::size_t System::indexOfFirstMolecule(std::size_t selectedComponent)
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    std::size_t size = components[i].atoms.size();
-    index += size * numberOfMoleculesPerComponent[i];
-  }
-  return index + numberOfFrameworkAtoms;
-}
-
-std::size_t System::indexOfFirstMolecule(std::size_t selectedComponent) const
-{
-  std::size_t index{0};
-  for (std::size_t i = 0; i < selectedComponent; ++i)
-  {
-    std::size_t size = components[i].atoms.size();
-    index += size * numberOfMoleculesPerComponent[i];
-  }
-  return index + numberOfFrameworkAtoms;
+  precomputeTotalRigidEnergy();
+  if (useMBX) preComputeElecPermFrameworkMBX();
 }
 
 void System::determineSwappableComponents()
 {
-  for (Component& component : components)
+  // Satellite components of a group-swap move are swappable even when they carry no swap
+  // probability themselves: the group move inserts/deletes their molecules.
+  for (const Component& component : components)
   {
-    if (component.mc_moves_probabilities.getProbability(MoveTypes::Swap) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCBMC) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCFCMC) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(MoveTypes::SwapCBCFCMC) > 0.0)
+    if (component.mc_moves_probabilities.getProbability(Move::Types::GroupSwap) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCBCFCMC) > 0.0)
+    {
+      for (std::size_t satelliteComponentId : component.groupComponentIds)
+      {
+        if (satelliteComponentId < components.size())
+        {
+          components[satelliteComponentId].swappable = true;
+        }
+      }
+    }
+  }
+
+  for (std::size_t componentId{0}; Component& component : components)
+  {
+    if (component.mc_moves_probabilities.getProbability(Move::Types::Swap) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::PairSwap) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::PairSwapCBCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwap) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GroupSwapCBCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::SwapCBCFCMC) > 0.0)
     {
       component.swappable = true;
     }
 
-    if (component.mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCBMC) > 0.0 ||
-        component.mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCFCMC) > 0.0)
+    if (component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsSwapCBCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCFCMC) > 0.0 ||
+        component.mc_moves_probabilities.getProbability(Move::Types::GibbsConventionalCBCFCMC) > 0.0)
     {
       component.swappable = true;
     }
 
     if (component.swappable)
     {
-      swappableComponents.push_back(component.componentId);
+      swappableComponents.push_back(componentId);
     }
+
+    ++componentId;
   }
 }
 
 // determine the required number of fractional molecules
-void System::determineFractionalComponents()
-{
-  for (std::size_t i = 0; i < components.size(); ++i)
-  {
-    numberOfFractionalMoleculesPerComponent[i] = 0;
-    numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 0;
-    numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 0;
-
-    if (components[i].mc_moves_probabilities.getProbability(MoveTypes::SwapCFCMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(MoveTypes::WidomCFCMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(MoveTypes::SwapCBCFCMC) > 0.0 ||
-        components[i].mc_moves_probabilities.getProbability(MoveTypes::WidomCBCFCMC) > 0.0)
-    {
-      numberOfFractionalMoleculesPerComponent[i] += 1;
-      numberOfGCFractionalMoleculesPerComponent_CFCMC[i] = 1;
-      components[i].hasFractionalMolecule = true;
-    }
-
-    // Gibbs
-    if (components[i].mc_moves_probabilities.getProbability(MoveTypes::GibbsSwapCFCMC) > 0.0)
-    {
-      numberOfFractionalMoleculesPerComponent[i] += 1;
-      numberOfGibbsFractionalMoleculesPerComponent_CFCMC[i] = 1;
-      components[i].hasFractionalMolecule = true;
-    }
-  }
-
-  for (std::size_t reactionId{0}; [[maybe_unused]] const Reaction& reaction : reactions.list)
-  {
-    for (std::size_t j = 0; j < components.size(); ++j)
-    {
-      numberOfReactionFractionalMoleculesPerComponent_CFCMC[reactionId][j] = 0;
-    }
-
-    // for ([[maybe_unused]]  std::size_t componentId{ 0 };  const std::size_t [[maybe_unused]]  stoichiometry :
-    // reaction.reactantStoichiometry)
-    //{
-    //   //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
-    //   ++componentId;
-    // }
-    // for ([[maybe_unused]] std::size_t componentId{ 0 };  const [[maybe_unused]] std::size_t stoichiometry :
-    // reaction.productStoichiometry)
-    //{
-    //   //numberOfReactionFractionalMoleculesPerComponent[reactionId][componentId] += stoichiometry;
-    //   ++componentId;
-    // }
-    ++reactionId;
-  }
-}
 
 void System::rescaleMoveProbabilities()
 {
@@ -985,98 +437,14 @@ void System::optimizeMCMoves()
   for (Component& component : components)
   {
     component.mc_moves_statistics.optimizeMCMoves();
-  }
-}
 
-void System::updateTMMCMatrix(double3 Pacc, std::vector<std::size_t> oldN, std::size_t selectedComponent)
-{
-  if (tmmc.has_value())
-  {
-    tmmc->updateMatrix(Pacc, oldN[selectedComponent]);
-  }
-  if (tmmcnd.has_value())
-  {
-    tmmcnd->updateMatrix(Pacc, oldN, selectedComponent);
-  }
-}
-
-void System::updateTMMCHistogram()
-{
-  if (tmmc.has_value())
-  {
-    tmmc->updateHistogram(numberOfIntegerMoleculesPerComponent[tmmc->componentId]);
-  }
-  if (tmmcnd.has_value())
-  {
-    tmmcnd->updateHistogram(numberOfIntegerMoleculesPerComponent, runningEnergies.potentialEnergy());
-  }
-}
-
-void System::updateTMMCBias(std::size_t currentCycle)
-{
-  if (tmmc.has_value())
-  {
-    tmmc->adjustBias(currentCycle);
-  }
-  if (tmmcnd.has_value())
-  {
-    tmmcnd->adjustBias(currentCycle);
-  }
-}
-
-void System::writeTMMCStatistics(std::size_t currentCycle)
-{
-  if (tmmc.has_value())
-  {
-    tmmc->writeStatistics(currentCycle);
-  }
-  if (tmmcnd.has_value())
-  {
-    tmmcnd->writeStatistics(currentCycle);
-  }
-}
-
-double System::getTMMCBiasFactor(std::size_t selectedComponent, bool insert)
-{
-  if (tmmc.has_value())
-  {
-    if (insert)
+    // Adapt the internal CBMC / ring-closure Monte-Carlo step sizes (per bead) towards their target
+    // acceptance ratios.
+    for (CBMCMoveStatistics& cbmcStatistics : component.cbmc_moves_statistics)
     {
-      return tmmc->biasFactor(numberOfIntegerMoleculesPerComponent[selectedComponent] + 1,
-                              numberOfIntegerMoleculesPerComponent[selectedComponent]);
-    }
-    else
-    {
-      return tmmc->biasFactor(numberOfIntegerMoleculesPerComponent[selectedComponent] - 1,
-                              numberOfIntegerMoleculesPerComponent[selectedComponent]);
+      cbmcStatistics.optimize();
     }
   }
-  if (tmmcnd.has_value())
-  {
-    return tmmcnd->biasFactor(numberOfIntegerMoleculesPerComponent, selectedComponent, insert);
-  }
-  return 1.0;
-}
-
-std::pair<std::size_t, std::size_t> System::getTMMCMinMax(std::size_t selectedComponent)
-{
-  if (tmmc.has_value())
-  {
-    return std::make_pair(tmmc->minMacrostate, tmmc->maxMacrostate);
-  }
-  if (tmmcnd.has_value())
-  {
-    std::size_t id = 0;
-    for (std::size_t tmmcId = 0; tmmcId < tmmcnd->numberOfComponents; tmmcId++)
-    {
-      if (tmmcnd->componentIds[tmmcId] == selectedComponent)
-      {
-        id = tmmcId;
-      }
-    }
-    return std::make_pair(tmmcnd->minMacrostate[id], tmmcnd->maxMacrostate[id]);
-  }
-  return std::make_pair(0uz, 0uz);
 }
 
 void System::rescaleMolarFractions()
@@ -1131,743 +499,68 @@ void System::computeNumberOfPseudoAtoms()
   }
 }
 
-std::vector<Atom> System::randomConfiguration(RandomNumber& random, std::size_t selectedComponent,
-                                              const std::span<const Atom> molecule)
+void System::computeTailCorrectionCounts()
 {
-  double3x3 randomRotationMatrix = random.randomRotationMatrix();
-  std::vector<Atom> copied_atoms(molecule.begin(), molecule.end());
-  double3 position = simulationBox.randomPosition(random);
-  std::size_t startingBead = components[selectedComponent].startingBead;
-  for (std::size_t i = 0; i != molecule.size(); ++i)
+  std::size_t numberOfPseudoAtomTypes = forceField.pseudoAtoms.size();
+
+  effectiveNumberOfPseudoAtomsVDW.assign(numberOfPseudoAtomTypes, 0.0);
+  for (std::size_t group = 0; group < maximumNumberOfDUDlambdaGroups; ++group)
   {
-    copied_atoms[i].position =
-        position + randomRotationMatrix * (molecule[i].position - molecule[startingBead].position);
+    fractionalPseudoAtomCountsPerGroup[group].assign(numberOfPseudoAtomTypes, 0.0);
   }
-  return copied_atoms;
-}
 
-std::string System::writeOutputHeader() const
-{
-  std::ostringstream stream;
-
-  std::print(stream, "Compiler and run-time data\n");
-  std::print(stream, "===============================================================================\n");
-
-#ifdef VERSION
-#define QUOTE(str) #str
-#define EXPAND_AND_QUOTE(str) QUOTE(str)
-  std::print(stream, "RASPA {}\n\n", EXPAND_AND_QUOTE(VERSION));
-#endif
-
-  // ThreadPool &pool = ThreadPool::instance();
-  // const std::size_t numberOfHelperThreads = pool.getThreadCount();
-
-  // switch(pool.threadingType)
-  //{
-  //   case ThreadPool::ThreadingType::Serial:
-  //     std::print(stream, "Parallelization: Serial, 1 thread\n");
-  //     break;
-  //   case ThreadPool::ThreadingType::OpenMP:
-  //     std::print(stream, "Parallelization: OpenMP, {} threads\n", numberOfHelperThreads + 1);
-  //     break;
-  //   case ThreadPool::ThreadingType::ThreadPool:
-  //     std::print(stream, "Parallelization: ThreadPool, {} threads\n", numberOfHelperThreads + 1);
-  //     break;
-  //   case ThreadPool::ThreadingType::GPU_Offload:
-  //     std::print(stream, "Parallelization: GPU-Offload\n");
-  //     break;
-  // }
-  // std::print(stream, "\n");
-
-  return stream.str();
-}
-
-std::string System::writeNumberOfPseudoAtoms() const
-{
-  std::ostringstream stream;
-
-  std::print(stream, "Number of pseudo-atoms\n");
-  std::print(stream, "===============================================================================\n\n");
-
-  for (std::size_t i = 0; const Component& c : components)
+  for (const Atom& atom : spanOfMoleculeAtoms())
   {
-    std::print(stream, "Component {:3d} ({})\n", c.componentId, c.name);
-    std::print(stream, "-------------------------------------------------------------------------------\n");
-    for (std::size_t index = 0; const std::size_t number_of_pseudo_atoms : numberOfPseudoAtoms[i])
+    std::size_t type = static_cast<std::size_t>(atom.type);
+    effectiveNumberOfPseudoAtomsVDW[type] += atom.scalingVDW;
+    if (atom.groupId != 0)
     {
-      std::print(stream, "    index {:3d} ({}): {} atoms\n", index, forceField.pseudoAtoms[index].name,
-                 number_of_pseudo_atoms);
-      ++index;
-    }
-    std::print(stream, "\n");
-    ++i;
-  }
-
-  std::print(stream, "Total number of pseudo-atoms:\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (std::size_t index = 0; const std::size_t number_of_pseudo_atoms : totalNumberOfPseudoAtoms)
-  {
-    std::print(stream, "    index {:3d} ({}): {} atoms\n", index, forceField.pseudoAtoms[index].name,
-               number_of_pseudo_atoms);
-    ++index;
-  }
-
-  std::print(stream, "\n\n\n\n");
-
-  return stream.str();
-}
-
-std::string System::writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfCycles) const
-{
-  std::ostringstream stream;
-
-  std::print(stream, "Initialization: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
-  std::print(stream, "===============================================================================\n\n");
-
-  std::print(stream, "{}\n", simulationBox.printStatus());
-  std::print(stream, "Net charge: {:12.8f}\n", netCharge);
-  std::print(stream, "{}", forceField.printCutOffAutoStatus());
-  std::print(stream, "\n");
-
-  for (std::size_t i = 0; const Component& c : components)
-  {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
-
-    if (c.lambdaGC.computeDUdlambda)
-    {
-      std::print(stream, "component {:3d} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n",
-                 c.componentId, c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
-    }
-    else
-    {
-      std::print(stream, "component {:3d} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
-                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
-    }
-    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[i]);
-    ++i;
-  }
-  std::print(stream, "\n");
-
-  std::print(stream, "Amount of molecules per component:\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component& c : components)
-  {
-    std::print(stream, "{}",
-               loadings.printStatus(c, frameworkMass(),
-                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
-  }
-  std::print(stream, "\n");
-
-  stream << runningEnergies.printMC();
-
-  std::print(stream, "\n");
-
-  return stream.str();
-}
-
-std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfCycles) const
-{
-  std::ostringstream stream;
-
-  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
-  std::print(stream, "===============================================================================\n\n");
-
-  std::print(stream, "{}\n", simulationBox.printStatus());
-  std::print(stream, "Net charge: {:12.8f}\n", netCharge);
-  std::print(stream, "{}", forceField.printCutOffAutoStatus());
-  std::print(stream, "\n");
-
-  for (std::size_t i = 0; const Component& c : components)
-  {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
-
-    if (c.lambdaGC.computeDUdlambda)
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
-    }
-    else
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
-                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
-    }
-    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[i]);
-    ++i;
-  }
-  std::print(stream, "\n");
-
-  std::print(stream, "Amount of molecules per component:\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component& c : components)
-  {
-    std::print(stream, "{}",
-               loadings.printStatus(c, frameworkMass(),
-                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
-  }
-  std::print(stream, "\n");
-
-  stream << runningEnergies.printMC();
-
-  std::print(stream, "\n");
-
-  return stream.str();
-}
-
-std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const
-{
-  std::ostringstream stream;
-
-  double conv = Units::EnergyToKelvin;
-
-  std::print(stream, "Equilibration: Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
-  std::print(stream, "===============================================================================\n\n");
-
-  std::print(stream, "{}\n", simulationBox.printStatus());
-  double3 linear_momentum = Integrators::computeLinearMomentum(moleculeData);
-  std::print(stream, "Linear momentum: {:12.8f} {:12.8f} {:12.8f}\n", linear_momentum.x, linear_momentum.y,
-             linear_momentum.z);
-  double3 com_velocity = Integrators::computeCenterOfMassVelocity(moleculeData);
-  std::print(stream, "Center of mass velocity: {:12.8f} {:12.8f} {:12.8f}\n", com_velocity.x, com_velocity.y,
-             com_velocity.z);
-  double3 com = Integrators::computeCenterOfMass(moleculeData);
-  std::print(stream, "Center of mass: {:12.8f} {:12.8f} {:12.8f}\n", com.x, com.y, com.z);
-  std::print(stream, "Net charge: {:12.8f}\n", netCharge);
-  std::print(stream, "\n");
-
-  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculeData);
-  double translationalTemperature =
-      2.0 * translationalKineticEnergy /
-      (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
-  double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(moleculeData, components);
-  double rotationalTemperature =
-      2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
-  double overallTemperature =
-      2.0 * (translationalKineticEnergy + rotationalKineticEnergy) /
-      (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint +
-                                       rotationalDegreesOfFreedom));
-  std::print(stream, "Temperature: {: .6e}\n", overallTemperature);
-  std::print(stream, "Translational temperature: {: .6e}\n", translationalTemperature);
-  std::print(stream, "Rotational temperature: {: .6e}\n\n", rotationalTemperature);
-
-  std::print(stream, "Translational constraint degrees of freedom center of mass: {}\n",
-             translationalCenterOfMassConstraint);
-  std::print(stream, "Translational degrees of freedom molecules: {}\n", translationalDegreesOfFreedom);
-  std::print(stream, "Total translational degrees of freedom molecules: {}\n",
-             translationalDegreesOfFreedom - translationalCenterOfMassConstraint);
-  std::print(stream, "Rotational degrees of freedom molecules: {}\n\n", rotationalDegreesOfFreedom);
-
-  std::print(stream, "Potential energy:   {: .6e}\n", conv * runningEnergies.potentialEnergy());
-  std::print(stream, "Kinetic energy:     {: .6e}\n",
-             conv * (runningEnergies.translationalKineticEnergy + runningEnergies.rotationalKineticEnergy));
-  std::print(stream, "Nose-Hoover energy: {: .6e}\n", conv * runningEnergies.NoseHooverEnergy);
-  std::print(stream, "Conserved energy:   {: .6e}\n", conv * runningEnergies.conservedEnergy());
-  double drift = std::abs(conv * (conservedEnergy - referenceEnergy) / referenceEnergy);
-  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
-             accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
-
-  std::print(stream, "\n");
-
-  for (std::size_t i = 0; const Component& c : components)
-  {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
-
-    if (c.lambdaGC.computeDUdlambda)
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
-    }
-    else
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
-                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
-    }
-    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[i]);
-    ++i;
-  }
-  std::print(stream, "\n");
-
-  std::print(stream, "Amount of molecules per component:\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  for (const Component& c : components)
-  {
-    std::print(stream, "{}",
-               loadings.printStatus(c, frameworkMass(),
-                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
-  }
-  std::print(stream, "\n");
-
-  return stream.str();
-}
-
-// MBX terms incorporated
-std::string System::writeProductionStatusReportMC(const std::string& statusLine) const
-{
-  std::ostringstream stream;
-
-  std::print(stream, "{}", statusLine);
-  std::print(stream, "===============================================================================\n\n");
-
-  auto [simulation_box, average_simulation_box] = averageSimulationBox.averageSimulationBox();
-  std::print(stream, "{}\n", simulationBox.printStatus(simulation_box, average_simulation_box));
-
-  std::print(stream, "Net charge: {:12.8f}\n", netCharge);
-  std::print(stream, "{}", forceField.printCutOffAutoStatus());
-  std::print(stream, "\n");
-
-  for (std::size_t i = 0; const Component& c : components)
-  {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
-
-    if (c.lambdaGC.computeDUdlambda)
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
-    }
-    else
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
-                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
-    }
-    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[i]);
-    ++i;
-  }
-  std::print(stream, "\n");
-
-  std::print(stream, "Amount of molecules per component:\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
-  for (const Component& c : components)
-  {
-    std::print(stream, "{}",
-               loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass(),
-                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
-  }
-  std::print(stream, "\n");
-  double conv = Units::EnergyToKelvin;
-
-  if (!(framework.has_value() && framework->rigid))
-  {
-    std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
-
-    switch (Units::unitSystem)
-    {
-      case Units::System::RASPA:
-      {
-        double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
-        double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
-        std::print(stream, "Average pressure tensor: \n");
-        std::print(stream, "-------------------------------------------------------------------------------\n");
-        std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax,
-                   pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx,
-                   pressureTensorError.cx);
-        std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ay,
-                   pressureTensor.by, pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by,
-                   pressureTensorError.cy);
-        std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.az,
-                   pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz,
-                   pressureTensorError.cz);
-        std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
-        std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
-        std::pair<double, double> p = averagePressure.averagePressure();
-        std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n",
-                   1e-5 * Units::PressureConversionFactor * idealGasPressure.first,
-                   1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
-        std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n",
-                   1e-5 * Units::PressureConversionFactor * excessPressure.first,
-                   1e-5 * Units::PressureConversionFactor * excessPressure.second);
-        std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n",
-                   1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
-      }
-      break;
-      case Units::System::ReducedUnits:
-      {
-        double3x3 pressureTensor = currentPressureTensor.first;
-        double3x3 pressureTensorError = currentPressureTensor.second;
-        std::print(stream, "Average pressure tensor: \n");
-        std::print(stream, "-------------------------------------------------------------------------------\n");
-        std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ax,
-                   pressureTensor.bx, pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx,
-                   pressureTensorError.cx, Units::unitOfPressureString);
-        std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.ay,
-                   pressureTensor.by, pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by,
-                   pressureTensorError.cy, Units::unitOfPressureString);
-        std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [{}]\n", pressureTensor.az,
-                   pressureTensor.bz, pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz,
-                   pressureTensorError.cz, Units::unitOfPressureString);
-        std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
-        std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
-        std::pair<double, double> p = averagePressure.averagePressure();
-        std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [{}]\n", idealGasPressure.first,
-                   idealGasPressure.second, Units::unitOfPressureString);
-        std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [{}]\n", excessPressure.first, excessPressure.second,
-                   Units::unitOfPressureString);
-        std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [{}]\n\n", p.first, p.second,
-                   Units::unitOfPressureString);
-      }
-      break;
+      fractionalPseudoAtomCountsPerGroup[static_cast<std::size_t>(atom.groupId) - 1][type] += 1.0;
     }
   }
-
-  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
-  std::print(stream, "Total potential energy{}  {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.totalEnergy.energy,
-             conv * energyData.first.totalEnergy.energy, conv * energyData.second.totalEnergy.energy,
-             Units::displayedUnitOfEnergyString);
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::print(stream, "ExternalField-molecule\n");
-  std::print(stream, "    Van der Waals{}       {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString,
-             conv * currentEnergyStatus.externalFieldMoleculeEnergy.VanDerWaals.energy,
-             conv * energyData.first.externalFieldMoleculeEnergy.VanDerWaals.energy,
-             conv * energyData.second.externalFieldMoleculeEnergy.VanDerWaals.energy,
-             Units::displayedUnitOfEnergyString);
-  std::print(stream, "Framework-molecule\n");
-  std::print(stream, "    Van der Waals{}       {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString,
-             conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaals.energy,
-             conv * energyData.first.frameworkMoleculeEnergy.VanDerWaals.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    Van der Waals (Tail){}{: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString,
-             conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
-             conv * energyData.first.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
-             Units::displayedUnitOfEnergyString);
-  std::print(stream, "    Coulombic Real{}      {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString,
-             conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicReal.energy,
-             conv * energyData.first.frameworkMoleculeEnergy.CoulombicReal.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    Coulombic Fourier{}   {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString,
-             conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicFourier.energy,
-             conv * energyData.first.frameworkMoleculeEnergy.CoulombicFourier.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.CoulombicFourier.energy,
-             Units::displayedUnitOfEnergyString);
-  std::print(stream, "Molecule-molecule\n");
-  std::print(stream, "    Van der Waals{}       {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
-             conv * energyData.first.interEnergy.VanDerWaals.energy,
-             conv * energyData.second.interEnergy.VanDerWaals.energy, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    Van der Waals (Tail){}{: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString,
-             conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
-             conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
-             conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    Coulombic Real{}      {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
-             conv * energyData.first.interEnergy.CoulombicReal.energy,
-             conv * energyData.second.interEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    Coulombic Fourier{}   {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString,
-             conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy,
-             conv * energyData.first.interEnergy.CoulombicFourier.energy,
-             conv * energyData.second.interEnergy.CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
-  std::print(stream, "    Molecule Intra{}      {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.intraEnergy.total().energy,
-             conv * energyData.first.intraEnergy.total().energy, conv * energyData.second.intraEnergy.total().energy,
-             Units::displayedUnitOfEnergyString);
-  std::print(stream, "Polarization energy{}     {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.polarizationEnergy.energy,
-             conv * energyData.first.polarizationEnergy.energy, conv * energyData.second.polarizationEnergy.energy,
-             Units::displayedUnitOfEnergyString);
-  std::print(stream, "MBX\n");
-  std::print(stream, "    MBX energy{}      {: .6e} ({: .6e} +/- {:.6e}) [{}]\n",
-             Units::displayedUnitOfEnergyConversionString, conv * currentEnergyStatus.mbxEnergy,
-             conv * energyData.first.mbxEnergy, conv * energyData.second.mbxEnergy,
-             Units::displayedUnitOfEnergyString);
-             
-  std::print(stream, "\n");
-
-  return stream.str();
 }
 
-// MBX terms not incorporated
-std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std::size_t numberOfCycles) const
+void System::addAtomToTailCorrectionCounts(const Atom& atom)
 {
-  std::ostringstream stream;
-
-  double conv = Units::EnergyToKelvin;
-
-  std::print(stream, "Current cycle: {} out of {}\n", currentCycle, numberOfCycles);
-  std::print(stream, "===============================================================================\n\n");
-
-  std::pair<SimulationBox, SimulationBox> simulationBoxData = averageSimulationBox.averageSimulationBox();
-  std::print(stream, "{}", simulationBox.printStatus(simulationBoxData.first, simulationBoxData.second));
-  std::print(stream, "\n");
-
-  double3 linear_momentum = Integrators::computeLinearMomentum(moleculeData);
-  std::print(stream, "Linear momentum: {:12.8f} {:12.8f} {:12.8f}\n", linear_momentum.x, linear_momentum.y,
-             linear_momentum.z);
-  double3 com_velocity = Integrators::computeCenterOfMassVelocity(moleculeData);
-  std::print(stream, "Center of mass velocity: {:12.8f} {:12.8f} {:12.8f}\n", com_velocity.x, com_velocity.y,
-             com_velocity.z);
-  double3 com = Integrators::computeCenterOfMass(moleculeData);
-  std::print(stream, "Center of mass: {:12.8f} {:12.8f} {:12.8f}\n", com.x, com.y, com.z);
-  std::print(stream, "Net charge: {:12.8f}\n", netCharge);
-  std::print(stream, "Time run: {:g} [ps]  {:g} [ns]\n\n", static_cast<double>(currentCycle) * timeStep,
-             static_cast<double>(currentCycle) * timeStep / 1000.0);
-
-  double translational_kinetic_energy = Integrators::computeTranslationalKineticEnergy(moleculeData);
-  double translational_temperature =
-      2.0 * translational_kinetic_energy /
-      (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
-  double rotational_kinetic_energy = Integrators::computeRotationalKineticEnergy(moleculeData, components);
-  double rotational_temperature =
-      2.0 * rotational_kinetic_energy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
-  double overall_temperature =
-      2.0 * (translational_kinetic_energy + rotational_kinetic_energy) /
-      (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint +
-                                       rotationalDegreesOfFreedom));
-  std::pair<double, double> average_temperature = averageTemperature.averageTemperature();
-  std::pair<double, double> average_translational_temperature = averageTranslationalTemperature.averageTemperature();
-  std::pair<double, double> average_rotational_temperature = averageRotationalTemperature.averageTemperature();
-
-  std::print(stream, "Temperature: {: .6e} ({: .6e} +/- {:.6e})\n", overall_temperature, average_temperature.first,
-             average_temperature.second);
-  std::print(stream, "Translational temperature: {: .6e} ({: .6e} +/- {:.6e})\n", translational_temperature,
-             average_translational_temperature.first, average_translational_temperature.second);
-  std::print(stream, "Rotational temperature: {: .6e} ({: .6e} +/- {:.6e})\n\n", rotational_temperature,
-             average_rotational_temperature.first, average_rotational_temperature.second);
-
-  std::print(stream, "Translational constraint degrees of freedom center of mass: {}\n",
-             translationalCenterOfMassConstraint);
-  std::print(stream, "Translational degrees of freedom molecules: {}\n", translationalDegreesOfFreedom);
-  std::print(stream, "Total translational degrees of freedom molecules: {}\n",
-             translationalDegreesOfFreedom - translationalCenterOfMassConstraint);
-  std::print(stream, "Rotational degrees of freedom molecules: {}\n\n", rotationalDegreesOfFreedom);
-
-  std::print(stream, "Potential energy:   {: .6e}\n", conv * runningEnergies.potentialEnergy());
-  std::print(stream, "Kinetic energy:     {: .6e}\n",
-             conv * (runningEnergies.translationalKineticEnergy + runningEnergies.rotationalKineticEnergy));
-  std::print(stream, "Nose-Hoover energy: {: .6e}\n", conv * runningEnergies.NoseHooverEnergy);
-  std::print(stream, "Conserved energy:   {: .6e}\n", conv * runningEnergies.conservedEnergy());
-  double drift = std::abs(conv * (conservedEnergy - referenceEnergy) / referenceEnergy);
-  std::print(stream, "Drift: {:.6e} Average drift: {:.6e}\n\n", drift,
-             accumulatedDrift / static_cast<double>(std::max(currentCycle, 1uz)));
-
-  std::pair<EnergyStatus, EnergyStatus> energyData = averageEnergies.averageEnergy();
-  std::print(stream, "Total potential energy:   {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-             conv * currentEnergyStatus.totalEnergy.energy, conv * energyData.first.totalEnergy.energy,
-             conv * energyData.second.totalEnergy.energy);
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::print(stream, "ExternalField-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-             conv * currentEnergyStatus.externalFieldMoleculeEnergy.VanDerWaals.energy,
-             conv * energyData.first.externalFieldMoleculeEnergy.VanDerWaals.energy,
-             conv * energyData.second.externalFieldMoleculeEnergy.VanDerWaals.energy);
-  std::print(stream, "Framework-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-             conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaals.energy,
-             conv * energyData.first.frameworkMoleculeEnergy.VanDerWaals.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaals.energy);
-  std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-             conv * currentEnergyStatus.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
-             conv * energyData.first.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.VanDerWaalsTailCorrection.energy);
-  std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-             conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicReal.energy,
-             conv * energyData.first.frameworkMoleculeEnergy.CoulombicReal.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.CoulombicReal.energy);
-  std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-             conv * currentEnergyStatus.frameworkMoleculeEnergy.CoulombicFourier.energy,
-             conv * energyData.first.frameworkMoleculeEnergy.CoulombicFourier.energy,
-             conv * energyData.second.frameworkMoleculeEnergy.CoulombicFourier.energy);
-  std::print(stream, "Molecule-molecule\n");
-  std::print(stream, "    Van der Waals:        {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-             conv * currentEnergyStatus.interEnergy.VanDerWaals.energy,
-             conv * energyData.first.interEnergy.VanDerWaals.energy,
-             conv * energyData.second.interEnergy.VanDerWaals.energy);
-  std::print(stream, "    Van der Waals (Tail): {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-             conv * currentEnergyStatus.interEnergy.VanDerWaalsTailCorrection.energy,
-             conv * energyData.first.interEnergy.VanDerWaalsTailCorrection.energy,
-             conv * energyData.second.interEnergy.VanDerWaalsTailCorrection.energy);
-  std::print(stream, "    Coulombic Real:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-             conv * currentEnergyStatus.interEnergy.CoulombicReal.energy,
-             conv * energyData.first.interEnergy.CoulombicReal.energy,
-             conv * energyData.second.interEnergy.CoulombicReal.energy);
-  std::print(stream, "    Coulombic Fourier:    {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-             conv * currentEnergyStatus.interEnergy.CoulombicFourier.energy,
-             conv * energyData.first.interEnergy.CoulombicFourier.energy,
-             conv * energyData.second.interEnergy.CoulombicFourier.energy);
-  std::print(stream, "    Molecule Intra:       {: .6e} ({: .6e} +/- {:.6e}) [K]\n",
-             conv * currentEnergyStatus.intraEnergy.total().energy, conv * energyData.first.intraEnergy.total().energy,
-             conv * energyData.second.intraEnergy.total().energy);
-
-  std::print(stream, "\n");
-  for (std::size_t i = 0; const Component& c : components)
+  std::size_t type = static_cast<std::size_t>(atom.type);
+  effectiveNumberOfPseudoAtomsVDW[type] += atom.scalingVDW;
+  if (atom.groupId != 0)
   {
-    double occupancy = static_cast<double>(containsTheFractionalMolecule);
-    double averageOccupancy = c.lambdaGC.occupancy();
-    double lambda = c.lambdaGC.lambdaValue();
-
-    if (c.lambdaGC.computeDUdlambda)
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId,
-                 c.name, lambda, runningEnergies.dudlambda(lambda), occupancy, averageOccupancy);
-    }
-    else
-    {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", c.componentId, c.name,
-                 c.lambdaGC.lambdaValue(), occupancy, averageOccupancy);
-    }
-    std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[i]);
-    ++i;
+    fractionalPseudoAtomCountsPerGroup[static_cast<std::size_t>(atom.groupId) - 1][type] += 1.0;
   }
-  std::print(stream, "\n");
-
-  std::print(stream, "Amount of molecules per component :\n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::pair<Loadings, Loadings> loadingData = averageLoadings.averageLoading();
-  for (const Component& c : components)
-  {
-    std::print(stream, "{}",
-               loadings.printStatus(c, loadingData.first, loadingData.second, frameworkMass(),
-                                    framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
-  }
-  std::print(stream, "\n");
-
-  std::pair<double3x3, double3x3> currentPressureTensor = averagePressure.averagePressureTensor();
-  double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.first;
-  double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * currentPressureTensor.second;
-  std::print(stream, "Average pressure tensor: \n");
-  std::print(stream, "-------------------------------------------------------------------------------\n");
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax, pressureTensor.bx,
-             pressureTensor.cx, pressureTensorError.ax, pressureTensorError.bx, pressureTensorError.cx);
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ay, pressureTensor.by,
-             pressureTensor.cy, pressureTensorError.ay, pressureTensorError.by, pressureTensorError.cy);
-  std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.az, pressureTensor.bz,
-             pressureTensor.cz, pressureTensorError.az, pressureTensorError.bz, pressureTensorError.cz);
-  std::pair<double, double> idealGasPressure = averagePressure.averageIdealGasPressure();
-  std::pair<double, double> excessPressure = averagePressure.averageExcessPressure();
-  std::pair<double, double> p = averagePressure.averagePressure();
-  std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [bar]\n",
-             1e-5 * Units::PressureConversionFactor * idealGasPressure.first,
-             1e-5 * Units::PressureConversionFactor * idealGasPressure.second);
-  std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [bar]\n",
-             1e-5 * Units::PressureConversionFactor * excessPressure.first,
-             1e-5 * Units::PressureConversionFactor * excessPressure.second);
-  std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n",
-             1e-5 * Units::PressureConversionFactor * p.first, 1e-5 * Units::PressureConversionFactor * p.second);
-
-  return stream.str();
 }
 
-std::string System::writeSystemStatus() const
+void System::removeAtomFromTailCorrectionCounts(const Atom& atom)
 {
-  std::ostringstream stream;
-
-  std::print(stream, "System definitions\n");
-  std::print(stream, "===============================================================================\n\n");
-
-  std::print(stream, "Temperature:          {} [{}]\n", temperature, Units::unitOfTemperatureString);
-  std::print(stream, "Beta:                 {} [-]\n", beta);
-  std::print(stream, "Pressure:             {} [{}]\n", pressure * Units::PressureConversionFactor,
-             Units::unitOfPressureString);
-  std::print(stream, "Helium void fraction: {} [-]\n\n", heliumVoidFraction);
-
-  stream << simulationBox.printStatus();
-  std::print(stream, "\n\n\n");
-
-  std::print(stream, "Property measurement settings\n");
-  std::print(stream, "===============================================================================\n\n");
-  if (averageEnergyHistogram.has_value())
+  std::size_t type = static_cast<std::size_t>(atom.type);
+  effectiveNumberOfPseudoAtomsVDW[type] -= atom.scalingVDW;
+  if (atom.groupId != 0)
   {
-    stream << averageEnergyHistogram->printSettings();
+    fractionalPseudoAtomCountsPerGroup[static_cast<std::size_t>(atom.groupId) - 1][type] -= 1.0;
   }
-  std::print(stream, "\n\n\n");
-
-  return stream.str();
 }
 
-nlohmann::json System::jsonSystemStatus() const
+void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, std::size_t currentCycle)
 {
-  nlohmann::json system;
-  system["temperature"] = temperature;
-  system["beta"] = beta;
-  system["pressure"] = pressure * Units::PressureConversionFactor;
-
-  system.merge_patch(simulationBox.jsonStatus());
-  return system;
-}
-
-std::string System::writeComponentStatus() const
-{
-  std::ostringstream stream;
-
-  std::print(stream, "Component definitions\n");
-  std::print(stream, "===============================================================================\n\n");
-  if (framework.has_value())
-  {
-    std::print(stream, "{}", framework->printStatus(forceField));
-  }
-  for (const Component& component : components)
-  {
-    std::print(stream, "{}", component.printStatus(forceField, input_pressure));
-  }
-  std::print(stream, "\n\n\n\n");
-
-  return stream.str();
-}
-
-nlohmann::json System::jsonComponentStatus() const
-{
-  nlohmann::json status;
-  if (framework.has_value())
-  {
-    status[framework->name] = framework->jsonStatus();
-  }
-  for (const Component& component : components)
-  {
-    status[component.name] = component.jsonStatus();
-  }
-
-  return status;
-}
-
-void System::writeComponentFittingStatus(std::ostream& stream,
-                                         const std::vector<std::pair<double, double>>& rawData) const
-{
-  std::print(stream, "Found {} data points\n", rawData.size());
-  for (const std::pair<double, double>& data : rawData)
-  {
-    std::print(stream, "pressure: {:.8e}  loading: {}\n", data.first, data.second);
-  }
-  std::print(stream, "\n");
-
-  if (!rawData.empty())
-  {
-    std::pair<double, double> pressureRange = std::make_pair(rawData.front().first, rawData.back().first);
-    std::print(stream, "Lowest pressure:     {:.8e}\n", pressureRange.first);
-    std::print(stream, "Highest pressure:    {:.8e}\n", pressureRange.second);
-  }
-  std::print(stream, "\n\n");
-}
-
-void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle)
-{
-  std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
   double w = weight();
 
   averageSimulationBox.addSample(currentBlock, simulationBox, w);
 
-  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(moleculeData);
+  double translationalKineticEnergy = Integrators::computeTranslationalKineticEnergy(
+      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), components, framework, spanOfFrameworkAtoms(),
+      spanOfFrameworkDynamics(), &forceField, spanOfGroupData());
   double translationalTemperature =
       2.0 * translationalKineticEnergy /
       (Units::KB * static_cast<double>(translationalDegreesOfFreedom - translationalCenterOfMassConstraint));
   averageTranslationalTemperature.addSample(currentBlock, translationalTemperature, w);
 
-  double rotationalKineticEnergy = Integrators::computeRotationalKineticEnergy(moleculeData, components);
+  double rotationalKineticEnergy =
+      Integrators::computeRotationalKineticEnergy(moleculeData, components, spanOfGroupData());
   double rotationalTemperature =
-      2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom));
+      rotationalDegreesOfFreedom > 0
+          ? 2.0 * rotationalKineticEnergy / (Units::KB * static_cast<double>(rotationalDegreesOfFreedom))
+          : 0.0;
   averageRotationalTemperature.addSample(currentBlock, rotationalTemperature, w);
 
   double overallTemperature =
@@ -1876,12 +569,17 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
                                        rotationalDegreesOfFreedom));
   averageTemperature.addSample(currentBlock, overallTemperature, w);
 
-  loadings = Loadings(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);
+  loadings = LoadingData(components.size(), numberOfIntegerMoleculesPerComponent, simulationBox);
   averageLoadings.addSample(currentBlock, loadings, w);
 
   EnthalpyOfAdsorptionTerms enthalpyTerms = EnthalpyOfAdsorptionTerms(
       swappableComponents, numberOfIntegerMoleculesPerComponent, runningEnergies.potentialEnergy(), temperature);
   averageEnthalpiesOfAdsorption.addSample(currentBlock, enthalpyTerms, w);
+
+  PartialMolarPropertiesTerms partialMolarTerms =
+      PartialMolarPropertiesTerms(swappableComponents, numberOfIntegerMoleculesPerComponent,
+                                  runningEnergies.potentialEnergy(), simulationBox.volume);
+  averagePartialMolarProperties.addSample(currentBlock, partialMolarTerms, w);
 
   std::size_t numberOfMolecules =
       std::accumulate(numberOfIntegerMoleculesPerComponent.begin(), numberOfIntegerMoleculesPerComponent.end(), 0uz);
@@ -1889,26 +587,64 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
 
   averagePressure.addSample(currentBlock, currentIdealPressure, currentExcessPressureTensor, w);
 
-  for (Component& component : components)
+  for (std::size_t componentId{0}; Component& component : components)
   {
     double componentDensity =
-        static_cast<double>(numberOfIntegerMoleculesPerComponent[component.componentId]) / simulationBox.volume;
+        static_cast<double>(numberOfIntegerMoleculesPerComponent[componentId]) / simulationBox.volume;
 
     double lambda = component.lambdaGC.lambdaValue();
-    double dudlambda = runningEnergies.dudlambda(lambda);
+    double dudlambda = currentDUdlambda(lambda, component.lambdaGC.dUdlambdaGroupId);
     component.lambdaGC.sampleHistogram(currentBlock, componentDensity, dudlambda, containsTheFractionalMolecule, w);
 
-    component.averageRosenbluthWeights.addDensitySample(currentBlock, componentDensity, w);
+    if (usesGibbsConventionalCFCMC())
+    {
+      const double gibbsLambda = component.lambdaGibbs.lambdaValue();
+      const double gibbsDudlambda = currentDUdlambda(gibbsLambda, component.lambdaGibbs.dUdlambdaGroupId);
+      component.lambdaGibbs.sampleHistogram(currentBlock, componentDensity, gibbsDudlambda, true, w);
+    }
+
+    if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))
+    {
+      const double pairLambda = component.lambdaPairSwap.lambdaValue();
+      component.lambdaPairSwap.sampleHistogram(
+          currentBlock, componentDensity, currentDUdlambda(pairLambda, component.lambdaPairSwap.dUdlambdaGroupId),
+          containsTheFractionalMolecule, w);
+    }
+
+    if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCBCFCMC))
+    {
+      const double pairLambda = component.lambdaPairSwapCB.lambdaValue();
+      component.lambdaPairSwapCB.sampleHistogram(
+          currentBlock, componentDensity, currentDUdlambda(pairLambda, component.lambdaPairSwapCB.dUdlambdaGroupId),
+          containsTheFractionalMolecule, w);
+    }
+
+    if (componentDrivesGroupSwapLambda(componentId, Move::Types::GroupSwapCFCMC))
+    {
+      const double groupLambda = component.lambdaGroupSwap.lambdaValue();
+      component.lambdaGroupSwap.sampleHistogram(
+          currentBlock, componentDensity, currentDUdlambda(groupLambda, component.lambdaGroupSwap.dUdlambdaGroupId),
+          containsTheFractionalMolecule, w);
+    }
+
+    if (componentDrivesGroupSwapLambda(componentId, Move::Types::GroupSwapCBCFCMC))
+    {
+      const double groupLambda = component.lambdaGroupSwapCB.lambdaValue();
+      component.lambdaGroupSwapCB.sampleHistogram(
+          currentBlock, componentDensity, currentDUdlambda(groupLambda, component.lambdaGroupSwapCB.dUdlambdaGroupId),
+          containsTheFractionalMolecule, w);
+    }
+
+    ++componentId;
   }
 
-  if (samplePDBMovie.has_value())
-  {
-    samplePDBMovie->update(forceField, systemId, simulationBox, spanOfMoleculeAtoms(), currentCycle);
-  }
+  reactionLambdaSampleProductionHistograms(currentBlock, w);
+
+  updateSamplePDBMovie(systemId, currentCycle);
 
   if (writeLammpsData.has_value())
   {
-    writeLammpsData->update(currentCycle, components, atomData, moleculeData, simulationBox, forceField,
+    writeLammpsData->update(currentCycle, components, atomData, atomDynamics, moleculeData, simulationBox, forceField,
                             numberOfIntegerMoleculesPerComponent, framework);
   }
 
@@ -1918,12 +654,14 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
                                                            currentCycle, currentBlock);
   }
 
-  if (propertyRadialDistributionFunction.has_value())
+  // Force-based RDF is not sampled here. Monte Carlo calls sampleForceBasedRDFWithFullGradients()
+  // (full U, including intramolecular). Molecular dynamics reuses integrator forces via
+  // sampleForceBasedRDFFromCurrentGradients().
+
+  if (propertyMoleculeProperties.has_value())
   {
-    precomputeTotalGradients();
-    Integrators::updateCenterOfMassAndQuaternionGradients(moleculeData, spanOfMoleculeAtoms(), components);
-    propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), moleculeData,
-                                               spanOfMoleculeAtoms(), currentCycle, currentBlock);
+    propertyMoleculeProperties->sample(components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(), currentCycle,
+                                       currentBlock);
   }
 
   if (averageEnergyHistogram.has_value())
@@ -1944,12 +682,12 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
 
   if (propertyMSD.has_value())
   {
-    propertyMSD->addSample(currentCycle, components, numberOfMoleculesPerComponent, moleculeData);
+    propertyMSD->addSample(currentCycle, moleculeData);
   }
 
   if (propertyVACF.has_value())
   {
-    propertyVACF->addSample(currentCycle, components, numberOfMoleculesPerComponent, moleculeData);
+    propertyVACF->addSample(currentCycle, moleculeData);
   }
 
   if (propertyDensityGrid.has_value())
@@ -1957,57 +695,25 @@ void System::sampleProperties(std::size_t currentBlock, std::size_t currentCycle
     propertyDensityGrid->sample(framework, simulationBox, spanOfMoleculeAtoms(), currentCycle);
   }
 
-  std::chrono::system_clock::time_point t2 = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point t2 = std::chrono::steady_clock::now();
 
   mc_moves_cputime.propertySampling += (t2 - t1);
 }
 
-void System::writeCPUTimeStatistics(std::ostream& stream) const
+void System::samplePropertiesEvolution(std::size_t absoluteCurrentCycle)
 {
-  std::print(stream, "Sampling properties:        {:14f} [s]\n", mc_moves_cputime.propertySampling.count());
-  std::print(stream, "Pressure computation:       {:14f} [s]\n\n", mc_moves_cputime.energyPressureComputation.count());
-
-  for (std::size_t componentId = 0; const Component& component : components)
+  if (propertyNumberOfMoleculesEvolution.has_value())
   {
-    std::print(stream, "{}", component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
+    propertyNumberOfMoleculesEvolution->addSample(absoluteCurrentCycle, numberOfIntegerMoleculesPerComponent);
   }
-}
-
-std::pair<std::vector<Molecule>, std::vector<Atom>> System::scaledCenterOfMassPositions(double scale) const
-{
-  std::vector<Molecule> scaledMolecules(moleculeData);
-  std::vector<Atom> scaledAtoms(atomData);
-
-  for (Molecule& molecule : scaledMolecules)
+  if (propertyVolumeEvolution.has_value())
   {
-    const std::span<Atom> span = {&scaledAtoms[molecule.atomIndex], molecule.numberOfAtoms};
-
-    double totalMass = 0.0;
-    double3 com(0.0, 0.0, 0.0);
-    for (const Atom& atom : span)
-    {
-      double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
-      com += mass * atom.position;
-      totalMass += mass;
-    }
-    com /= totalMass;
-
-    molecule.centerOfMassPosition = com * scale;
-
-    double3 d = com * (scale - 1.0);
-    for (Atom& atom : span)
-    {
-      atom.position += d;
-    }
+    propertyVolumeEvolution->addSample(absoluteCurrentCycle, simulationBox.volume);
   }
-
-  return {scaledMolecules, scaledAtoms};
-}
-
-inline std::pair<EnergyStatus, double3x3> pair_acc(const std::pair<EnergyStatus, double3x3>& lhs,
-                                                   const std::pair<EnergyStatus, double3x3>& rhs)
-{
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
+  if (propertyConservedEnergyEvolution.has_value())
+  {
+    propertyConservedEnergyEvolution->addSample(absoluteCurrentCycle, runningEnergies);
+  }
 }
 
 void System::precomputeTotalRigidEnergy() noexcept
@@ -2016,22 +722,149 @@ void System::precomputeTotalRigidEnergy() noexcept
                                             simulationBox, spanOfRigidFrameworkAtoms());
 }
 
+void System::preComputeElecPermFrameworkMBX()
+{
+#ifdef BUILD_MBX
+  elecPermFrameworkMBX = useMBX && framework.has_value() ? Interactions::computeFrameworkElecPermMBXEnergy(
+                                                               *this, simulationBox, framework, spanOfFrameworkAtoms())
+                                                         : 0.0;
+#else
+  if (useMBX)
+  {
+    throw std::runtime_error(
+        "[System]: MBX state cannot be initialized because this RASPA binary was built without BUILD_MBX support");
+  }
+  elecPermFrameworkMBX = 0.0;
+#endif
+}
+
+void System::validateMBXMonteCarloConfiguration() const
+{
+  if (!useMBX) return;
+
+  if (tmmc.doTMMC)
+  {
+    throw std::runtime_error(
+        "[System MBX validation]: transition-matrix Monte Carlo has not been forward-ported to MBX; "
+        "use the regular MonteCarlo driver without TMMC state");
+  }
+  if (forceField.computePolarization)
+  {
+    throw std::runtime_error(
+        "[System MBX validation]: 'ComputePolarization' must be false with UseMBX; MBX already provides the "
+        "retained induced-electrostatic energy");
+  }
+  if (!reactions.list.empty())
+  {
+    throw std::runtime_error("[System MBX validation]: reaction moves have not been forward-ported to MBX");
+  }
+  if (propertyRadialDistributionFunction.has_value())
+  {
+    throw std::runtime_error(
+        "[System MBX validation]: force-based RDF sampling is not supported with UseMBX because its force path "
+        "uses the classical gradient energy; conventional geometry-only RDF sampling remains supported");
+  }
+
+  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+  {
+    const Component& component = components[componentId];
+    if (!component.rigid && component.mc_moves_probabilities.getProbability(Move::Types::Swap) > 0.0)
+    {
+      throw std::runtime_error(std::format(
+          "[System MBX validation, component {} ('{}')]: conventional insertion/deletion is supported only for "
+          "rigid components; use SwapCBMC for flexible or semi-flexible components",
+          componentId, component.name));
+    }
+  }
+
+  const auto moveIsSupported = [this](Move::Types move)
+  {
+    switch (move)
+    {
+      case Move::Types::Translation:
+      case Move::Types::Rotation:
+      case Move::Types::ReinsertionCBMC:
+      case Move::Types::Swap:
+      case Move::Types::SwapCBMC:
+      case Move::Types::Widom:
+        return true;
+      case Move::Types::VolumeChange:
+        return !framework.has_value() && !hasExternalField;
+      default:
+        return false;
+    }
+  };
+
+  for (std::size_t moveIndex = 0; moveIndex < std::to_underlying(Move::Types::Count); ++moveIndex)
+  {
+    const Move::Types move = static_cast<Move::Types>(moveIndex);
+    double probability = mc_moves_probabilities.getProbability(move);
+    for (const Component& component : components)
+    {
+      probability = std::max(probability, component.mc_moves_probabilities.getProbability(move));
+    }
+    if (probability <= 0.0 || moveIsSupported(move)) continue;
+
+    if (move == Move::Types::VolumeChange && (framework.has_value() || hasExternalField))
+    {
+      throw std::runtime_error(
+          "[System MBX validation]: isotropic volume moves are supported only for framework-free boxes without "
+          "an external-field interpolation grid");
+    }
+    throw std::runtime_error(std::format(
+        "[System MBX validation]: move '{}' has nonzero probability but has not been forward-ported to MBX. "
+        "Supported moves are translation, rotation, reinsertion CBMC, conventional insertion/deletion for rigid "
+        "components, CBMC insertion/deletion, Widom, and isotropic volume changes in framework-free boxes without "
+        "an external field",
+        Move::moveNames[moveIndex]));
+  }
+}
+
 void System::precomputeTotalGradients() noexcept
 {
   runningEnergies = Integrators::updateGradients(
-      spanOfMoleculeAtoms(), spanOfFrameworkAtoms(), forceField, simulationBox, components, eik_x, eik_y, eik_z, eik_xy,
-      totalEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent);
+      moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(), spanOfFrameworkAtoms(), forceField, simulationBox,
+      components, eik_x, eik_y, eik_z, eik_xy, trialEik, fixedFrameworkStoredEik, interpolationGrids,
+      numberOfMoleculesPerComponent, framework, spanOfFrameworkDynamics());
 }
 
-RunningEnergy System::computeTotalEnergies() noexcept
+RunningEnergy System::computeTotalEnergies()
 {
+  std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
+  std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
+
+  if (useMBX)
+  {
+#ifndef BUILD_MBX
+    throw std::runtime_error(
+        "[System]: MBX energy was requested, but this RASPA binary was built without BUILD_MBX support");
+#else
+    // MBX owns every guest intra/intermolecular and electrostatic contribution. RASPA contributes only
+    // framework-guest VDW (including its tail correction) and the configured external field. In particular,
+    // no classical guest intra/intermolecular, Ewald, or polarization energy is added here.
+    const RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeEnergy(
+        forceField, simulationBox, interpolationGrids, framework, frameworkAtomPositions, moleculeAtomPositions);
+    const RunningEnergy frameworkMoleculeTailEnergy = Interactions::computeFrameworkMoleculeTailEnergy(
+        forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
+
+    RunningEnergy externalFieldEnergy;
+    Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, moleculeAtomPositions,
+                                             externalFieldEnergy, externalFieldInterpolationGrid);
+
+    RunningEnergy result = Interactions::computeMBXEnergySystem(*this, components, simulationBox, framework,
+                                                                 frameworkAtomPositions, moleculeAtomPositions);
+    result.frameworkMoleculeVDW = frameworkMoleculeEnergy.frameworkMoleculeVDW;
+    result.tail = frameworkMoleculeTailEnergy.tail;
+    result.externalFieldVDW = externalFieldEnergy.externalFieldVDW;
+    result.externalFieldCharge = externalFieldEnergy.externalFieldCharge;
+    return result;
+#endif
+  }
+
   if (fixedFrameworkStoredEik.empty())
   {
     precomputeTotalRigidEnergy();
   }
-
-  std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
-  std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
 
   RunningEnergy runningIntraEnergy{};
   std::size_t index = 0;
@@ -2046,6 +879,11 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     index += numberOfMoleculesPerComponent[i];
   }
+  if (framework && framework->hasMobileAtoms())
+  {
+    runningIntraEnergy += Interactions::computeFrameworkIntraMolecularEnergy(forceField, *framework, simulationBox,
+                                                                             frameworkAtomPositions);
+  }
 
   if (forceField.computePolarization)
   {
@@ -2056,10 +894,21 @@ RunningEnergy System::computeTotalEnergies() noexcept
     RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeElectricField(
         forceField, simulationBox, moleculeElectricField, frameworkAtomPositions, moleculeAtomPositions);
 
-    RunningEnergy intermolecularEnergy =
-        Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
-    // RunningEnergy intermolecularEnergy = Interactions::computeInterMolecularElectricField(
-    //     forceField, simulationBox, moleculeElectricField, moleculeAtomPositions);
+    // When molecule-molecule polarization is requested, the inter-molecular electric field has to be added
+    // to the stored field so that the polarization energy is consistent with the incremental Monte-Carlo moves
+    // (which maintain the same field). Otherwise only the framework field contributes and the plain
+    // inter-molecular energy is sufficient.
+    RunningEnergy intermolecularEnergy;
+    if (forceField.omitInterPolarization)
+    {
+      intermolecularEnergy =
+          Interactions::computeInterMolecularEnergy(forceField, simulationBox, moleculeAtomPositions);
+    }
+    else
+    {
+      intermolecularEnergy = Interactions::computeInterMolecularElectricField(
+          forceField, simulationBox, moleculeElectricField, moleculeAtomPositions);
+    }
 
     RunningEnergy frameworkMoleculeTailEnergy = Interactions::computeFrameworkMoleculeTailEnergy(
         forceField, simulationBox, frameworkAtomPositions, moleculeAtomPositions);
@@ -2076,23 +925,8 @@ RunningEnergy System::computeTotalEnergies() noexcept
     Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, moleculeAtomPositions,
                                              externalFieldEnergy, externalFieldInterpolationGrid);
 
-    // MBX part
-    if (useMBX)
-    {
-      RunningEnergy mbx = Interactions::computeMBXEnergySystem(*this, components, simulationBox, framework,
-                                                               frameworkAtomPositions, moleculeAtomPositions);
-
-      // host-guest VDW interaction from FF + MBX energy
-      mbx.frameworkMoleculeVDW = frameworkMoleculeEnergy.frameworkMoleculeVDW;
-      mbx.tail = frameworkMoleculeTailEnergy.tail;
-
-      return mbx;
-    }
-    else
-    {
-      return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
-             ewaldEnergy + polarizationEnergy + runningIntraEnergy + externalFieldEnergy;
-    }
+    return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
+           ewaldEnergy + polarizationEnergy + runningIntraEnergy + externalFieldEnergy;
   }
   else
   {
@@ -2108,29 +942,14 @@ RunningEnergy System::computeTotalEnergies() noexcept
 
     RunningEnergy ewaldEnergy = Interactions::computeEwaldFourierEnergy(
         eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox, components,
-        numberOfMoleculesPerComponent, moleculeAtomPositions);
+        numberOfMoleculesPerComponent, moleculeAtomPositions, netChargeFramework);
 
     RunningEnergy externalFieldEnergy;
     Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, moleculeAtomPositions,
                                              externalFieldEnergy, externalFieldInterpolationGrid);
 
-    // MBX part
-    if (useMBX)
-    {
-      RunningEnergy mbx = Interactions::computeMBXEnergySystem(*this, components, simulationBox, framework,
-                                                               frameworkAtomPositions, moleculeAtomPositions);
-
-      // host-guest VDW interaction from FF + MBX energy
-      mbx.frameworkMoleculeVDW = frameworkMoleculeEnergy.frameworkMoleculeVDW;
-      mbx.tail = frameworkMoleculeTailEnergy.tail;
-
-      return mbx;
-    }
-    else
-    {
-      return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
-             ewaldEnergy + runningIntraEnergy + externalFieldEnergy;
-    }
+    return frameworkMoleculeEnergy + intermolecularEnergy + frameworkMoleculeTailEnergy + intermolecularTailEnergy +
+           ewaldEnergy + runningIntraEnergy + externalFieldEnergy;
   }
 }
 
@@ -2144,7 +963,10 @@ RunningEnergy System::computePolarizationEnergy() noexcept
   for (std::size_t i = 0; i < moleculeAtomPositions.size(); ++i)
   {
     std::size_t type = moleculeAtomPositions[i].type;
-    double polarizability = forceField.pseudoAtoms[type].polarizability / Units::CoulombicConversionFactor;
+    // The polarization coupling is scaled by the atom's Coulomb scaling so that a fractional (CFCMC)
+    // molecule decouples from the field as lambda decreases (matching the incremental moves).
+    double polarizability = moleculeAtomPositions[i].scalingCoulomb *
+                            forceField.pseudoAtoms[type].polarizability / Units::CoulombicConversionFactor;
     energy.polarization -= 0.5 * polarizability * double3::dot(moleculeElectricField[i], moleculeElectricField[i]);
   }
 
@@ -2199,29 +1021,94 @@ void System::computeTotalElectricField() noexcept
                                                  numberOfMoleculesPerComponent, moleculeAtomPositions);
 }
 
-std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
+std::pair<EnergyStatus, double3x3> System::computeMolecularPressure()
 {
-  for (Atom& atom : atomData)
+  // Scratch buffer so molecular-pressure sampling does not mutate live MD site gradients.
+  // Strain-derivative routines write intermolecular/framework forces here for the atomic-to-molecular
+  // virial correction. Intramolecular bonded forces are intentionally omitted (they cancel in the
+  // molecular virial) and must not overwrite AtomDynamics used by Velocity-Verlet.
+  std::vector<AtomDynamics> pressureMoleculeDynamics(spanOfMoleculeAtoms().size());
+  std::span<AtomDynamics> pressureDynamics(pressureMoleculeDynamics);
+
+  const std::span<const Atom> moleculeAtoms = spanOfMoleculeAtoms();
+
+  // Polarization rides along with the real-space Coulomb strain loops: they gather the per-atom electric
+  // field and its cell-strain response (molecular COM scaling) in one pass, so the pair walk is not
+  // repeated. The Ewald reciprocal framework field and the final contraction into the polarization energy
+  // and strain tensor happen afterwards in computePolarizationMolecularPressureStrain. The polarization
+  // forces are intentionally kept out of 'pressureDynamics': the polarization strain below already uses
+  // COM arms, so it must not participate in the atomic-to-molecular virial correction.
+  const bool gatherPolarization = forceField.computePolarization && forceField.useCharge && !moleculeAtoms.empty();
+  std::vector<double3> polarizationField;
+  std::vector<std::array<double3, 9>> polarizationFieldStrain;
+  std::vector<double3> polarizationComOffset;
+  std::vector<double> polarizationPolarizability;
+  Interactions::PolarizationFieldStrain polarizationGather{};
+  const Interactions::PolarizationFieldStrain* frameworkGather = nullptr;
+  const Interactions::PolarizationFieldStrain* interGather = nullptr;
+  if (gatherPolarization)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    polarizationField.assign(moleculeAtoms.size(), double3(0.0, 0.0, 0.0));
+    polarizationFieldStrain.assign(moleculeAtoms.size(), {});
+    polarizationComOffset.assign(moleculeAtoms.size(), double3(0.0, 0.0, 0.0));
+    polarizationPolarizability.resize(moleculeAtoms.size());
+    for (std::size_t i = 0; i < moleculeAtoms.size(); ++i)
+    {
+      // Scaled by the atom's Coulomb scaling: fractional (CFCMC) molecules decouple from the field.
+      polarizationPolarizability[i] =
+          moleculeAtoms[i].scalingCoulomb *
+          forceField.pseudoAtoms[static_cast<std::size_t>(moleculeAtoms[i].type)].polarizability /
+          Units::CoulombicConversionFactor;
+    }
+
+    // Mass-weighted COM offsets from the current atom positions for every molecule (rigid and flexible),
+    // matching the COM-scaling volume move.
+    for (const Molecule& molecule : moleculeData)
+    {
+      double totalMass = 0.0;
+      double3 com(0.0, 0.0, 0.0);
+      for (std::size_t k = 0; k < molecule.numberOfAtoms; ++k)
+      {
+        const Atom& atom = moleculeAtoms[molecule.atomIndex + k];
+        const double mass = forceField.pseudoAtoms[static_cast<std::size_t>(atom.type)].mass;
+        com += mass * atom.position;
+        totalMass += mass;
+      }
+      com = com / totalMass;
+      for (std::size_t k = 0; k < molecule.numberOfAtoms; ++k)
+      {
+        polarizationComOffset[molecule.atomIndex + k] = moleculeAtoms[molecule.atomIndex + k].position - com;
+      }
+    }
+
+    polarizationGather = {std::span<double3>(polarizationField),
+                          std::span<std::array<double3, 9>>(polarizationFieldStrain),
+                          std::span<const double3>(polarizationComOffset),
+                          std::span<const double>(polarizationPolarizability)};
+    frameworkGather = &polarizationGather;
+    // The inter-molecular field obeys the omit flags of the polarization model; the routine's own
+    // omitInterInteractions early-out covers the remaining case.
+    if (!forceField.omitInterPolarization) interGather = &polarizationGather;
   }
 
   std::pair<EnergyStatus, double3x3> pressureInfo = Interactions::computeFrameworkMoleculeEnergyStrainDerivative(
       forceField, framework, interpolationGrids, components, simulationBox, spanOfFrameworkAtoms(),
-      spanOfMoleculeAtoms());
+      spanOfMoleculeAtoms(), pressureDynamics, frameworkGather);
 
   pressureInfo.first.translationalKineticEnergy = runningEnergies.translationalKineticEnergy;
   pressureInfo.first.rotationalKineticEnergy = runningEnergies.rotationalKineticEnergy;
   pressureInfo.first.noseHooverEnergy = runningEnergies.NoseHooverEnergy;
 
-  pressureInfo = pair_acc(pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
-                                            forceField, components, simulationBox, spanOfMoleculeAtoms()));
+  pressureInfo = pairSum(pressureInfo,
+                         Interactions::computeInterMolecularEnergyStrainDerivative(
+                             forceField, components, simulationBox, spanOfMoleculeAtoms(), pressureDynamics,
+                             interGather));
 
-  pressureInfo = pair_acc(
-      pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(
-                        eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
-                        framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
-                        CoulombicFourierEnergySingleIon, netChargeFramework, netChargePerComponent));
+  pressureInfo = pairSum(pressureInfo,
+                         Interactions::computeEwaldFourierEnergyStrainDerivative(
+                             eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
+                             framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
+                             pressureDynamics, netChargeFramework, netChargePerComponent));
 
   std::size_t molecule_index = 0;
   for (std::size_t i = 0; i < components.size(); ++i)
@@ -2246,38 +1133,53 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
       pressureInfo.first.intraComponentEnergies[i].bendTorsion += runningIntraEnergy.bendTorsion;
       pressureInfo.first.intraComponentEnergies[i].vanDerWaals += runningIntraEnergy.intraVDW;
       pressureInfo.first.intraComponentEnergies[i].coulomb += runningIntraEnergy.intraCoul;
+
+      // Intramolecular potentials (bonds, bends, torsions, ...) must NOT contribute to the molecular
+      // (center-of-mass based) pressure: internal forces sum to zero over each molecule and cancel in the
+      // molecular virial. Their strain derivative is therefore intentionally not accumulated here, and their
+      // gradients are deliberately kept out of 'pressureDynamics' so they cannot pollute the
+      // atomic-to-molecular correction term computed below. Only the energy is recorded (above) for reporting.
     }
 
     molecule_index += numberOfMoleculesPerComponent[i];
   }
 
-  if (forceField.computePolarization)
+  if (gatherPolarization)
   {
-    RunningEnergy e = computePolarizationEnergy();
-    pressureInfo.first.polarizationEnergy = Potentials::EnergyFactor(e.polarization, 0.0);
+    // Complete the gathered real-space field with the Ewald reciprocal framework contribution and contract
+    // into the polarization energy and its (unsymmetrized) strain-derivative tensor; the symmetrization at
+    // the end of this function averages the off-diagonal pairs, matching the symmetric strain generators.
+    const auto [polarizationEnergy, polarizationStrain] = Interactions::computePolarizationMolecularPressureStrain(
+        *this, polarizationField, polarizationFieldStrain, polarizationComOffset, polarizationPolarizability);
+
+    pressureInfo.first.polarizationEnergy = EnergyDuDlambda(polarizationEnergy, 0.0);
+    pressureInfo.second += polarizationStrain;
   }
 
   if (useMBX)
   {
-    // Enable useMBX in pressureInfo.first EnergyStatus
+#ifdef BUILD_MBX
+    // The pressure tensor remains the classical molecular-pressure estimate. Expose the current MBX energy
+    // alongside it for reporting without erasing the classical decomposition used to construct the tensor.
+    const RunningEnergy mbx = Interactions::computeMBXEnergySystem(
+        *this, components, simulationBox, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
     pressureInfo.first.useMBX = true;
-
-    // Calculate mbxEnergy for the current configuration of the system and update pressureInfo.first EnergyStatus
-    std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
-    std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
-    RunningEnergy mbx = Interactions::computeMBXEnergySystem(*this, components, simulationBox, framework,
-                                                               frameworkAtomPositions, moleculeAtomPositions);
     pressureInfo.first.mbxEnergy = mbx.mbxEnergy;
-
-    // Turning off classical terms
-    pressureInfo.first.turnOffClassicalTerms();
+#else
+    throw std::runtime_error(
+        "[System]: MBX pressure reporting was requested, but this binary was built without BUILD_MBX support");
+#endif
   }
 
   pressureInfo.first.sumTotal();
 
-  // Pressure tensor calculation does not incorporate MBX yet and is purely FF based.
   double pressureTailCorrection = 0.0;
-  double preFactor = 2.0 * std::numbers::pi / simulationBox.volume;
+  // Tail correction to the (excess) pressure virial. The per-pair integral 'tailCorrectionPressure' equals
+  // Integrate[U'(r) r^3, {r, rc, Inf}]; the isotropic virial tail correction is -(2 pi / 3 V) Sum_ij n_i n_j <integral>
+  // (see RASPA2 CalculateTailCorrection). The overall minus sign and the 1/3 are essential: the van der Waals tail is
+  // attractive and must LOWER the pressure. The extra global negation of 'pressureInfo.second' below turns the
+  // '-= pressureTailCorrection' into the correct negative diagonal contribution.
+  double preFactor = -2.0 * std::numbers::pi / (3.0 * simulationBox.volume);
   for (std::vector<Atom>::iterator it1 = atomData.begin(); it1 != atomData.end(); ++it1)
   {
     std::size_t typeA = static_cast<std::size_t>(it1->type);
@@ -2299,11 +1201,14 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
   pressureInfo.second.by -= pressureTailCorrection;
   pressureInfo.second.cz -= pressureTailCorrection;
 
-  // Correct rigid molecule contribution using the constraints forces
+  // Correct rigid molecule contribution using the constraints forces.
+  // Molecule::atomIndex indexes the molecule-atom span (framework atoms excluded).
   double3x3 correctionTerm{};
   for (Molecule& molecule : moleculeData)
   {
-    const std::span<Atom> span = {&atomData[molecule.atomIndex], molecule.numberOfAtoms};
+    const std::span<const Atom> span = moleculeAtoms.subspan(molecule.atomIndex, molecule.numberOfAtoms);
+    const std::span<AtomDynamics> spanDynamics = {&pressureMoleculeDynamics[molecule.atomIndex],
+                                                  molecule.numberOfAtoms};
 
     double totalMass = 0.0;
     double3 com(0.0, 0.0, 0.0);
@@ -2315,19 +1220,22 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     }
     com = com / totalMass;
 
-    for (const Atom& atom : span)
+    for (std::size_t k = 0; k < span.size(); ++k)
     {
-      correctionTerm.ax += (atom.position.x - com.x) * atom.gradient.x;
-      correctionTerm.ay += (atom.position.x - com.x) * atom.gradient.y;
-      correctionTerm.az += (atom.position.x - com.x) * atom.gradient.z;
+      const double3 position = span[k].position;
+      const double3 gradient = spanDynamics[k].gradient;
 
-      correctionTerm.bx += (atom.position.y - com.y) * atom.gradient.x;
-      correctionTerm.by += (atom.position.y - com.y) * atom.gradient.y;
-      correctionTerm.bz += (atom.position.y - com.y) * atom.gradient.z;
+      correctionTerm.ax += (position.x - com.x) * gradient.x;
+      correctionTerm.ay += (position.x - com.x) * gradient.y;
+      correctionTerm.az += (position.x - com.x) * gradient.z;
 
-      correctionTerm.cx += (atom.position.z - com.z) * atom.gradient.x;
-      correctionTerm.cy += (atom.position.z - com.z) * atom.gradient.y;
-      correctionTerm.cz += (atom.position.z - com.z) * atom.gradient.z;
+      correctionTerm.bx += (position.y - com.y) * gradient.x;
+      correctionTerm.by += (position.y - com.y) * gradient.y;
+      correctionTerm.bz += (position.y - com.y) * gradient.z;
+
+      correctionTerm.cx += (position.z - com.z) * gradient.x;
+      correctionTerm.cy += (position.z - com.z) * gradient.y;
+      correctionTerm.cz += (position.z - com.z) * gradient.z;
     }
   }
 
@@ -2376,908 +1284,232 @@ void System::checkCartesianPositions()
   }
 }
 
-std::string System::writeMCMoveStatistics() const
+void System::setThermostat(const std::optional<Thermostat>& thermo)
 {
-  std::ostringstream stream;
-
-  std::print(stream, "{}", mc_moves_statistics.writeMCMoveStatistics());
-  for (std::size_t componentId = 0; const Component& component : components)
+  if (thermo.has_value())
   {
-    std::print(stream, "Component {} [{}]\n", componentId, component.name);
-
-    std::print(stream, "{}", component.mc_moves_statistics.writeMCMoveStatistics());
-
-    if (component.hasFractionalMolecule)
-    {
-      double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
-      double imposedFugacity = component.molFraction * pressure;
-
-      std::print(stream, "{}",
-                 component.lambdaGC.writeAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity));
-      std::print(stream, "{}",
-                 component.lambdaGC.writeDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity));
-    }
-
-    if (component.mc_moves_probabilities.getProbability(MoveTypes::Widom) > 0.0)
-    {
-      double imposedChemicalPotential =
-          std::log(beta * component.molFraction * component.fugacityCoefficient.value_or(1.0) * pressure) / beta;
-      double imposedFugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * pressure;
-      std::print(stream, "{}",
-                 component.averageRosenbluthWeights.writeAveragesRosenbluthWeightStatistics(
-                     temperature, simulationBox.volume, frameworkMass(),
-                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
-      std::print(stream, "{}",
-                 component.averageRosenbluthWeights.writeAveragesChemicalPotentialStatistics(
-                     beta, imposedChemicalPotential, imposedFugacity));
-    }
-
-    for (std::size_t i = 0; i != component.atoms.size(); ++i)
-    {
-      std::print(stream, "{}", component.cbmc_moves_statistics[i].writeMCMoveStatistics());
-    }
-
-    ++componentId;
-  }
-
-  std::print(stream, "\n\n");
-
-  return stream.str();
-}
-
-void System::createExternalFieldInterpolationGrid(std::ostream& stream)
-{
-  // use local random-number generator (so that it does not interfere with a binary-restart)
-  RandomNumber random{std::nullopt};
-
-  std::size_t numberOfGridTestPoints = forceField.numberOfGridTestPoints;
-
-  if (hasExternalField)
-  {
-    if (forceField.useExternalFieldGrid)
-    {
-      // int3 numberOfExternalFieldGridPoints  = forceField.numberOfExternalFieldGridPoints;
-      uint3 numberOfExternalFieldGridPoints =
-          InterpolationEnergyGrid::parseExternalFieldGridDimensions(forceField.externalFieldGridFileName);
-
-      externalFieldInterpolationGrid =
-          InterpolationEnergyGrid(simulationBox, forceField.potentialEnergySurfaceOrigin,
-                                  numberOfExternalFieldGridPoints, forceField.interpolationScheme);
-
-      std::print(stream, "Generating an external field interpolation grid ({}x{}x{})\n",
-                 externalFieldInterpolationGrid->numberOfGridPoints.x,
-                 externalFieldInterpolationGrid->numberOfGridPoints.y,
-                 externalFieldInterpolationGrid->numberOfGridPoints.z);
-      std::print(stream, "===============================================================================\n");
-      externalFieldInterpolationGrid->makeExternalFieldInterpolationGrid(stream, forceField, simulationBox);
-
-      double count{};
-      double summed_errors{};
-      double boltzmann_weighted_difference_squared_summed{};
-      double boltzmann_weighted_full_squared_summed{};
-
-      for (std::size_t i = 0; i < numberOfGridTestPoints; ++i)
-      {
-        // generate random position in super cell
-        double3 s = double3(random.uniform(), random.uniform(), random.uniform());
-        double3 pos = simulationBox.cell * s;
-
-        auto [interpolated_energy, interpolated_gradient, interpolated_hessian] =
-            externalFieldInterpolationGrid->interpolateHessian(pos);
-
-        // convert to Kelvin
-        interpolated_energy *= Units::EnergyToKelvin;
-
-        interpolated_gradient.x *= Units::EnergyToKelvin;
-        interpolated_gradient.y *= Units::EnergyToKelvin;
-        interpolated_gradient.z *= Units::EnergyToKelvin;
-
-        interpolated_hessian.ax *= Units::EnergyToKelvin;
-        interpolated_hessian.ay *= Units::EnergyToKelvin;
-        interpolated_hessian.az *= Units::EnergyToKelvin;
-        interpolated_hessian.bx *= Units::EnergyToKelvin;
-        interpolated_hessian.by *= Units::EnergyToKelvin;
-        interpolated_hessian.bz *= Units::EnergyToKelvin;
-        interpolated_hessian.cx *= Units::EnergyToKelvin;
-        interpolated_hessian.cy *= Units::EnergyToKelvin;
-        interpolated_hessian.cz *= Units::EnergyToKelvin;
-
-        double analytical_energy{};
-        double3 analytical_gradient{};
-        double3x3 analytical_hessian{};
-        switch (forceField.interpolationScheme)
-        {
-          case ForceField::InterpolationScheme::Polynomial:
-          {
-            std::array<double, 8> analytical_polynomial =
-                Interactions::calculateTricubicFractionalAtPositionExternalField(
-                    forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
-
-            analytical_energy = analytical_polynomial[0] * Units::EnergyToKelvin;
-          }
-          break;
-          case ForceField::InterpolationScheme::Tricubic:
-          {
-            std::array<double, 8> analytical_tricubic =
-                Interactions::calculateTricubicFractionalAtPositionExternalField(
-                    forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
-
-            analytical_energy = analytical_tricubic[0] * Units::EnergyToKelvin;
-
-            // convert gradient from fractional to Cartesian
-            analytical_gradient = framework->simulationBox.inverseCell.transpose() *
-                                  double3(analytical_tricubic[1], analytical_tricubic[2], analytical_tricubic[3]);
-
-            analytical_gradient.x *= Units::EnergyToKelvin;
-            analytical_gradient.y *= Units::EnergyToKelvin;
-            analytical_gradient.z *= Units::EnergyToKelvin;
-          }
-          break;
-          case ForceField::InterpolationScheme::Triquintic:
-          {
-            std::array<double, 27> analytical_triquintic =
-                Interactions::calculateTriquinticFractionalAtPositionExternalField(
-                    forceField, simulationBox, pos + forceField.potentialEnergySurfaceOrigin);
-
-            analytical_energy = analytical_triquintic[0] * Units::EnergyToKelvin;
-
-            // convert gradient from fractional to Cartesian
-            analytical_gradient = framework->simulationBox.inverseCell.transpose() *
-                                  double3(analytical_triquintic[1], analytical_triquintic[2], analytical_triquintic[3]);
-
-            analytical_gradient.x *= Units::EnergyToKelvin;
-            analytical_gradient.y *= Units::EnergyToKelvin;
-            analytical_gradient.z *= Units::EnergyToKelvin;
-
-            double3x3 hessian = double3x3(analytical_triquintic[4], analytical_triquintic[5], analytical_triquintic[6],
-                                          analytical_triquintic[5], analytical_triquintic[7], analytical_triquintic[8],
-                                          analytical_triquintic[6], analytical_triquintic[8], analytical_triquintic[9]);
-            analytical_hessian =
-                framework->simulationBox.inverseCell.transpose() * hessian * framework->simulationBox.inverseCell;
-
-            analytical_hessian.ax *= Units::EnergyToKelvin;
-            analytical_hessian.ay *= Units::EnergyToKelvin;
-            analytical_hessian.az *= Units::EnergyToKelvin;
-            analytical_hessian.bx *= Units::EnergyToKelvin;
-            analytical_hessian.by *= Units::EnergyToKelvin;
-            analytical_hessian.bz *= Units::EnergyToKelvin;
-            analytical_hessian.cx *= Units::EnergyToKelvin;
-            analytical_hessian.cy *= Units::EnergyToKelvin;
-            analytical_hessian.cz *= Units::EnergyToKelvin;
-          }
-          break;
-        }
-
-        double boltzmann_weight_value = std::exp(-beta * analytical_energy);
-        double difference = analytical_energy - interpolated_energy;
-
-        summed_errors += std::fabs(difference);
-        count += 1.0;
-
-        boltzmann_weighted_difference_squared_summed += difference * difference * boltzmann_weight_value;
-        boltzmann_weighted_full_squared_summed += boltzmann_weight_value;
-      }
-
-      std::print(stream, "Testing external-field interpolation grid ({}x{}x{})\n", numberOfExternalFieldGridPoints.x,
-                 numberOfExternalFieldGridPoints.y, numberOfExternalFieldGridPoints.z);
-      std::print(stream, "-------------------------------------------------------------------------------\n");
-      std::print(stream, "(Using {} points for testing)\n\n", numberOfGridTestPoints);
-
-      std::print(stream, "Absolute error energy:                  {}\n\n", summed_errors / count);
-      std::print(stream, "Boltzmann weighted error energy:        {}\n\n",
-                 std::sqrt(boltzmann_weighted_difference_squared_summed / boltzmann_weighted_full_squared_summed));
-    }
-  }
-
-  if (forceField.writeExternalFieldInterpolationGrid)
-  {
-    externalFieldInterpolationGrid->writeOutput(systemId, simulationBox, forceField);
+    thermostat = Thermostat(temperature, timeStep, translationalDegreesOfFreedom, rotationalDegreesOfFreedom,
+                            thermo->thermostatChainLength, thermo->numberOfYoshidaSuzukiSteps,
+                            thermo->timeScaleParameterThermostat);
   }
 }
 
-void System::createFrameworkInterpolationGrids(std::ostream& stream)
+void System::setThermobarostat(const std::optional<Thermobarostat>& barostat)
 {
-  // use local random-number generator (so that it does not interfere with a binary-restart)
-  RandomNumber random{std::nullopt};
-
-  std::size_t numberOfGridTestPoints = forceField.numberOfGridTestPoints;
-
-  if (framework.has_value())
+  if (!barostat.has_value())
   {
-    uint3 numberOfCoulombGridPoints{};
-    if (forceField.numberOfVDWGridPoints.has_value())
+    thermobarostat.reset();
+    return;
+  }
+  molecularDynamicsEnsemble = barostat->ensemble;
+  thermobarostat = Thermobarostat(barostat->ensemble, barostat->cellType, barostat->monoclinicAngle, temperature,
+                                  pressure, timeStep, translationalDegreesOfFreedom, barostat->chainLength,
+                                  barostat->numberOfYoshidaSuzukiSteps, barostat->timeScaleParameterBarostat);
+  thermobarostat->numberOfRespaSteps = barostat->numberOfRespaSteps;
+}
+
+void System::setSamplePDBMovie(const std::optional<SampleMovie>& movie)
+{
+  if (movie.has_value())
+  {
+    samplePDBMovie = movie;
+  }
+}
+
+void System::updateSamplePDBMovie(std::size_t systemId, std::size_t currentCycle)
+{
+  if (samplePDBMovie.has_value())
+  {
+    samplePDBMovie->update(forceField, systemId, simulationBox, spanOfMoleculeAtoms(), components,
+                           numberOfMoleculesPerComponent, currentCycle, spanOfFrameworkAtoms());
+  }
+}
+
+void System::setNumberOfMoleculesHistogram(const std::optional<PropertyNumberOfMoleculesHistogram>& hist)
+{
+  if (hist.has_value())
+  {
+    averageNumberOfMoleculesHistogram = PropertyNumberOfMoleculesHistogram(
+        hist->numberOfBlocks, components.size(), hist->range, hist->sampleEvery, hist->writeEvery);
+  }
+}
+
+void System::setAverageEnergyHistogram(const std::optional<PropertyEnergyHistogram>& hist)
+{
+  if (hist.has_value())
+  {
+    averageEnergyHistogram = hist;
+  }
+}
+
+void System::setPropertyDensityGrid(const std::optional<PropertyDensityGrid>& grid)
+{
+  if (grid.has_value())
+  {
+    propertyDensityGrid = grid;
+  }
+}
+
+void System::setPropertyNumberOfMoleculesEvolution(std::optional<PropertyNumberOfMoleculesEvolution> property)
+{
+  if (property.has_value())
+  {
+    propertyNumberOfMoleculesEvolution = property;
+  }
+}
+
+void System::setPropertyVolumeEvolution(std::optional<PropertyVolumeEvolution> property)
+{
+  if (property.has_value())
+  {
+    propertyVolumeEvolution = property;
+  }
+}
+
+void System::setPropertyConservedEnergyEvolution(std::optional<PropertyConservedEnergyEvolution> property)
+{
+  if (property.has_value())
+  {
+    propertyConservedEnergyEvolution = property;
+  }
+}
+
+void System::setPropertyConventionalRDF(const std::optional<PropertyConventionalRadialDistributionFunction>& rdf)
+{
+  if (rdf.has_value())
+  {
+    propertyConventionalRadialDistributionFunction = PropertyConventionalRadialDistributionFunction(
+        5, forceField.pseudoAtoms.size(), rdf->numberOfBins, 12.0, rdf->sampleEvery, rdf->writeEvery);
+  }
+}
+
+void System::setPropertyRDF(const std::optional<PropertyRadialDistributionFunction>& rdf)
+{
+  if (rdf.has_value())
+  {
+    propertyRadialDistributionFunction = PropertyRadialDistributionFunction(
+        5, forceField.pseudoAtoms.size(), rdf->numberOfBins, rdf->range, rdf->sampleEvery, rdf->writeEvery);
+  }
+}
+
+bool System::forceBasedRDFSampleDue(std::size_t currentCycle) const
+{
+  return propertyRadialDistributionFunction.has_value() && propertyRadialDistributionFunction->sampleEvery > 0uz &&
+         (currentCycle % propertyRadialDistributionFunction->sampleEvery == 0uz);
+}
+
+void System::sampleForceBasedRDFFromCurrentGradients(std::size_t currentCycle, std::size_t currentBlock)
+{
+  if (!propertyRadialDistributionFunction.has_value()) return;
+  propertyRadialDistributionFunction->sample(simulationBox, spanOfFrameworkAtoms(), spanOfFrameworkDynamics(),
+                                             moleculeData, spanOfMoleculeAtoms(), spanOfMoleculeDynamics(),
+                                             currentCycle, currentBlock);
+}
+
+void System::sampleForceBasedRDFWithFullGradients(std::size_t currentCycle, std::size_t currentBlock)
+{
+  if (!forceBasedRDFSampleDue(currentCycle)) return;
+  precomputeTotalGradients();
+  sampleForceBasedRDFFromCurrentGradients(currentCycle, currentBlock);
+}
+
+void System::setPropertyMSD(const std::optional<PropertyMeanSquaredDisplacement>& msd)
+{
+  if (msd.has_value())
+  {
+    propertyMSD = PropertyMeanSquaredDisplacement(numberOfMoleculesPerComponent, moleculeData.size(), timeStep,
+                                                  msd->numberOfBlockElementsMSD, msd->sampleEvery, msd->writeEvery);
+  }
+}
+
+void System::setPropertyVACF(const std::optional<PropertyVelocityAutoCorrelationFunction>& vacf)
+{
+  if (vacf.has_value())
+  {
+    propertyVACF = PropertyVelocityAutoCorrelationFunction(numberOfMoleculesPerComponent, moleculeData.size(), timeStep,
+                                                           vacf->numberOfBuffersVACF, vacf->bufferLengthVACF,
+                                                           vacf->sampleEvery, vacf->writeEvery);
+  }
+}
+
+std::string System::writeMBXStatus() const
+{
+  if (!useMBX) return {};
+
+  const double frameworkPermanentInternal = elecPermFrameworkMBX / Units::EnergyToKCalPerMol;
+  return std::format(
+      "MBX energy model\n"
+      "===============================================================================\n"
+      "Settings file: {}\n"
+      "Current retained MBX guest energy: {: .6e} [{}]\n"
+      "Bare-framework permanent electrostatics removed from MBX: {: .6e} [{}]\n\n",
+      mbxSettingsFilePath, runningEnergies.mbxEnergy * Units::EnergyToKelvin,
+      Units::displayedUnitOfEnergyString, frameworkPermanentInternal * Units::EnergyToKelvin,
+      Units::displayedUnitOfEnergyString);
+}
+
+void System::writeAcceptedEnergyLog(std::string_view moveType, std::size_t componentId,
+                                    const RunningEnergy& totalEnergy, std::span<const double> mbxTerms,
+                                    double energyDifference, double acceptanceProbability) const
+{
+  if (!writeEnergyLog) return;
+  if (useMBX && mbxTerms.size() != 7)
+  {
+    throw std::invalid_argument(
+        std::format("Accepted MBX energy log requires 7 subterms, received {}", mbxTerms.size()));
+  }
+
+  std::osyncstream output(std::cerr);
+  if (!energyLogHeaderWritten)
+  {
+    if (useMBX)
     {
-      numberOfCoulombGridPoints = forceField.numberOfCoulombGridPoints.value();
+      // 1B is intentionally excluded from both the retained MBX total and the historical RASPA-MBX CSV schema.
+      output << "type,component,N,total,hg_VDW,hg_tail,mbx_tot,E2b,E3b,E4b,Edisp,Eelec_perm,Eelec_ind,"
+                "E_diff,Pacc\n";
     }
     else
     {
-      const double3 perpendicular_widths = framework->simulationBox.perpendicularWidths();
-      numberOfCoulombGridPoints.x =
-          static_cast<std::size_t>(perpendicular_widths.x / forceField.spacingCoulombGrid + 0.5);
-      numberOfCoulombGridPoints.y =
-          static_cast<std::size_t>(perpendicular_widths.y / forceField.spacingCoulombGrid + 0.5);
-      numberOfCoulombGridPoints.z =
-          static_cast<std::size_t>(perpendicular_widths.z / forceField.spacingCoulombGrid + 0.5);
+      output << "type,component,N,total,hg_VDW,gg_VDW,tail,hg_Charge,gg_Charge,E_ewald,E_diff,Pacc\n";
     }
-
-    // also create a Charge grid when needed
-    if (!forceField.gridPseudoAtomIndices.empty())
-    {
-      std::print(stream, "Generating an Ewald Real interpolation grid ({}x{}x{}) for a unit charge\n",
-                 numberOfCoulombGridPoints.x, numberOfCoulombGridPoints.y, numberOfCoulombGridPoints.z);
-      std::print(stream, "===============================================================================\n");
-
-      interpolationGrids.back() =
-          InterpolationEnergyGrid(framework->simulationBox, forceField.potentialEnergySurfaceOrigin,
-                                  numberOfCoulombGridPoints, forceField.interpolationScheme);
-      interpolationGrids.back()->makeFrameworkInterpolationGrid(stream, ForceField::InterpolationGridType::EwaldReal,
-                                                                forceField, framework.value(), forceField.cutOffCoulomb,
-                                                                0);
-    }
-
-    uint3 numberOfVDWGridPoints{};
-    if (forceField.numberOfVDWGridPoints.has_value())
-    {
-      numberOfVDWGridPoints = forceField.numberOfVDWGridPoints.value();
-    }
-    else
-    {
-      const double3 perpendicular_widths = framework->simulationBox.perpendicularWidths();
-      numberOfVDWGridPoints.x = static_cast<std::size_t>(perpendicular_widths.x / forceField.spacingVDWGrid + 0.5);
-      numberOfVDWGridPoints.y = static_cast<std::size_t>(perpendicular_widths.y / forceField.spacingVDWGrid + 0.5);
-      numberOfVDWGridPoints.z = static_cast<std::size_t>(perpendicular_widths.z / forceField.spacingVDWGrid + 0.5);
-    }
-
-    for (const std::size_t& index : forceField.gridPseudoAtomIndices)
-    {
-      std::print(stream, "Generating an VDW interpolation grid ({}x{}x{}) for {}\n", numberOfVDWGridPoints.x,
-                 numberOfVDWGridPoints.y, numberOfVDWGridPoints.z, forceField.pseudoAtoms[index].name);
-      std::print(stream, "===============================================================================\n");
-
-      interpolationGrids[index] =
-          InterpolationEnergyGrid(framework->simulationBox, forceField.potentialEnergySurfaceOrigin,
-                                  numberOfVDWGridPoints, forceField.interpolationScheme);
-      interpolationGrids[index]->makeFrameworkInterpolationGrid(stream, ForceField::InterpolationGridType::LennardJones,
-                                                                forceField, framework.value(),
-                                                                forceField.cutOffFrameworkVDW, index);
-
-      double boltzmann_weight_summed_vdw{};
-      double boltzmann_weighted_energy_full_summed_vdw{};
-      double boltzmann_weighted_energy_interpolated_summed_vdw{};
-      double boltzmann_weighted_difference_squared_summed_vdw{};
-      double boltzmann_weighted_full_squared_summed_vdw{};
-
-      double3 boltzmann_weighted_gradient_full_summed_vdw{};
-      double3 boltzmann_weighted_gradient_interpolated_summed_vdw{};
-      double3 boltzmann_weighted_difference_squared_summed_vdw_gradient{};
-      double3 boltzmann_weighted_full_squared_summed_vdw_gradient{};
-
-      double3x3 boltzmann_weighted_hessian_full_summed_vdw{};
-      double3x3 boltzmann_weighted_hessian_interpolated_summed_vdw{};
-      double3x3 boltzmann_weighted_difference_squared_summed_vdw_hessian{};
-      double3x3 boltzmann_weighted_full_squared_summed_vdw_hessian{};
-
-      double boltzmann_weight_summed_real_ewald{};
-      double boltzmann_weighted_energy_full_summed_real_ewald{};
-      double boltzmann_weighted_energy_interpolated_summed_real_ewald{};
-      double boltzmann_weighted_difference_squared_summed_real_ewald{};
-      double boltzmann_weighted_full_squared_summed_real_ewald{};
-
-      double3 boltzmann_weighted_gradient_full_summed_real_ewald{};
-      double3 boltzmann_weighted_gradient_interpolated_summed_real_ewald{};
-      double3 boltzmann_weighted_difference_squared_summed_real_ewald_gradient{};
-      double3 boltzmann_weighted_full_squared_summed_real_ewald_gradient{};
-
-      double3x3 boltzmann_weighted_hessian_full_summed_real_ewald{};
-      double3x3 boltzmann_weighted_hessian_interpolated_summed_real_ewald{};
-      double3x3 boltzmann_weighted_difference_squared_summed_real_ewald_hessian{};
-      double3x3 boltzmann_weighted_full_squared_summed_real_ewald_hessian{};
-
-      for (std::size_t i = 0; i < numberOfGridTestPoints; ++i)
-      {
-        // generate random position in super cell
-        double3 s = double3(random.uniform(), random.uniform(), random.uniform());
-        double3 pos = simulationBox.cell * s;
-
-        auto [interpolated_energy_vdw, interpolated_gradient_vdw, interpolated_hessian_vdw] =
-            interpolationGrids[index]->interpolateHessian(pos);
-
-        // convert to Kelvin
-        interpolated_energy_vdw *= Units::EnergyToKelvin;
-        interpolated_gradient_vdw.x *= Units::EnergyToKelvin;
-        interpolated_gradient_vdw.y *= Units::EnergyToKelvin;
-        interpolated_gradient_vdw.z *= Units::EnergyToKelvin;
-        interpolated_hessian_vdw.ax *= Units::EnergyToKelvin;
-        interpolated_hessian_vdw.ay *= Units::EnergyToKelvin;
-        interpolated_hessian_vdw.az *= Units::EnergyToKelvin;
-        interpolated_hessian_vdw.bx *= Units::EnergyToKelvin;
-        interpolated_hessian_vdw.by *= Units::EnergyToKelvin;
-        interpolated_hessian_vdw.bz *= Units::EnergyToKelvin;
-        interpolated_hessian_vdw.cx *= Units::EnergyToKelvin;
-        interpolated_hessian_vdw.cy *= Units::EnergyToKelvin;
-        interpolated_hessian_vdw.cz *= Units::EnergyToKelvin;
-
-        double analytical_vdw_energy{};
-        double3 analytical_vdw_gradient{};
-        double3x3 analytical_vdw_hessian{};
-        switch (forceField.interpolationScheme)
-        {
-          case ForceField::InterpolationScheme::Polynomial:
-          {
-            double analytical_vdw_quintic =
-                Interactions::calculateEnergyAtPosition(ForceField::InterpolationGridType::LennardJones, forceField,
-                                                        simulationBox, pos, index, spanOfFrameworkAtoms());
-
-            analytical_vdw_energy = analytical_vdw_quintic * Units::EnergyToKelvin;
-          }
-          break;
-          case ForceField::InterpolationScheme::Tricubic:
-          {
-            std::array<double, 8> analytical_vdw_tricubic = Interactions::calculateTricubicFractionalAtPosition(
-                ForceField::InterpolationGridType::LennardJones, forceField, simulationBox, pos, index,
-                framework->simulationBox, spanOfFrameworkAtoms());
-
-            analytical_vdw_energy = analytical_vdw_tricubic[0] * Units::EnergyToKelvin;
-
-            // convert gradient from fractional to Cartesian
-            analytical_vdw_gradient =
-                framework->simulationBox.inverseCell.transpose() *
-                double3(analytical_vdw_tricubic[1], analytical_vdw_tricubic[2], analytical_vdw_tricubic[3]);
-
-            analytical_vdw_gradient.x *= Units::EnergyToKelvin;
-            analytical_vdw_gradient.y *= Units::EnergyToKelvin;
-            analytical_vdw_gradient.z *= Units::EnergyToKelvin;
-          }
-          break;
-          case ForceField::InterpolationScheme::Triquintic:
-          {
-            std::array<double, 27> analytical_vdw_triquintic = Interactions::calculateTriquinticFractionalAtPosition(
-                ForceField::InterpolationGridType::LennardJones, forceField, simulationBox, pos, index,
-                framework->simulationBox, spanOfFrameworkAtoms());
-
-            analytical_vdw_energy = analytical_vdw_triquintic[0] * Units::EnergyToKelvin;
-
-            // convert gradient from fractional to Cartesian
-            analytical_vdw_gradient =
-                framework->simulationBox.inverseCell.transpose() *
-                double3(analytical_vdw_triquintic[1], analytical_vdw_triquintic[2], analytical_vdw_triquintic[3]);
-
-            analytical_vdw_gradient.x *= Units::EnergyToKelvin;
-            analytical_vdw_gradient.y *= Units::EnergyToKelvin;
-            analytical_vdw_gradient.z *= Units::EnergyToKelvin;
-
-            double3x3 hessian =
-                double3x3(analytical_vdw_triquintic[4], analytical_vdw_triquintic[5], analytical_vdw_triquintic[6],
-                          analytical_vdw_triquintic[5], analytical_vdw_triquintic[7], analytical_vdw_triquintic[8],
-                          analytical_vdw_triquintic[6], analytical_vdw_triquintic[8], analytical_vdw_triquintic[9]);
-            analytical_vdw_hessian =
-                framework->simulationBox.inverseCell.transpose() * hessian * framework->simulationBox.inverseCell;
-
-            analytical_vdw_hessian.ax *= Units::EnergyToKelvin;
-            analytical_vdw_hessian.ay *= Units::EnergyToKelvin;
-            analytical_vdw_hessian.az *= Units::EnergyToKelvin;
-            analytical_vdw_hessian.bx *= Units::EnergyToKelvin;
-            analytical_vdw_hessian.by *= Units::EnergyToKelvin;
-            analytical_vdw_hessian.bz *= Units::EnergyToKelvin;
-            analytical_vdw_hessian.cx *= Units::EnergyToKelvin;
-            analytical_vdw_hessian.cy *= Units::EnergyToKelvin;
-            analytical_vdw_hessian.cz *= Units::EnergyToKelvin;
-          }
-          break;
-        }
-
-        double boltzmann_weight_vdw = std::exp(-beta * analytical_vdw_energy);
-
-        boltzmann_weight_summed_vdw += boltzmann_weight_vdw;
-
-        boltzmann_weighted_energy_interpolated_summed_vdw += interpolated_energy_vdw * boltzmann_weight_vdw;
-        boltzmann_weighted_energy_full_summed_vdw += analytical_vdw_energy * boltzmann_weight_vdw;
-        boltzmann_weighted_difference_squared_summed_vdw += (analytical_vdw_energy - interpolated_energy_vdw) *
-                                                            (analytical_vdw_energy - interpolated_energy_vdw) *
-                                                            boltzmann_weight_vdw;
-        boltzmann_weighted_full_squared_summed_vdw +=
-            analytical_vdw_energy * analytical_vdw_energy * boltzmann_weight_vdw;
-
-        // gradient
-        boltzmann_weighted_gradient_interpolated_summed_vdw.x += interpolated_gradient_vdw.x * boltzmann_weight_vdw;
-        boltzmann_weighted_gradient_interpolated_summed_vdw.y += interpolated_gradient_vdw.y * boltzmann_weight_vdw;
-        boltzmann_weighted_gradient_interpolated_summed_vdw.z += interpolated_gradient_vdw.z * boltzmann_weight_vdw;
-
-        boltzmann_weighted_gradient_full_summed_vdw.x += analytical_vdw_gradient.x * boltzmann_weight_vdw;
-        boltzmann_weighted_gradient_full_summed_vdw.y += analytical_vdw_gradient.y * boltzmann_weight_vdw;
-        boltzmann_weighted_gradient_full_summed_vdw.z += analytical_vdw_gradient.z * boltzmann_weight_vdw;
-
-        boltzmann_weighted_difference_squared_summed_vdw_gradient.x +=
-            (analytical_vdw_gradient.x - interpolated_gradient_vdw.x) *
-            (analytical_vdw_gradient.x - interpolated_gradient_vdw.x) * boltzmann_weight_vdw;
-        boltzmann_weighted_difference_squared_summed_vdw_gradient.y +=
-            (analytical_vdw_gradient.y - interpolated_gradient_vdw.y) *
-            (analytical_vdw_gradient.y - interpolated_gradient_vdw.y) * boltzmann_weight_vdw;
-        boltzmann_weighted_difference_squared_summed_vdw_gradient.z +=
-            (analytical_vdw_gradient.z - interpolated_gradient_vdw.z) *
-            (analytical_vdw_gradient.z - interpolated_gradient_vdw.z) * boltzmann_weight_vdw;
-
-        boltzmann_weighted_full_squared_summed_vdw_gradient.x +=
-            analytical_vdw_gradient.x * analytical_vdw_gradient.x * boltzmann_weight_vdw;
-        boltzmann_weighted_full_squared_summed_vdw_gradient.y +=
-            analytical_vdw_gradient.y * analytical_vdw_gradient.y * boltzmann_weight_vdw;
-        boltzmann_weighted_full_squared_summed_vdw_gradient.z +=
-            analytical_vdw_gradient.z * analytical_vdw_gradient.z * boltzmann_weight_vdw;
-
-        // Hessian
-        boltzmann_weighted_hessian_interpolated_summed_vdw.ax += interpolated_hessian_vdw.ax * boltzmann_weight_vdw;
-        boltzmann_weighted_hessian_interpolated_summed_vdw.ay += interpolated_hessian_vdw.ay * boltzmann_weight_vdw;
-        boltzmann_weighted_hessian_interpolated_summed_vdw.az += interpolated_hessian_vdw.az * boltzmann_weight_vdw;
-        boltzmann_weighted_hessian_interpolated_summed_vdw.by += interpolated_hessian_vdw.by * boltzmann_weight_vdw;
-        boltzmann_weighted_hessian_interpolated_summed_vdw.bz += interpolated_hessian_vdw.bz * boltzmann_weight_vdw;
-        boltzmann_weighted_hessian_interpolated_summed_vdw.cz += interpolated_hessian_vdw.cz * boltzmann_weight_vdw;
-
-        boltzmann_weighted_hessian_full_summed_vdw.ax += analytical_vdw_hessian.ax * boltzmann_weight_vdw;
-        boltzmann_weighted_hessian_full_summed_vdw.ay += analytical_vdw_hessian.ay * boltzmann_weight_vdw;
-        boltzmann_weighted_hessian_full_summed_vdw.az += analytical_vdw_hessian.az * boltzmann_weight_vdw;
-        boltzmann_weighted_hessian_full_summed_vdw.by += analytical_vdw_hessian.by * boltzmann_weight_vdw;
-        boltzmann_weighted_hessian_full_summed_vdw.bz += analytical_vdw_hessian.bz * boltzmann_weight_vdw;
-        boltzmann_weighted_hessian_full_summed_vdw.cz += analytical_vdw_hessian.cz * boltzmann_weight_vdw;
-
-        boltzmann_weighted_difference_squared_summed_vdw_hessian.ax +=
-            (analytical_vdw_hessian.ax - interpolated_hessian_vdw.ax) *
-            (analytical_vdw_hessian.ax - interpolated_hessian_vdw.ax) * boltzmann_weight_vdw;
-        boltzmann_weighted_difference_squared_summed_vdw_hessian.ay +=
-            (analytical_vdw_hessian.ay - interpolated_hessian_vdw.ay) *
-            (analytical_vdw_hessian.ay - interpolated_hessian_vdw.ay) * boltzmann_weight_vdw;
-        boltzmann_weighted_difference_squared_summed_vdw_hessian.az +=
-            (analytical_vdw_hessian.az - interpolated_hessian_vdw.az) *
-            (analytical_vdw_hessian.az - interpolated_hessian_vdw.az) * boltzmann_weight_vdw;
-        boltzmann_weighted_difference_squared_summed_vdw_hessian.by +=
-            (analytical_vdw_hessian.by - interpolated_hessian_vdw.by) *
-            (analytical_vdw_hessian.by - interpolated_hessian_vdw.by) * boltzmann_weight_vdw;
-        boltzmann_weighted_difference_squared_summed_vdw_hessian.bz +=
-            (analytical_vdw_hessian.bz - interpolated_hessian_vdw.bz) *
-            (analytical_vdw_hessian.bz - interpolated_hessian_vdw.bz) * boltzmann_weight_vdw;
-        boltzmann_weighted_difference_squared_summed_vdw_hessian.cz +=
-            (analytical_vdw_hessian.cz - interpolated_hessian_vdw.cz) *
-            (analytical_vdw_hessian.cz - interpolated_hessian_vdw.cz) * boltzmann_weight_vdw;
-
-        boltzmann_weighted_full_squared_summed_vdw_hessian.ax +=
-            analytical_vdw_hessian.ax * analytical_vdw_hessian.ax * boltzmann_weight_vdw;
-        boltzmann_weighted_full_squared_summed_vdw_hessian.ay +=
-            analytical_vdw_hessian.ay * analytical_vdw_hessian.ay * boltzmann_weight_vdw;
-        boltzmann_weighted_full_squared_summed_vdw_hessian.az +=
-            analytical_vdw_hessian.az * analytical_vdw_hessian.az * boltzmann_weight_vdw;
-        boltzmann_weighted_full_squared_summed_vdw_hessian.by +=
-            analytical_vdw_hessian.by * analytical_vdw_hessian.by * boltzmann_weight_vdw;
-        boltzmann_weighted_full_squared_summed_vdw_hessian.bz +=
-            analytical_vdw_hessian.bz * analytical_vdw_hessian.bz * boltzmann_weight_vdw;
-        boltzmann_weighted_full_squared_summed_vdw_hessian.cz +=
-            analytical_vdw_hessian.cz * analytical_vdw_hessian.cz * boltzmann_weight_vdw;
-
-        // test charges when no VDW overlap detected (putting a unit charge on top of negative framework atom can lead
-        // to very negative energies)
-        if (analytical_vdw_energy < forceField.energyOverlapCriteria)
-        {
-          double charge = forceField.pseudoAtoms[index].charge;
-          auto [interpolated_value_real_ewald, interpolated_gradient_real_ewald, interpolated_hessian_real_ewald] =
-              interpolationGrids.back()->interpolateHessian(pos);
-
-          interpolated_value_real_ewald *= (charge * Units::EnergyToKelvin);
-          interpolated_gradient_real_ewald.x *= (charge * Units::EnergyToKelvin);
-          interpolated_gradient_real_ewald.y *= (charge * Units::EnergyToKelvin);
-          interpolated_gradient_real_ewald.z *= (charge * Units::EnergyToKelvin);
-          interpolated_hessian_real_ewald.ax *= (charge * Units::EnergyToKelvin);
-          interpolated_hessian_real_ewald.ay *= (charge * Units::EnergyToKelvin);
-          interpolated_hessian_real_ewald.az *= (charge * Units::EnergyToKelvin);
-          interpolated_hessian_real_ewald.bx *= (charge * Units::EnergyToKelvin);
-          interpolated_hessian_real_ewald.by *= (charge * Units::EnergyToKelvin);
-          interpolated_hessian_real_ewald.bz *= (charge * Units::EnergyToKelvin);
-          interpolated_hessian_real_ewald.cx *= (charge * Units::EnergyToKelvin);
-          interpolated_hessian_real_ewald.cy *= (charge * Units::EnergyToKelvin);
-          interpolated_hessian_real_ewald.cz *= (charge * Units::EnergyToKelvin);
-
-          double analytical_real_ewald_energy{};
-          double3 analytical_real_ewald_gradient{};
-          double3x3 analytical_real_ewald_hessian{};
-          switch (forceField.interpolationScheme)
-          {
-            case ForceField::InterpolationScheme::Polynomial:
-            {
-              double analytical_real_ewald_tricubic =
-                  Interactions::calculateEnergyAtPosition(ForceField::InterpolationGridType::EwaldReal, forceField,
-                                                          simulationBox, pos, index, spanOfFrameworkAtoms());
-
-              analytical_real_ewald_energy = charge * analytical_real_ewald_tricubic * Units::EnergyToKelvin;
-            }
-            break;
-            case ForceField::InterpolationScheme::Tricubic:
-            {
-              std::array<double, 8> analytical_real_ewald_tricubic =
-                  Interactions::calculateTricubicFractionalAtPosition(ForceField::InterpolationGridType::EwaldReal,
-                                                                      forceField, simulationBox, pos, index,
-                                                                      framework->simulationBox, spanOfFrameworkAtoms());
-
-              analytical_real_ewald_energy = charge * analytical_real_ewald_tricubic[0] * Units::EnergyToKelvin;
-
-              // convert gradient from fractional to Cartesian
-              analytical_real_ewald_gradient =
-                  framework->simulationBox.inverseCell.transpose() * double3(analytical_real_ewald_tricubic[1],
-                                                                             analytical_real_ewald_tricubic[2],
-                                                                             analytical_real_ewald_tricubic[3]);
-              analytical_real_ewald_gradient.x *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_gradient.y *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_gradient.z *= (charge * Units::EnergyToKelvin);
-            }
-            break;
-            case ForceField::InterpolationScheme::Triquintic:
-            {
-              std::array<double, 27> analytical_real_ewald_triquintic =
-                  Interactions::calculateTriquinticFractionalAtPosition(
-                      ForceField::InterpolationGridType::EwaldReal, forceField, simulationBox, pos, index,
-                      framework->simulationBox, spanOfFrameworkAtoms());
-
-              analytical_real_ewald_energy = charge * analytical_real_ewald_triquintic[0] * Units::EnergyToKelvin;
-
-              // convert gradient from fractional to Cartesian
-              analytical_real_ewald_gradient =
-                  framework->simulationBox.inverseCell.transpose() * double3(analytical_real_ewald_triquintic[1],
-                                                                             analytical_real_ewald_triquintic[2],
-                                                                             analytical_real_ewald_triquintic[3]);
-
-              analytical_real_ewald_gradient.x *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_gradient.y *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_gradient.z *= (charge * Units::EnergyToKelvin);
-
-              double3x3 hessian = double3x3(analytical_real_ewald_triquintic[4], analytical_real_ewald_triquintic[5],
-                                            analytical_real_ewald_triquintic[6], analytical_real_ewald_triquintic[5],
-                                            analytical_real_ewald_triquintic[7], analytical_real_ewald_triquintic[8],
-                                            analytical_real_ewald_triquintic[6], analytical_real_ewald_triquintic[8],
-                                            analytical_real_ewald_triquintic[9]);
-              analytical_real_ewald_hessian =
-                  framework->simulationBox.inverseCell.transpose() * hessian * framework->simulationBox.inverseCell;
-
-              analytical_real_ewald_hessian.ax *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_hessian.ay *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_hessian.az *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_hessian.bx *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_hessian.by *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_hessian.bz *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_hessian.cx *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_hessian.cy *= (charge * Units::EnergyToKelvin);
-              analytical_real_ewald_hessian.cz *= (charge * Units::EnergyToKelvin);
-            }
-            break;
-          }
-
-          double boltzmann_weight_real_ewald = std::exp(-beta * analytical_vdw_energy);
-
-          boltzmann_weight_summed_real_ewald += boltzmann_weight_real_ewald;
-
-          // energy
-          boltzmann_weighted_energy_interpolated_summed_real_ewald +=
-              interpolated_value_real_ewald * boltzmann_weight_real_ewald;
-          boltzmann_weighted_energy_full_summed_real_ewald +=
-              analytical_real_ewald_energy * boltzmann_weight_real_ewald;
-          boltzmann_weighted_difference_squared_summed_real_ewald +=
-              (analytical_real_ewald_energy - interpolated_value_real_ewald) *
-              (analytical_real_ewald_energy - interpolated_value_real_ewald) * boltzmann_weight_real_ewald;
-          boltzmann_weighted_full_squared_summed_real_ewald +=
-              analytical_real_ewald_energy * analytical_real_ewald_energy * boltzmann_weight_real_ewald;
-
-          // gradients
-          boltzmann_weighted_gradient_interpolated_summed_real_ewald.x +=
-              interpolated_gradient_real_ewald.x * boltzmann_weight_real_ewald;
-          boltzmann_weighted_gradient_interpolated_summed_real_ewald.y +=
-              interpolated_gradient_real_ewald.y * boltzmann_weight_real_ewald;
-          boltzmann_weighted_gradient_interpolated_summed_real_ewald.z +=
-              interpolated_gradient_real_ewald.z * boltzmann_weight_real_ewald;
-
-          boltzmann_weighted_gradient_full_summed_real_ewald.x +=
-              analytical_real_ewald_gradient.x * boltzmann_weight_real_ewald;
-          boltzmann_weighted_gradient_full_summed_real_ewald.y +=
-              analytical_real_ewald_gradient.y * boltzmann_weight_real_ewald;
-          boltzmann_weighted_gradient_full_summed_real_ewald.z +=
-              analytical_real_ewald_gradient.z * boltzmann_weight_real_ewald;
-
-          boltzmann_weighted_difference_squared_summed_real_ewald_gradient.x +=
-              (analytical_real_ewald_gradient.x - interpolated_gradient_real_ewald.x) *
-              (analytical_real_ewald_gradient.x - interpolated_gradient_real_ewald.x) * boltzmann_weight_real_ewald;
-          boltzmann_weighted_difference_squared_summed_real_ewald_gradient.y +=
-              (analytical_real_ewald_gradient.y - interpolated_gradient_real_ewald.y) *
-              (analytical_real_ewald_gradient.y - interpolated_gradient_real_ewald.y) * boltzmann_weight_real_ewald;
-          boltzmann_weighted_difference_squared_summed_real_ewald_gradient.z +=
-              (analytical_real_ewald_gradient.z - interpolated_gradient_real_ewald.z) *
-              (analytical_real_ewald_gradient.z - interpolated_gradient_real_ewald.z) * boltzmann_weight_real_ewald;
-
-          boltzmann_weighted_full_squared_summed_real_ewald_gradient.x +=
-              analytical_real_ewald_gradient.x * analytical_real_ewald_gradient.x * boltzmann_weight_real_ewald;
-          boltzmann_weighted_full_squared_summed_real_ewald_gradient.y +=
-              analytical_real_ewald_gradient.y * analytical_real_ewald_gradient.y * boltzmann_weight_real_ewald;
-          boltzmann_weighted_full_squared_summed_real_ewald_gradient.z +=
-              analytical_real_ewald_gradient.z * analytical_real_ewald_gradient.z * boltzmann_weight_real_ewald;
-
-          // Hessian
-          boltzmann_weighted_hessian_interpolated_summed_real_ewald.ax +=
-              interpolated_hessian_real_ewald.ax * boltzmann_weight_real_ewald;
-          boltzmann_weighted_hessian_interpolated_summed_real_ewald.ay +=
-              interpolated_hessian_real_ewald.ay * boltzmann_weight_real_ewald;
-          boltzmann_weighted_hessian_interpolated_summed_real_ewald.az +=
-              interpolated_hessian_real_ewald.az * boltzmann_weight_real_ewald;
-          boltzmann_weighted_hessian_interpolated_summed_real_ewald.by +=
-              interpolated_hessian_real_ewald.by * boltzmann_weight_real_ewald;
-          boltzmann_weighted_hessian_interpolated_summed_real_ewald.bz +=
-              interpolated_hessian_real_ewald.bz * boltzmann_weight_real_ewald;
-          boltzmann_weighted_hessian_interpolated_summed_real_ewald.cz +=
-              interpolated_hessian_real_ewald.cz * boltzmann_weight_real_ewald;
-
-          boltzmann_weighted_hessian_full_summed_real_ewald.ax +=
-              analytical_real_ewald_hessian.ax * boltzmann_weight_real_ewald;
-          boltzmann_weighted_hessian_full_summed_real_ewald.ay +=
-              analytical_real_ewald_hessian.ay * boltzmann_weight_real_ewald;
-          boltzmann_weighted_hessian_full_summed_real_ewald.az +=
-              analytical_real_ewald_hessian.az * boltzmann_weight_real_ewald;
-          boltzmann_weighted_hessian_full_summed_real_ewald.by +=
-              analytical_real_ewald_hessian.by * boltzmann_weight_real_ewald;
-          boltzmann_weighted_hessian_full_summed_real_ewald.bz +=
-              analytical_real_ewald_hessian.bz * boltzmann_weight_real_ewald;
-          boltzmann_weighted_hessian_full_summed_real_ewald.cz +=
-              analytical_real_ewald_hessian.cz * boltzmann_weight_real_ewald;
-
-          boltzmann_weighted_difference_squared_summed_real_ewald_hessian.ax +=
-              (analytical_real_ewald_hessian.ax - interpolated_hessian_real_ewald.ax) *
-              (analytical_real_ewald_hessian.ax - interpolated_hessian_real_ewald.ax) * boltzmann_weight_real_ewald;
-          boltzmann_weighted_difference_squared_summed_real_ewald_hessian.ay +=
-              (analytical_real_ewald_hessian.ay - interpolated_hessian_real_ewald.ay) *
-              (analytical_real_ewald_hessian.ay - interpolated_hessian_real_ewald.ay) * boltzmann_weight_real_ewald;
-          boltzmann_weighted_difference_squared_summed_real_ewald_hessian.az +=
-              (analytical_real_ewald_hessian.az - interpolated_hessian_real_ewald.az) *
-              (analytical_real_ewald_hessian.az - interpolated_hessian_real_ewald.az) * boltzmann_weight_real_ewald;
-          boltzmann_weighted_difference_squared_summed_real_ewald_hessian.by +=
-              (analytical_real_ewald_hessian.by - interpolated_hessian_real_ewald.by) *
-              (analytical_real_ewald_hessian.by - interpolated_hessian_real_ewald.by) * boltzmann_weight_real_ewald;
-          boltzmann_weighted_difference_squared_summed_real_ewald_hessian.bz +=
-              (analytical_real_ewald_hessian.bz - interpolated_hessian_real_ewald.bz) *
-              (analytical_real_ewald_hessian.bz - interpolated_hessian_real_ewald.bz) * boltzmann_weight_real_ewald;
-          boltzmann_weighted_difference_squared_summed_real_ewald_hessian.cz +=
-              (analytical_real_ewald_hessian.cz - interpolated_hessian_real_ewald.cz) *
-              (analytical_real_ewald_hessian.cz - interpolated_hessian_real_ewald.cz) * boltzmann_weight_real_ewald;
-
-          boltzmann_weighted_full_squared_summed_real_ewald_hessian.ax +=
-              analytical_real_ewald_hessian.ax * analytical_real_ewald_hessian.ax * boltzmann_weight_real_ewald;
-          boltzmann_weighted_full_squared_summed_real_ewald_hessian.ay +=
-              analytical_real_ewald_hessian.ay * analytical_real_ewald_hessian.ay * boltzmann_weight_real_ewald;
-          boltzmann_weighted_full_squared_summed_real_ewald_hessian.az +=
-              analytical_real_ewald_hessian.az * analytical_real_ewald_hessian.az * boltzmann_weight_real_ewald;
-          boltzmann_weighted_full_squared_summed_real_ewald_hessian.by +=
-              analytical_real_ewald_hessian.by * analytical_real_ewald_hessian.by * boltzmann_weight_real_ewald;
-          boltzmann_weighted_full_squared_summed_real_ewald_hessian.bz +=
-              analytical_real_ewald_hessian.bz * analytical_real_ewald_hessian.bz * boltzmann_weight_real_ewald;
-          boltzmann_weighted_full_squared_summed_real_ewald_hessian.cz +=
-              analytical_real_ewald_hessian.cz * analytical_real_ewald_hessian.cz * boltzmann_weight_real_ewald;
-        }
-      }
-
-      std::print(stream, "Testing VDW interpolation grid ({}x{}x{}) for {}\n", numberOfVDWGridPoints.x,
-                 numberOfVDWGridPoints.y, numberOfVDWGridPoints.z, forceField.pseudoAtoms[index].name);
-      std::print(stream, "-------------------------------------------------------------------------------\n");
-      std::print(stream, "(Using {} points for testing)\n\n", numberOfGridTestPoints);
-
-      std::print(stream, "Boltzmann average energy VDW (table):      {}\n",
-                 boltzmann_weighted_energy_interpolated_summed_vdw / boltzmann_weight_summed_vdw);
-      std::print(stream, "Boltzmann average energy VDW (full):       {}\n",
-                 boltzmann_weighted_energy_full_summed_vdw / boltzmann_weight_summed_vdw);
-      std::print(
-          stream, "Boltzmann relative error:                  {}\n\n",
-          std::sqrt(boltzmann_weighted_difference_squared_summed_vdw / boltzmann_weighted_full_squared_summed_vdw));
-
-      if (forceField.interpolationScheme == ForceField::InterpolationScheme::Tricubic ||
-          forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
-      {
-        std::print(stream, "Boltzmann average gradient(x) VDW (table): {}\n",
-                   boltzmann_weighted_gradient_interpolated_summed_vdw.x / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann average gradient(x) VDW (full):  {}\n",
-                   boltzmann_weighted_gradient_full_summed_vdw.x / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_gradient.x /
-                             boltzmann_weighted_full_squared_summed_vdw_gradient.x));
-
-        std::print(stream, "Boltzmann average gradient(y) VDW (table): {}\n",
-                   boltzmann_weighted_gradient_interpolated_summed_vdw.y / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann average gradient(y) VDW (full):  {}\n",
-                   boltzmann_weighted_gradient_full_summed_vdw.y / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_gradient.y /
-                             boltzmann_weighted_full_squared_summed_vdw_gradient.y));
-
-        std::print(stream, "Boltzmann average gradient(z) VDW (table): {}\n",
-                   boltzmann_weighted_gradient_interpolated_summed_vdw.z / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann average gradient(z) VDW (full):  {}\n",
-                   boltzmann_weighted_gradient_full_summed_vdw.z / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_gradient.z /
-                             boltzmann_weighted_full_squared_summed_vdw_gradient.z));
-      }
-
-      if (forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
-      {
-        std::print(stream, "Boltzmann average hessian(ax) VDW (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_vdw.ax / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann average hessian(ax) VDW (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_vdw.ax / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_hessian.ax /
-                             boltzmann_weighted_full_squared_summed_vdw_hessian.ax));
-
-        std::print(stream, "Boltzmann average hessian(ay) VDW (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_vdw.ay / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann average hessian(ay) VDW (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_vdw.ay / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_hessian.ay /
-                             boltzmann_weighted_full_squared_summed_vdw_hessian.ay));
-
-        std::print(stream, "Boltzmann average hessian(az) VDW (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_vdw.az / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann average hessian(az) VDW (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_vdw.az / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_hessian.az /
-                             boltzmann_weighted_full_squared_summed_vdw_hessian.az));
-
-        std::print(stream, "Boltzmann average hessian(by) VDW (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_vdw.by / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann average hessian(by) VDW (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_vdw.by / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_hessian.by /
-                             boltzmann_weighted_full_squared_summed_vdw_hessian.by));
-
-        std::print(stream, "Boltzmann average hessian(bz) VDW (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_vdw.bz / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann average hessian(bz) VDW (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_vdw.bz / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_hessian.bz /
-                             boltzmann_weighted_full_squared_summed_vdw_hessian.bz));
-
-        std::print(stream, "Boltzmann average hessian(cz) VDW (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_vdw.cz / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann average hessian(cz) VDW (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_vdw.cz / boltzmann_weight_summed_vdw);
-        std::print(stream, "Boltzmann relative error:                  {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_vdw_hessian.cz /
-                             boltzmann_weighted_full_squared_summed_vdw_hessian.cz));
-      }
-
-      std::print(stream, "Testing Coulomb interpolation grid ({}x{}x{}) for {}\n", numberOfCoulombGridPoints.x,
-                 numberOfCoulombGridPoints.y, numberOfCoulombGridPoints.z, forceField.pseudoAtoms[index].name);
-      std::print(stream, "-------------------------------------------------------------------------------\n");
-      std::print(stream, "(Using {} points for testing)\n\n", numberOfGridTestPoints);
-
-      std::print(stream, "Boltzmann average energy Real Ewald (table):      {}\n",
-                 boltzmann_weighted_energy_interpolated_summed_real_ewald / boltzmann_weight_summed_real_ewald);
-      std::print(stream, "Boltzmann average energy Real Ewald (full):       {}\n",
-                 boltzmann_weighted_energy_full_summed_real_ewald / boltzmann_weight_summed_real_ewald);
-      std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                 std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald /
-                           boltzmann_weighted_full_squared_summed_real_ewald));
-
-      if (forceField.interpolationScheme == ForceField::InterpolationScheme::Tricubic ||
-          forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
-      {
-        std::print(stream, "Boltzmann average gradient(x) Real Ewald (table): {}\n",
-                   boltzmann_weighted_gradient_interpolated_summed_real_ewald.x / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann average gradient(x) Real Ewald (full):  {}\n",
-                   boltzmann_weighted_gradient_full_summed_real_ewald.x / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_gradient.x /
-                             boltzmann_weighted_full_squared_summed_real_ewald_gradient.x));
-
-        std::print(stream, "Boltzmann average gradient(y) Real Ewald (table): {}\n",
-                   boltzmann_weighted_gradient_interpolated_summed_real_ewald.y / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann average gradient(y) Real Ewald (full):  {}\n",
-                   boltzmann_weighted_gradient_full_summed_real_ewald.y / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_gradient.y /
-                             boltzmann_weighted_full_squared_summed_real_ewald_gradient.y));
-
-        std::print(stream, "Boltzmann average gradient(z) Real Ewald (table): {}\n",
-                   boltzmann_weighted_gradient_interpolated_summed_real_ewald.z / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann average gradient(z) Real Ewald (full):  {}\n",
-                   boltzmann_weighted_gradient_full_summed_real_ewald.z / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_gradient.z /
-                             boltzmann_weighted_full_squared_summed_real_ewald_gradient.z));
-      }
-
-      if (forceField.interpolationScheme == ForceField::InterpolationScheme::Triquintic)
-      {
-        std::print(stream, "Boltzmann average Hessian(ax) Real Ewald (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_real_ewald.ax / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann average Hessian(ax) Real Ewald (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_real_ewald.ax / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_hessian.ax /
-                             boltzmann_weighted_full_squared_summed_real_ewald_hessian.ax));
-
-        std::print(stream, "Boltzmann average Hessian(ay) Real Ewald (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_real_ewald.ay / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann average Hessian(ay) Real Ewald (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_real_ewald.ay / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_hessian.ay /
-                             boltzmann_weighted_full_squared_summed_real_ewald_hessian.ay));
-
-        std::print(stream, "Boltzmann average Hessian(az) Real Ewald (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_real_ewald.az / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann average Hessian(az) Real Ewald (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_real_ewald.az / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_hessian.az /
-                             boltzmann_weighted_full_squared_summed_real_ewald_hessian.az));
-
-        std::print(stream, "Boltzmann average Hessian(by) Real Ewald (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_real_ewald.by / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann average Hessian(by) Real Ewald (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_real_ewald.by / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_hessian.by /
-                             boltzmann_weighted_full_squared_summed_real_ewald_hessian.by));
-
-        std::print(stream, "Boltzmann average Hessian(bz) Real Ewald (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_real_ewald.bz / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann average Hessian(bz) Real Ewald (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_real_ewald.bz / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_hessian.bz /
-                             boltzmann_weighted_full_squared_summed_real_ewald_hessian.bz));
-
-        std::print(stream, "Boltzmann average Hessian(cz) Real Ewald (table): {}\n",
-                   boltzmann_weighted_hessian_interpolated_summed_real_ewald.cz / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann average Hessian(cz) Real Ewald (full):  {}\n",
-                   boltzmann_weighted_hessian_full_summed_real_ewald.cz / boltzmann_weight_summed_real_ewald);
-        std::print(stream, "Boltzmann relative error:                         {}\n\n",
-                   std::sqrt(boltzmann_weighted_difference_squared_summed_real_ewald_hessian.cz /
-                             boltzmann_weighted_full_squared_summed_real_ewald_hessian.cz));
-      }
-
-      std::print(stream, "\n");
-      std::flush(stream);
-    }
+    energyLogHeaderWritten = true;
   }
-}
 
-nlohmann::json System::jsonMCMoveStatistics() const
-{
-  nlohmann::json status;
+  const bool allComponents = componentId == std::numeric_limits<std::size_t>::max();
+  const std::string component = allComponents ? std::string{"all"} : std::to_string(componentId);
+  const std::size_t moleculeCount =
+      allComponents ? numberOfMolecules() : numberOfIntegerMoleculesPerComponent.at(componentId);
+  output << std::setprecision(17) << moveType << ',' << component << ',' << moleculeCount << ','
+         << totalEnergy.potentialEnergy() << ',';
 
-  status["system"] = mc_moves_statistics.jsonMCMoveStatistics();
-  for (const Component& component : components)
+  if (useMBX)
   {
-    status[component.name] = component.mc_moves_statistics.jsonMCMoveStatistics();
-
-    if (component.hasFractionalMolecule)
-    {
-      double imposedChemicalPotential = std::log(beta * component.molFraction * pressure) / beta;
-      double imposedFugacity = component.molFraction * pressure;
-
-      status["lambdaStatistics"]["CFCMC"] =
-          component.lambdaGC.jsonAveragesStatistics(beta, imposedChemicalPotential, imposedFugacity);
-      status["lambdaStatistics"]["thermodynamicIntegration"] =
-          component.lambdaGC.jsonDUdLambdaStatistics(beta, imposedChemicalPotential, imposedFugacity);
-    }
+    output << totalEnergy.frameworkMoleculeVDW << ',' << totalEnergy.tail << ',' << totalEnergy.mbxEnergy << ','
+           << mbxTerms[1] / Units::EnergyToKCalPerMol << ',' << mbxTerms[2] / Units::EnergyToKCalPerMol << ','
+           << mbxTerms[3] / Units::EnergyToKCalPerMol << ',' << mbxTerms[4] / Units::EnergyToKCalPerMol << ','
+           << mbxTerms[5] / Units::EnergyToKCalPerMol << ',' << mbxTerms[6] / Units::EnergyToKCalPerMol << ',';
   }
-
-  return status;
+  else
+  {
+    output << totalEnergy.frameworkMoleculeVDW << ',' << totalEnergy.moleculeMoleculeVDW << ',' << totalEnergy.tail
+           << ',' << totalEnergy.frameworkMoleculeCharge << ',' << totalEnergy.moleculeMoleculeCharge << ','
+           << totalEnergy.ewald_fourier + totalEnergy.ewald_self + totalEnergy.ewald_exclusion << ',';
+  }
+  output << energyDifference << ',' << acceptanceProbability << '\n';
 }
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s)
 {
   archive << s.versionNumber;
 
-  archive << s.systemId;
-
   archive << s.temperature;
   archive << s.pressure;
   archive << s.input_pressure;
+  archive << s.pressureTensorDiagonal;
+  archive << s.input_pressureTensorDiagonal;
   archive << s.beta;
+  archive << static_cast<std::uint8_t>(s.cellMinimizationType);
+  archive << static_cast<std::uint8_t>(s.monoclinicAngleType);
 
   archive << s.heliumVoidFraction;
 
@@ -3289,7 +1521,9 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.components;
 
   archive << s.equationOfState;
+  archive << static_cast<std::uint8_t>(s.molecularDynamicsEnsemble);
   archive << s.thermostat;
+  archive << s.thermobarostat;
 
   archive << s.loadings;
 
@@ -3301,13 +1535,24 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.numberOfFractionalMoleculesPerComponent;
   archive << s.numberOfGCFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfPairSwapFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfGibbsFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC;
+  archive << s.numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC;
   archive << s.numberOfReactionFractionalMoleculesPerComponent_CFCMC;
 
   archive << s.idealGasEnergiesPerComponent;
 
   archive << s.forceField;
   archive << s.hasExternalField;
+  archive << s.useMBX;
+  archive << s.mbxSettingsFilePath;
+  archive << s.writeEnergyLog;
+  archive << s.elecPermFrameworkMBX;
 
   archive << s.numberOfPseudoAtoms;
   archive << s.totalNumberOfPseudoAtoms;
@@ -3322,6 +1567,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.containsTheFractionalMolecule;
 
   archive << s.atomData;
+  archive << s.atomDynamics;
   archive << s.moleculeData;
   archive << s.electricPotential;
   archive << s.electricField;
@@ -3345,7 +1591,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.eik_z;
   archive << s.storedEik;
   archive << s.fixedFrameworkStoredEik;
-  archive << s.totalEik;
+  archive << s.trialEik;
   archive << s.CoulombicFourierEnergySingleIon;
   archive << s.netCharge;
   archive << s.netChargeFramework;
@@ -3358,16 +1604,18 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
 
   archive << s.reactions;
   archive << s.tmmc;
-  archive << s.tmmcnd;
 
   archive << s.averageEnergies;
   archive << s.averageLoadings;
   archive << s.averageEnthalpiesOfAdsorption;
+  archive << s.averagePartialMolarProperties;
   archive << s.averageTemperature;
   archive << s.averageTranslationalTemperature;
   archive << s.averageRotationalTemperature;
   archive << s.averagePressure;
   archive << s.averageSimulationBox;
+  archive << s.propertyElasticConstantsFluctuation;
+  archive << s.elasticConstantsSampleEvery;
 
   archive << s.samplePDBMovie;
 
@@ -3376,27 +1624,18 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.propertyDensityGrid;
   archive << s.averageEnergyHistogram;
   archive << s.averageNumberOfMoleculesHistogram;
+  archive << s.propertyMoleculeProperties;
   archive << s.propertyMSD;
   archive << s.propertyVACF;
   archive << s.writeLammpsData;
 
-  archive << s.columnNumberOfGridPoints;
-  archive << s.columnTotalPressure;
-  archive << s.columnPressureGradient;
-  archive << s.columnVoidFraction;
-  archive << s.columnParticleDensity;
-  archive << s.columnEntranceVelocity;
-  archive << s.columnLength;
-  archive << s.columnTimeStep;
-  archive << s.columnNumberOfTimeSteps;
-  archive << s.columnAutoNumberOfTimeSteps;
-  archive << s.mixturePredictionMethod;
-  archive << s.pressure_range;
-  archive << s.numberOfCarrierGases;
-  archive << s.carrierGasComponent;
-  archive << s.maxIsothermTerms;
+  archive << s.propertyNumberOfMoleculesEvolution;
+  archive << s.propertyVolumeEvolution;
+  archive << s.propertyConservedEnergyEvolution;
 
-  archive << s.interpolationGrids;
+  // 'interpolationGrids' and 'externalFieldInterpolationGrid' are intentionally not serialized:
+  // they are derived data that can dominate the checkpoint size and are rebuilt deterministically
+  // on restart (MonteCarlo/MolecularDynamics::createInterpolationGrids).
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -3416,12 +1655,20 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
         std::format("Invalid version reading 'System' at line {} in file {}\n", location.line(), location.file_name()));
   }
 
-  archive >> s.systemId;
-
   archive >> s.temperature;
   archive >> s.pressure;
   archive >> s.input_pressure;
+  archive >> s.pressureTensorDiagonal;
+  archive >> s.input_pressureTensorDiagonal;
   archive >> s.beta;
+  {
+    std::uint8_t cellMinimizationType;
+    std::uint8_t monoclinicAngleType;
+    archive >> cellMinimizationType;
+    archive >> monoclinicAngleType;
+    s.cellMinimizationType = static_cast<CellMinimizationType>(cellMinimizationType);
+    s.monoclinicAngleType = static_cast<MonoclinicAngleType>(monoclinicAngleType);
+  }
 
   archive >> s.heliumVoidFraction;
 
@@ -3430,10 +1677,17 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfRigidFrameworkAtoms;
 
   archive >> s.framework;
+  s.numberOfRigidFrameworkAtoms = s.framework && s.framework->rigid ? s.numberOfFrameworkAtoms : 0;
   archive >> s.components;
 
   archive >> s.equationOfState;
+  {
+    std::uint8_t molecularDynamicsEnsemble;
+    archive >> molecularDynamicsEnsemble;
+    s.molecularDynamicsEnsemble = static_cast<MolecularDynamicsEnsemble>(molecularDynamicsEnsemble);
+  }
   archive >> s.thermostat;
+  archive >> s.thermobarostat;
 
   archive >> s.loadings;
 
@@ -3445,13 +1699,36 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.numberOfFractionalMoleculesPerComponent;
   archive >> s.numberOfGCFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfPairGCFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfPairSwapFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfPairSwapCBFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfGroupSwapFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfGroupSwapCBFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfGibbsSwapFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfGibbsFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfParallelReactionFractionalMoleculesPerComponent_CFCMC;
+  archive >> s.numberOfSerialReactionFractionalMoleculesPerComponent_CFCMC;
   archive >> s.numberOfReactionFractionalMoleculesPerComponent_CFCMC;
 
   archive >> s.idealGasEnergiesPerComponent;
 
   archive >> s.forceField;
   archive >> s.hasExternalField;
+  if (versionNumber >= 2)
+  {
+    archive >> s.useMBX;
+    archive >> s.mbxSettingsFilePath;
+    archive >> s.writeEnergyLog;
+    archive >> s.elecPermFrameworkMBX;
+  }
+  else
+  {
+    // Upstream version-1 System archives predate MBX state. Preserve stream alignment and default safely.
+    s.useMBX = false;
+    s.mbxSettingsFilePath.clear();
+    s.writeEnergyLog = true;
+    s.elecPermFrameworkMBX = 0.0;
+  }
+  s.energyLogHeaderWritten = false;
 
   archive >> s.numberOfPseudoAtoms;
   archive >> s.totalNumberOfPseudoAtoms;
@@ -3466,6 +1743,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.containsTheFractionalMolecule;
 
   archive >> s.atomData;
+  archive >> s.atomDynamics;
   archive >> s.moleculeData;
   archive >> s.electricPotential;
   archive >> s.electricField;
@@ -3489,7 +1767,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.eik_z;
   archive >> s.storedEik;
   archive >> s.fixedFrameworkStoredEik;
-  archive >> s.totalEik;
+  archive >> s.trialEik;
   archive >> s.CoulombicFourierEnergySingleIon;
   archive >> s.netCharge;
   archive >> s.netChargeFramework;
@@ -3502,16 +1780,18 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
 
   archive >> s.reactions;
   archive >> s.tmmc;
-  archive >> s.tmmcnd;
 
   archive >> s.averageEnergies;
   archive >> s.averageLoadings;
   archive >> s.averageEnthalpiesOfAdsorption;
+  archive >> s.averagePartialMolarProperties;
   archive >> s.averageTemperature;
   archive >> s.averageTranslationalTemperature;
   archive >> s.averageRotationalTemperature;
   archive >> s.averagePressure;
   archive >> s.averageSimulationBox;
+  archive >> s.propertyElasticConstantsFluctuation;
+  archive >> s.elasticConstantsSampleEvery;
 
   archive >> s.samplePDBMovie;
 
@@ -3520,27 +1800,56 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   archive >> s.propertyDensityGrid;
   archive >> s.averageEnergyHistogram;
   archive >> s.averageNumberOfMoleculesHistogram;
+  archive >> s.propertyMoleculeProperties;
   archive >> s.propertyMSD;
   archive >> s.propertyVACF;
   archive >> s.writeLammpsData;
 
-  archive >> s.columnNumberOfGridPoints;
-  archive >> s.columnTotalPressure;
-  archive >> s.columnPressureGradient;
-  archive >> s.columnVoidFraction;
-  archive >> s.columnParticleDensity;
-  archive >> s.columnEntranceVelocity;
-  archive >> s.columnLength;
-  archive >> s.columnTimeStep;
-  archive >> s.columnNumberOfTimeSteps;
-  archive >> s.columnAutoNumberOfTimeSteps;
-  archive >> s.mixturePredictionMethod;
-  archive >> s.pressure_range;
-  archive >> s.numberOfCarrierGases;
-  archive >> s.carrierGasComponent;
-  archive >> s.maxIsothermTerms;
+  archive >> s.propertyNumberOfMoleculesEvolution;
+  archive >> s.propertyVolumeEvolution;
+  archive >> s.propertyConservedEnergyEvolution;
 
-  archive >> s.interpolationGrids;
+  // archive >> s.columnNumberOfGridPoints;
+  // archive >> s.columnTotalPressure;
+  // archive >> s.columnPressureGradient;
+  // archive >> s.columnVoidFraction;
+  // archive >> s.columnParticleDensity;
+  // archive >> s.columnEntranceVelocity;
+  // archive >> s.columnLength;
+  // archive >> s.columnTimeStep;
+  // archive >> s.columnNumberOfTimeSteps;
+  // archive >> s.columnAutoNumberOfTimeSteps;
+  // archive >> s.mixturePredictionMethod;
+  // archive >> s.pressure_range;
+  // archive >> s.numberOfCarrierGases;
+  // archive >> s.carrierGasComponent;
+  // archive >> s.maxIsothermTerms;
+
+  // The interpolation grids are not stored in the archive; size the empty containers here and let
+  // the driver's restart path rebuild them (createInterpolationGrids).
+  s.interpolationGrids =
+      std::vector<std::optional<InterpolationEnergyGrid>>(s.forceField.pseudoAtoms.size() + 1, std::nullopt);
+  s.externalFieldInterpolationGrid = std::nullopt;
+
+  // Derived quantities: rebuild the aggregated tail-correction counts from the restored atoms.
+  s.computeTailCorrectionCounts();
+
+  s.currentEnergyStatus.useMBX = s.useMBX;
+  if (s.useMBX)
+  {
+#ifndef BUILD_MBX
+    throw std::runtime_error(
+        "[System restart]: checkpoint requires MBX, but this RASPA binary was built without BUILD_MBX support");
+#else
+    std::error_code error;
+    if (!std::filesystem::is_regular_file(s.mbxSettingsFilePath, error))
+    {
+      throw std::runtime_error(
+          std::format("[System restart]: MBX settings file '{}' is unavailable{}", s.mbxSettingsFilePath,
+                      error ? std::format(" ({})", error.message()) : std::string{}));
+    }
+#endif
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
@@ -3554,7 +1863,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   return archive;
 }
 
-void System::writeRestartFile()
+void System::writeRestartFile(std::size_t systemId)
 {
   nlohmann::json json;
 
@@ -3581,9 +1890,3 @@ void System::writeRestartFile()
 }
 
 std::string System::repr() const { return std::string("system test"); }
-
-void System::preComputeElecPermFrameworkMBX()
-{
-  elecPermFrameworkMBX =
-      Interactions::computeFrameworkElecPermMBXEnergy(*this, simulationBox, framework, spanOfFrameworkAtoms());
-}

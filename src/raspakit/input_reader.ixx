@@ -1,36 +1,10 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cctype>
-#include <complex>
-#include <cstddef>
-#include <cstring>
-#include <format>
-#include <fstream>
-#include <istream>
-#include <locale>
-#include <map>
-#include <optional>
-#include <set>
-#include <string>
-#include <unordered_set>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
 #include <string.h>
-#endif
 
 export module input_reader;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 
@@ -45,10 +19,11 @@ import framework;
 import component;
 import simulationbox;
 import forcefield;
-import loadings;
-import enthalpy_of_adsorption;
+import property_loading;
+import property_enthalpy;
 import energy_status;
 import averages;
+import minimization_options;
 
 /**
  * \struct InputDataSystem
@@ -106,11 +81,12 @@ export struct InputReader
     MonteCarloTransitionMatrix = 1,  ///< Monte Carlo simulation using a transition matrix approach.
     MolecularDynamics = 2,           ///< Molecular Dynamics simulation.
     Minimization = 3,                ///< Energy minimization simulation.
-    Test = 4,                        ///< Test simulation type for debugging or development.
-    Breakthrough = 5,                ///< Breakthrough simulation for adsorption studies.
-    MixturePrediction = 6,           ///< Simulation for predicting mixtures.
-    Fitting = 7,                     ///< Simulation type for fitting parameters.
-    ParallelTempering = 8            ///< Parallel Tempering simulation for enhanced sampling.
+    ParallelTempering = 4,           ///< Parallel Tempering simulation for enhanced sampling.
+    ThermodynamicIntegration = 5,    ///< Fixed-lambda thermodynamic integration (single <dU/dlambda> point).
+    ParallelThermodynamicIntegration = 6,  ///< Multithreaded TI: one replica per lambda-bin + lambda-exchange.
+    HyperParallelTempering = 7,  ///< Multithreaded replica-exchange over a temperature x pressure grid.
+    ReweightedHistogram = 8,  ///< Replica grid + multiple-histogram reweighting (continuous isotherm surface).
+    ParallelTMMC = 9  ///< Multithreaded transition-matrix Monte Carlo: windowed macrostate walkers.
   };
 
   /**
@@ -129,13 +105,51 @@ export struct InputReader
   // Member Variables
 
   std::string inputString;  ///< Raw input string loaded from the input file.
+  /// Directory containing the simulation input; relative MBX settings paths are resolved here.
+  std::filesystem::path inputDirectory{};
 
   SimulationType simulationType{SimulationType::MonteCarlo};  ///< Type of simulation to be executed.
 
   std::size_t numberOfBlocks{5};  ///< Number of simulation blocks.
 
-  std::size_t numberOfCycles{0};                ///< Total number of simulation cycles.
-  std::size_t numberOfInitializationCycles{0};  ///< Number of initialization cycles.
+  std::size_t numberOfLambdaBins{41};  ///< Number of lambda-bins (grid points on [0,1]).
+  /// Parallel thermodynamic integration: attempt a sweep of lambda-exchanges between neighboring
+  /// replicas every this many cycles (0 disables the exchanges).
+  std::size_t lambdaExchangeEvery{10};
+
+  /// Parallel tempering: the temperature ladder ('ExternalTemperatures' in the system block); the
+  /// single declared system is replicated into one replica per temperature.
+  std::vector<double> parallelTemperingTemperatures;
+  /// Hyper-parallel tempering: the pressure ladder ('ExternalPressures' in the system block, in Pa);
+  /// combined with the temperature ladder the single declared system is replicated into one replica
+  /// per (temperature, pressure) grid point.
+  std::vector<double> parallelTemperingPressures;
+  /// Parallel tempering: attempt a sweep of configuration swaps between replicas at neighboring
+  /// temperatures every this many cycles (0 disables the swaps).
+  std::size_t parallelTemperingSwapEvery{10};
+
+  /// Reweighted histogram: record an (N, U) sample of every replica every this many production
+  /// cycles (controls the memory use and the sample correlation of the reweighting analysis).
+  std::size_t sampleReweightingEvery{5};
+  /// Reweighted histogram: the temperatures the reweighted isotherms are evaluated at
+  /// (defaults to the temperature ladder).
+  std::vector<double> reweightingTemperatures;
+  /// Reweighted histogram: the pressure range [min, max] of the reweighted isotherms in Pa
+  /// (defaults to the span of the pressure ladder).
+  std::optional<std::pair<double, double>> reweightingPressureRange;
+  /// Reweighted histogram: the number of log-spaced pressures of the reweighted isotherms.
+  std::size_t reweightingNumberOfPressures{100};
+
+  /// Parallel TMMC: the macrostate range [MacroStateMinimumNumberOfMolecules,
+  /// MacroStateMaximumNumberOfMolecules] is split into this many windows sharing their endpoints;
+  /// one walker (thread) is run per (temperature, window) pair.
+  std::size_t tmmcNumberOfWindows{1};
+  /// Parallel TMMC: number of Monte Carlo steps between updates of the transition-matrix bias.
+  std::size_t tmmcUpdateEvery{100000};
+
+  std::size_t numberOfProductionCycles{0};                   ///< Total number of simulation cycles.
+  std::size_t numberOfPreInitializationCycles{0};  ///< Number of pre-initialization cycles.
+  std::size_t numberOfInitializationCycles{0};     ///< Number of initialization cycles.
   std::size_t numberOfEquilibrationCycles{0};   ///< Number of equilibration cycles.
   std::size_t printEvery{5000};                 ///< Interval for printing simulation progress.
   std::size_t writeBinaryRestartEvery{5000};    ///< Interval for writing binary restart files.
@@ -155,6 +169,7 @@ export struct InputReader
 
   std::size_t numberOfThreads{1};  ///< Number of threads to be used in the simulation.
   ThreadPool::ThreadingType threadingType{ThreadPool::ThreadingType::Serial};  ///< Type of threading to be used.
+  MinimizationOptions minimizationOptions{};
 
   ForceField forceField;          ///< Force field used for defining interactions in the simulation.
   std::vector<System> systems{};  ///< Vector of simulation systems configured for the simulation.
@@ -276,4 +291,9 @@ export struct InputReader
    * the presence of only known component-specific keys.
    */
   static const std::set<std::string, InsensitiveCompare> componentOptions;
+
+  /**
+   * \brief Set of reaction-specific option keys accepted within each Reactions entry.
+   */
+  static const std::set<std::string, InsensitiveCompare> reactionOptions;
 };

@@ -13,9 +13,7 @@ module;
 
 export module transition_matrix_nd;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;

@@ -1,603 +1,392 @@
 module;
 
-#ifdef USE_LEGACY_HEADERS
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstddef>
-#include <future>
-#include <iostream>
-#include <numbers>
-#include <optional>
-#include <span>
-#include <thread>
-#include <vector>
+#include <filesystem>
+#include <format>
 #include <fstream>
+#include <iterator>
+#include <limits>
+#include <optional>
+#include <ranges>
+#include <span>
+#include <stdexcept>
+#include <string>
+#include <system_error>
+#include <utility>
+#include <vector>
+
 #include "bblock/system.h"
-#endif
 
 module interactions_mbx;
 
-#ifndef USE_LEGACY_HEADERS
-import <numbers>;
-import <iostream>;
-import <algorithm>;
-import <vector>;
-import <span>;
-import <cmath>;
-import <optional>;
-import <thread>;
-import <future>;
-import <fstream>;
-#include "bblock/system.h"
-#endif
-
-import energy_status;
-import potential_energy_vdw;
-import potential_gradient_vdw;
-import potential_energy_coulomb;
-import potential_gradient_coulomb;
-import potential_correction_vdw;
-import potential_electrostatics;
-import simulationbox;
-import double3;
-import double3x3;
 import atom;
-import energy_factor;
-import gradient_factor;
-import energy_status_inter;
-import running_energy;
-import component;
-import units;
-import threadpool;
-import system;
 import component;
 import framework;
+import running_energy;
+import simulationbox;
+import system;
+import units;
 
-// Used to calculate the total energy of the system for the given fixed positions of framework and adsorbate molecules
-// TO-DO: consider skip this process if the system is just empty box
-double Interactions::computeFrameworkElecPermMBXEnergy(
-        const System &system,
-        const SimulationBox &simulationBox,
-        const std::optional<Framework> &framework,
-        std::span<const Atom> frameworkAtoms
-) noexcept
+namespace
 {
-    /***
-    * Setup MBX System object.
-    ***/
-    bblock::System* mbx = new bblock::System();
-    int cumulativeTagIndex = 1;
-    
-    // no molecules are added since only calculate the empty framework E_elec
-    int numAtoms{0};
-    /***
-    * MBX Miscellaneous settings.
-    ***/
-    // We now pass MBX file from RASPA.
-    std::string json_path = system.mbxSettingsFilePath;
-    std::ifstream t(json_path);
-    t.seekg(0, std::ios::end);
-    int size = t.tellg();
-    std::string json_settings;
-    json_settings.resize(size);
-    t.seekg(0);
-    t.read(&json_settings[0], size);
-    mbx->SetUpFromJson(json_settings);
-    /***
-    * Adding framework atoms.
-    ***/
-    // Framework  --> In RASPA3 sometimes the framework is std::nullopt
-    // Need to know MBX behaviour without the framework
-    if (framework.has_value())
+constexpr std::size_t numberOfMBXEnergyTerms{7};
+
+struct MBXEnergyTerms
+{
+  double oneBody{};
+  double twoBody{};
+  double threeBody{};
+  double fourBody{};
+  double dispersion{};
+  double permanentElectrostatics{};
+  double inducedElectrostatics{};
+
+  [[nodiscard]] double includedEnergy() const noexcept
+  {
+    // RASPA-MBX intentionally delegates guest interactions to the many-body terms below. The MBX 1B,
+    // Buckingham, Lennard-Jones, and bare-framework permanent electrostatics are not part of this energy.
+    return twoBody + threeBody + fourBody + dispersion + permanentElectrostatics + inducedElectrostatics;
+  }
+
+  void copyTo(std::span<double> output) const
+  {
+    if (output.empty()) return;
+    if (output.size() != numberOfMBXEnergyTerms)
     {
-        std::vector<double> frameworkCoords(frameworkAtoms.size() * 3);
-        std::vector<double> frameworkCharges(frameworkAtoms.size());
-        std::vector<size_t> frameworkIsLocals(frameworkAtoms.size(), 1);
-        std::vector<int> frameworkTags(frameworkAtoms.size());
-
-        for (int i = 0; i < frameworkAtoms.size(); i++) {
-            const Atom &atom = frameworkAtoms[i];
-
-            frameworkCoords[i * 3] = atom.position.x;
-            frameworkCoords[i * 3 + 1] = atom.position.y;
-            frameworkCoords[i * 3 + 2] = atom.position.z;
-
-            frameworkCharges[i] = atom.charge;              
-            frameworkTags[i] = cumulativeTagIndex;
-
-            cumulativeTagIndex += 1;
-        }
-    
-        mbx->SetExternalChargesAndPositions(frameworkCharges, frameworkCoords, frameworkIsLocals, frameworkTags);
+      throw std::invalid_argument(
+          std::format("MBX energy log requires {} entries, received {}", numberOfMBXEnergyTerms, output.size()));
     }
+    std::ranges::copy(
+        std::array{oneBody, twoBody, threeBody, fourBody, dispersion, permanentElectrostatics, inducedElectrostatics},
+        output.begin());
+  }
+};
 
-    /***
-    * MBX simulation box settings.
-    ***/
-    std::vector<double> box(9, 0.0);
+[[nodiscard]] std::string readMBXSettings(const System& system)
+{
+  if (system.mbxSettingsFilePath.empty())
+  {
+    throw std::runtime_error("[MBX]: no MBX settings file was configured");
+  }
 
-    // Box x vector, used to be m11, m12, m13
-    box[0] = simulationBox.cell.mm[0][0];
-    box[1] = simulationBox.cell.mm[0][1];
-    box[2] = simulationBox.cell.mm[0][2];
+  const std::filesystem::path settingsPath(system.mbxSettingsFilePath);
+  std::error_code error;
+  if (!std::filesystem::is_regular_file(settingsPath, error))
+  {
+    throw std::runtime_error(std::format("[MBX]: settings file '{}' is not a readable regular file{}",
+                                         settingsPath.string(),
+                                         error ? std::format(" ({})", error.message()) : std::string{}));
+  }
 
-    // Box y vector, used to be m21, m22, m23
-    box[3] = simulationBox.cell.mm[1][0];
-    box[4] = simulationBox.cell.mm[1][1];
-    box[5] = simulationBox.cell.mm[1][2];
+  std::ifstream input(settingsPath, std::ios::binary);
+  if (!input)
+  {
+    throw std::runtime_error(std::format("[MBX]: failed to open settings file '{}'", settingsPath.string()));
+  }
 
-    // Box z vector, used to be m31, m32, m33
-    box[6] = simulationBox.cell.mm[2][0];
-    box[7] = simulationBox.cell.mm[2][1];
-    box[8] = simulationBox.cell.mm[2][2];
-    
-    for (int i = 0; i < 9; i++) {
-        if (std::abs(box[i]) < 1e-10) {
-            box[i] = 0.0; // Avoid numerical issues with very small values
-        }
-    }
-
-    mbx->SetPBC(box);
-
-    /***
-     * Calculate MBX energy.
-    ***/
-
-    bool do_grads = false;
-    mbx->Electrostatics(do_grads);
-    double eelec_perm_framework = mbx->GetPermanentElectrostaticEnergy();
-    /***
-     * Destroy MBX System object.
-    ***/
-
-    delete mbx;
-
-    return eelec_perm_framework;
+  std::string settings{std::istreambuf_iterator<char>(input), std::istreambuf_iterator<char>()};
+  if (input.bad())
+  {
+    throw std::runtime_error(std::format("[MBX]: failed while reading settings file '{}'", settingsPath.string()));
+  }
+  if (settings.empty())
+  {
+    throw std::runtime_error(std::format("[MBX]: settings file '{}' is empty", settingsPath.string()));
+  }
+  return settings;
 }
 
-
-// Used to calculate the total energy of the system for the given fixed positions of framework and adsorbate molecules
-RunningEnergy Interactions::computeMBXEnergySystem(
-        const System &system,
-        const std::vector<Component> &components,
-        const SimulationBox &simulationBox,
-        const std::optional<Framework> &framework,
-        std::span<const Atom> frameworkAtoms,
-        std::span<const Atom> moleculeAtoms
-) noexcept
+void setPeriodicCell(bblock::System& mbx, const SimulationBox& simulationBox)
 {
-    /***
-    * Setup MBX System object.
-    ***/
-    bblock::System* mbx = new bblock::System();
-    int cumulativeTagIndex = 1;
-    
-    /***
-    * Adding molecule monomers.
-    ***/
-    // Adding monomers molecules for all the components
-    int numAtoms{0};
-    size_t moleculeOffset = 0;
-    for (size_t i = 0; i < components.size(); ++i)
-    {
-        numAtoms = static_cast<int>(components[i].atoms.size());           // Not sure whether MBX can use size_t
-        std::vector<double> atomCoordinates(3 * numAtoms, 0.0);
-        std::vector<std::string> atomNames(numAtoms, "none");
-        std::string compName = components[i].name;
+  std::vector<double> box{simulationBox.cell.mm[0][0], simulationBox.cell.mm[0][1], simulationBox.cell.mm[0][2],
+                          simulationBox.cell.mm[1][0], simulationBox.cell.mm[1][1], simulationBox.cell.mm[1][2],
+                          simulationBox.cell.mm[2][0], simulationBox.cell.mm[2][1], simulationBox.cell.mm[2][2]};
 
-        // // Index of first molecule of the given component.
-        // size_t idx_start = system.indexOfFirstMolecule(i);
-        // idx_start -= frameworkAtoms.size();                                 // Remove number of framework atoms
-        
-        // Looping over all the molecules of given components
-        for (size_t j = 0; j < system.numberOfMoleculesPerComponent[i]; ++j)
-        {    
-            size_t moleculeBase = moleculeOffset + j * static_cast<size_t>(numAtoms);
-            for(size_t k = 0; k < numAtoms; ++k) 
-            {
-                atomCoordinates[k * 3] = moleculeAtoms[moleculeBase + k].position.x;
-                atomCoordinates[k * 3 + 1] = moleculeAtoms[moleculeBase + k].position.y;
-                atomCoordinates[k * 3 + 2] = moleculeAtoms[moleculeBase + k].position.z;
-                atomNames[k] = std::to_string(moleculeAtoms[moleculeBase + k].type);
-            }
-
-            size_t islocal = 1;
-
-            size_t tagIndex = cumulativeTagIndex;
-            
-            mbx->AddMonomer(atomCoordinates, atomNames, compName, islocal, tagIndex);
-
-            cumulativeTagIndex += numAtoms;
-        }
-        moleculeOffset += static_cast<size_t>(numAtoms) * system.numberOfMoleculesPerComponent[i];
-    }
-    /***
-    * MBX Miscellaneous settings.
-    ***/
-    // We now pass MBX file from RASPA.
-    std::string json_path = system.mbxSettingsFilePath;
-    std::ifstream t(json_path);
-    t.seekg(0, std::ios::end);
-    int size = t.tellg();
-    std::string json_settings;
-    json_settings.resize(size);
-    t.seekg(0);
-    t.read(&json_settings[0], size);
-    mbx->SetUpFromJson(json_settings);
-    /***
-    * Adding framework atoms.
-    ***/
-    // Framework  --> In RASPA3 sometimes the framework is std::nullopt
-    // Need to know MBX behaviour without the framework
-    if (framework.has_value())
-    {
-        std::vector<double> frameworkCoords(frameworkAtoms.size() * 3);
-        std::vector<double> frameworkCharges(frameworkAtoms.size());
-        std::vector<size_t> frameworkIsLocals(frameworkAtoms.size(), 1);
-        std::vector<int> frameworkTags(frameworkAtoms.size());
-
-        for (int i = 0; i < frameworkAtoms.size(); i++) {
-            const Atom &atom = frameworkAtoms[i];
-
-            frameworkCoords[i * 3] = atom.position.x;
-            frameworkCoords[i * 3 + 1] = atom.position.y;
-            frameworkCoords[i * 3 + 2] = atom.position.z;
-
-            frameworkCharges[i] = atom.charge;              
-            frameworkTags[i] = cumulativeTagIndex;
-
-            cumulativeTagIndex += 1;
-        }
-    
-        mbx->SetExternalChargesAndPositions(frameworkCharges, frameworkCoords, frameworkIsLocals, frameworkTags);
-    }
-
-    /***
-    * MBX simulation box settings.
-    ***/
-    std::vector<double> box(9, 0.0);
-
-    // Box x vector, used to be m11, m12, m13
-    box[0] = simulationBox.cell.mm[0][0];
-    box[1] = simulationBox.cell.mm[0][1];
-    box[2] = simulationBox.cell.mm[0][2];
-
-    // Box y vector, used to be m21, m22, m23
-    box[3] = simulationBox.cell.mm[1][0];
-    box[4] = simulationBox.cell.mm[1][1];
-    box[5] = simulationBox.cell.mm[1][2];
-
-    // Box z vector, used to be m31, m32, m33
-    box[6] = simulationBox.cell.mm[2][0];
-    box[7] = simulationBox.cell.mm[2][1];
-    box[8] = simulationBox.cell.mm[2][2];
-    
-    for (int i = 0; i < 9; i++) {
-        if (std::abs(box[i]) < 1e-10) {
-            box[i] = 0.0; // Avoid numerical issues with very small values
-        }
-    }
-
-    mbx->SetPBC(box);
-    size_t numMon = mbx->GetNumMon();
-    if (numMon <= 0)
-    {
-        RunningEnergy energySystem{};
-        delete mbx;
-        return energySystem;
-    }
-    /***
-     * Calculate MBX energy.
-    ***/
-
-    bool do_grads = false;
-
-    double e1b = mbx->OneBodyEnergy(do_grads);
-    double e2b = mbx->TwoBodyEnergy(do_grads);
-    double e3b = mbx->ThreeBodyEnergy(do_grads);
-    double e4b = mbx->FourBodyEnergy(do_grads);
-    double edisp = mbx->Dispersion(do_grads);
-    double ebuck = mbx->Buckingham(do_grads);
-    double elj = mbx->LennardJones(do_grads);
-    mbx->Electrostatics(do_grads);
-    double eelec_perm = mbx->GetPermanentElectrostaticEnergy();
-    double eelec_ind = mbx->GetInducedElectrostaticEnergy();
-
-    
-    // double energy = e1b + e2b + e3b + e4b + edisp + ebuck + elj + eelec_perm + eelec_ind;    // full version
-    double energy = e2b + e3b + e4b + edisp + eelec_perm + eelec_ind - system.elecPermFrameworkMBX; 
-    // Excluding 1-body energy and the intra-molecular electrostatic energy of the framework
-
-    
-    /***
-     * Destroy MBX System object.
-    ***/
-    delete mbx;
-
-    // Conversion kcal/mol -> RASPA internal units for energy, using Units module
-    energy /= Units::EnergyToKCalPerMol;
-
-    RunningEnergy energySystem{};
-
-    // Assigning it to mbxEnergy
-    energySystem.mbxEnergy = energy; 
-    return energySystem;
+  for (double& value : box)
+  {
+    if (std::abs(value) < 1.0e-10) value = 0.0;
+  }
+  mbx.SetPBC(box);
 }
 
-
-// Use to calculate energies for the given fixed positions of framework, adsorbate molecules, and selected trial molecule for the MC move.
-// The energy of the system can be calculated by either including or excluding the trial molecule.
-RunningEnergy Interactions::computeMBXEnergy(
-        const System &system,
-        const std::vector<Component> &components,
-        const SimulationBox &simulationBox,
-        const std::optional<Framework> &framework,
-        size_t selectedComponent,
-        std::span<const Atom> frameworkAtoms,
-        std::span<const Atom> moleculeAtoms,
-        std::span<const Atom> selectedMoleculeAtoms,
-        bool includeSelectedMoleculeAtoms,
-        std::vector<double>* mbxEnergyLog
-) noexcept
+void advanceTag(int& nextTag, std::size_t numberOfAtoms)
 {
-
-    /***
-    * Setup MBX System object.
-    ***/
-    bblock::System* mbx = new bblock::System();
-    int cumulativeTagIndex = 1;
-    
-    /***
-    * Adding molecule monomers.
-    ***/
-    // Adding monomers molecules for all the components except the selectedComponents's selectedMolecule
-    bool excludeSelectedMolecule = false;
-    size_t selectedMoleculeId = 0;
-    if (!selectedMoleculeAtoms.empty())
-    {
-        selectedMoleculeId = static_cast<size_t>(selectedMoleculeAtoms.front().moleculeId);
-        excludeSelectedMolecule = (static_cast<size_t>(selectedMoleculeAtoms.front().componentId) == selectedComponent);
-        for (const Atom &atom : selectedMoleculeAtoms)
-        {
-            if (static_cast<size_t>(atom.componentId) != selectedComponent ||
-                static_cast<size_t>(atom.moleculeId) != selectedMoleculeId)
-            {
-                excludeSelectedMolecule = false;
-                break;
-            }
-        }
-        if (excludeSelectedMolecule &&
-            selectedMoleculeId >= system.numberOfMoleculesPerComponent[selectedComponent])
-        {
-            // Trial insertion molecule: not present in moleculeAtoms yet.
-            excludeSelectedMolecule = false;
-        }
-    }
-
-    int numAtoms{0};
-    size_t moleculeOffset = 0;
-    for (size_t i = 0; i < components.size(); ++i)
-    {
-        numAtoms = static_cast<int>(components[i].atoms.size());           // Not sure whether MBX can use size_t
-        std::vector<double> atomCoordinates(3 * numAtoms, 0.0);
-        std::vector<std::string> atomNames(numAtoms, "none");
-        std::string compName = components[i].name;
-
-        // // Index of first molecule of the given component.
-        // size_t idx_start = system.indexOfFirstMolecule(i);
-        // idx_start -= frameworkAtoms.size();                                 // Remove number of framework atoms
-        // bool keepMolecule{false};
-        
-        // Looping over all the molecules of given components
-        for (size_t j = 0; j < system.numberOfMoleculesPerComponent[i]; ++j)
-        {   
-            // for (const Atom &atom : selectedMoleculeAtoms)
-            // {
-            //     if ( (j == static_cast<size_t>(atom.moleculeId)) && (selectedComponent == static_cast<size_t>(atom.componentId)) ) 
-            //     {
-            //         keepMolecule = false;
-            //         break;
-            //     }
-            //     else { keepMolecule = true;}
-            // }
-            // if ( keepMolecule )
-            bool keepMolecule = !(excludeSelectedMolecule && i == selectedComponent && j == selectedMoleculeId);
-            if (keepMolecule)
-            {
-                size_t moleculeBase = moleculeOffset + j * static_cast<size_t>(numAtoms);
-                for(size_t k = 0; k < numAtoms; ++k) 
-                {
-                    atomCoordinates[k * 3] = moleculeAtoms[moleculeBase + k].position.x;
-                    atomCoordinates[k * 3 + 1] = moleculeAtoms[moleculeBase + k].position.y;
-                    atomCoordinates[k * 3 + 2] = moleculeAtoms[moleculeBase + k].position.z;
-                    atomNames[k] = std::to_string(moleculeAtoms[moleculeBase + k].type);
-                }
-
-                // This decides weather this guest molecule is a real molecule or a ghost molecule
-                // (such as an image of a molecule from a neighboring subdomain)
-                // Since we use only one subdomain, we set this to true
-                size_t islocal = 1;
-
-                size_t tagIndex = cumulativeTagIndex;
-                
-                mbx->AddMonomer(atomCoordinates, atomNames, compName, islocal, tagIndex);
-
-                cumulativeTagIndex += numAtoms;
-            }
-        }
-        moleculeOffset += static_cast<size_t>(numAtoms) * system.numberOfMoleculesPerComponent[i];
-    }
-    if (includeSelectedMoleculeAtoms)
-    {
-        // Adding monomers for the selected component's selectedMolecule
-        numAtoms = static_cast<int>(components[selectedComponent].atoms.size());    // Not sure whether MBX can use size_t
-        std::vector<double> atomCoordinates(3 * numAtoms, 0.0);
-        std::vector<std::string> atomNames(numAtoms, "none");
-        std::string compName = components[selectedComponent].name;
-        
-        for(size_t k = 0; k < numAtoms; ++k) 
-        {
-            atomCoordinates[k * 3] = selectedMoleculeAtoms[k].position.x;
-            atomCoordinates[k * 3 + 1] = selectedMoleculeAtoms[k].position.y;
-            atomCoordinates[k * 3 + 2] = selectedMoleculeAtoms[k].position.z;
-            atomNames[k] = std::to_string(selectedMoleculeAtoms[k].type);
-        }
-        size_t islocal = 1;
-        size_t tagIndex = cumulativeTagIndex;
-        mbx->AddMonomer(atomCoordinates, atomNames, compName, islocal, tagIndex);
-        cumulativeTagIndex += numAtoms;
-    }
-    
-    /***
-    * MBX Miscellaneous settings.
-    ***/
-    // We now pass MBX file from RASPA.
-    // char* json_path = "mbx.json";
-    std::string json_path = system.mbxSettingsFilePath;
-    std::ifstream t(json_path);
-    t.seekg(0, std::ios::end);
-    int size = t.tellg();
-    std::string json_settings;
-    json_settings.resize(size);
-    t.seekg(0);
-    t.read(&json_settings[0], size);
-    mbx->SetUpFromJson(json_settings);
-
-    
-    /***
-    * Adding framework atoms.
-    ***/
-    // Framework  --> In RASPA3 sometimes the framework is std::nullopt
-    // Need to know MBX behaviour without the framework
-    if (framework.has_value())
-    {
-        std::vector<double> frameworkCoords(frameworkAtoms.size() * 3);
-        std::vector<double> frameworkCharges(frameworkAtoms.size());
-        std::vector<size_t> frameworkIsLocals(frameworkAtoms.size(), 1);
-        std::vector<int> frameworkTags(frameworkAtoms.size());
-
-        for (int i = 0; i < frameworkAtoms.size(); i++) {
-            const Atom &atom = frameworkAtoms[i];
-
-            frameworkCoords[i * 3] = atom.position.x;
-            frameworkCoords[i * 3 + 1] = atom.position.y;
-            frameworkCoords[i * 3 + 2] = atom.position.z;
-
-            frameworkCharges[i] = atom.charge;              // TODO: MBX expects charges in units of e, but RASPA may give other units.
-            frameworkTags[i] = cumulativeTagIndex;
-
-            cumulativeTagIndex += 1;
-        }
-    
-        mbx->SetExternalChargesAndPositions(frameworkCharges, frameworkCoords, frameworkIsLocals, frameworkTags);
-
-    }
-
-    /***
-    * MBX simulation box settings.
-    ***/
-    std::vector<double> box(9, 0.0);
-
-    // Box x vector, used to be m11, m12, m13
-    box[0] = simulationBox.cell.mm[0][0];
-    box[1] = simulationBox.cell.mm[0][1];
-    box[2] = simulationBox.cell.mm[0][2];
-
-    // Box y vector, used to be m21, m22, m23
-    box[3] = simulationBox.cell.mm[1][0];
-    box[4] = simulationBox.cell.mm[1][1];
-    box[5] = simulationBox.cell.mm[1][2];
-
-    // Box z vector, used to be m31, m32, m33
-    box[6] = simulationBox.cell.mm[2][0];
-    box[7] = simulationBox.cell.mm[2][1];
-    box[8] = simulationBox.cell.mm[2][2];
-    
-    for (int i = 0; i < 9; i++) {
-        if (std::abs(box[i]) < 1e-10) {
-            box[i] = 0.0; // Avoid numerical issues with very small values
-        }
-    }
-
-    mbx->SetPBC(box);
-    size_t numMon = mbx->GetNumMon();
-    if (numMon <= 0)
-    {
-        RunningEnergy energySystem{};
-        delete mbx;
-        return energySystem;
-    }
-    /***
-     * Calculate MBX energy.
-    ***/
-    bool do_grads = false;
-
-    double e1b = mbx->OneBodyEnergy(do_grads);
-    double e2b = mbx->TwoBodyEnergy(do_grads);
-    double e3b = mbx->ThreeBodyEnergy(do_grads);
-    double e4b = mbx->FourBodyEnergy(do_grads);
-    double edisp = mbx->Dispersion(do_grads);
-    double ebuck = mbx->Buckingham(do_grads);
-    double elj = mbx->LennardJones(do_grads);
-    mbx->Electrostatics(do_grads);
-    double eelec_perm = mbx->GetPermanentElectrostaticEnergy();
-    double eelec_ind = mbx->GetInducedElectrostaticEnergy();
-
-    // double energy = e1b + e2b + e3b + e4b + edisp + ebuck + elj + eelec_perm + eelec_ind;    // full version
-    double energy = e2b + e3b + e4b + edisp + eelec_perm + eelec_ind - system.elecPermFrameworkMBX; 
-    // Excluding 1-body energy and the intra-molecular electrostatic energy of the framework
-
-    if (mbxEnergyLog)
-    {
-        if (mbxEnergyLog->size() != 7)
-        {
-            std::cerr << "mbxEnergyLog size mismatch" << "\n";
-        }
-        else{
-            (*mbxEnergyLog)[0] = e1b;
-            (*mbxEnergyLog)[1] = e2b;
-            (*mbxEnergyLog)[2] = e3b;
-            (*mbxEnergyLog)[3] = e4b;
-            (*mbxEnergyLog)[4] = edisp;
-            (*mbxEnergyLog)[5] = (eelec_perm - system.elecPermFrameworkMBX);
-            (*mbxEnergyLog)[6] = eelec_ind;
-        }
-    }
-
-    /***
-     * Destroy MBX System object.
-    ***/
-
-    delete mbx;
-
-    // Conversion kcal/mol -> RASPA internal units for energy, using Units module
-    energy /= Units::EnergyToKCalPerMol;
-
-    RunningEnergy energySum{};
-
-    // Assigning it to mbxEnergy
-    energySum.mbxEnergy = energy; 
-    return energySum;
+  if (numberOfAtoms > static_cast<std::size_t>(std::numeric_limits<int>::max() - nextTag))
+  {
+    throw std::overflow_error("[MBX]: atom tags exceed the range supported by MBX");
+  }
+  nextTag += static_cast<int>(numberOfAtoms);
 }
 
-// used in translation.cpp, rotation.cpp
-[[nodiscard]] RunningEnergy Interactions::computeMBXEnergyDifference(
-        const System &system,
-        const std::vector<Component> &components,
-        const SimulationBox &simulationBox,
-        const std::optional<Framework> &framework,
-        size_t selectedComponent,
-        std::span<const Atom> frameworkAtoms,
-        std::span<const Atom> moleculeAtoms,
-        std::span<const Atom> newatoms,
-        std::span<const Atom> oldatoms
-) noexcept
-{        
-    // Energy of the configuration before the trial MC move
-    RunningEnergy oldEnergy = Interactions::computeMBXEnergy(system, components, simulationBox, framework, selectedComponent, frameworkAtoms, moleculeAtoms, oldatoms, true);
-    
-    // Energy of the configuration after the trial MC move
-    RunningEnergy newEnergy = Interactions::computeMBXEnergy(system, components, simulationBox, framework, selectedComponent, frameworkAtoms, moleculeAtoms, newatoms, true);
-    
-    return newEnergy - oldEnergy;
+void addMonomer(bblock::System& mbx, const Component& component, std::span<const Atom> atoms, int& nextTag)
+{
+  if (atoms.size() != component.atoms.size())
+  {
+    throw std::runtime_error(std::format("[MBX]: component '{}' expects {} atoms per monomer, received {}",
+                                         component.name, component.atoms.size(), atoms.size()));
+  }
+
+  std::vector<double> coordinates(3 * atoms.size());
+  std::vector<std::string> atomNames(atoms.size());
+  for (std::size_t atomIndex = 0; atomIndex < atoms.size(); ++atomIndex)
+  {
+    coordinates[3 * atomIndex] = atoms[atomIndex].position.x;
+    coordinates[3 * atomIndex + 1] = atoms[atomIndex].position.y;
+    coordinates[3 * atomIndex + 2] = atoms[atomIndex].position.z;
+    // The RASPA-MBX settings/database convention uses the numeric RASPA pseudo-atom type as the MBX site name.
+    atomNames[atomIndex] = std::to_string(static_cast<std::size_t>(atoms[atomIndex].type));
+  }
+
+  mbx.AddMonomer(std::move(coordinates), std::move(atomNames), component.name, 1, nextTag);
+  advanceTag(nextTag, atoms.size());
+}
+
+void addSystemMonomers(bblock::System& mbx, const System& system, const std::vector<Component>& components,
+                       std::span<const Atom> moleculeAtoms, int& nextTag,
+                       std::optional<std::pair<std::size_t, std::size_t>> excludedMolecule = std::nullopt)
+{
+  if (components.size() != system.numberOfMoleculesPerComponent.size())
+  {
+    throw std::runtime_error("[MBX]: component and molecule-count arrays have inconsistent sizes");
+  }
+
+  std::size_t moleculeOffset{};
+  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
+  {
+    const std::size_t atomsPerMolecule = components[componentId].atoms.size();
+    const std::size_t moleculeCount = system.numberOfMoleculesPerComponent[componentId];
+    if (atomsPerMolecule == 0 && moleculeCount != 0)
+    {
+      throw std::runtime_error(
+          std::format("[MBX]: component '{}' has molecules but no atoms", components[componentId].name));
+    }
+    if (moleculeOffset > moleculeAtoms.size() ||
+        (atomsPerMolecule != 0 && moleculeCount > (moleculeAtoms.size() - moleculeOffset) / atomsPerMolecule))
+    {
+      throw std::runtime_error(
+          std::format("[MBX]: molecule atom storage is too short for component '{}'", components[componentId].name));
+    }
+
+    for (std::size_t moleculeId = 0; moleculeId < moleculeCount; ++moleculeId)
+    {
+      if (excludedMolecule == std::pair{componentId, moleculeId}) continue;
+      const std::size_t base = moleculeOffset + moleculeId * atomsPerMolecule;
+      addMonomer(mbx, components[componentId], moleculeAtoms.subspan(base, atomsPerMolecule), nextTag);
+    }
+    moleculeOffset += atomsPerMolecule * moleculeCount;
+  }
+
+  if (moleculeOffset != moleculeAtoms.size())
+  {
+    throw std::runtime_error(
+        std::format("[MBX]: molecule atom storage has {} unaccounted atoms", moleculeAtoms.size() - moleculeOffset));
+  }
+}
+
+void addFrameworkCharges(bblock::System& mbx, const std::optional<Framework>& framework,
+                         std::span<const Atom> frameworkAtoms, int& nextTag)
+{
+  if (!framework.has_value())
+  {
+    if (!frameworkAtoms.empty())
+    {
+      throw std::runtime_error("[MBX]: framework atoms were supplied without a framework");
+    }
+    return;
+  }
+  if (frameworkAtoms.empty()) return;
+
+  std::vector<double> coordinates(3 * frameworkAtoms.size());
+  std::vector<double> charges(frameworkAtoms.size());
+  std::vector<std::size_t> isLocal(frameworkAtoms.size(), 1);
+  std::vector<int> tags(frameworkAtoms.size());
+  for (std::size_t atomIndex = 0; atomIndex < frameworkAtoms.size(); ++atomIndex)
+  {
+    coordinates[3 * atomIndex] = frameworkAtoms[atomIndex].position.x;
+    coordinates[3 * atomIndex + 1] = frameworkAtoms[atomIndex].position.y;
+    coordinates[3 * atomIndex + 2] = frameworkAtoms[atomIndex].position.z;
+    charges[atomIndex] = frameworkAtoms[atomIndex].charge;
+    tags[atomIndex] = nextTag;
+    advanceTag(nextTag, 1);
+  }
+  mbx.SetExternalChargesAndPositions(std::move(charges), std::move(coordinates), std::move(isLocal), std::move(tags));
+}
+
+[[nodiscard]] MBXEnergyTerms evaluateMBX(bblock::System& mbx, double bareFrameworkPermanentEnergy)
+{
+  if (mbx.GetNumMon() == 0) return {};
+
+  constexpr bool calculateGradients{false};
+  MBXEnergyTerms terms;
+  terms.oneBody = mbx.OneBodyEnergy(calculateGradients);
+  terms.twoBody = mbx.TwoBodyEnergy(calculateGradients);
+  terms.threeBody = mbx.ThreeBodyEnergy(calculateGradients);
+  terms.fourBody = mbx.FourBodyEnergy(calculateGradients);
+  terms.dispersion = mbx.Dispersion(calculateGradients);
+  // Buckingham and Lennard-Jones are deliberately neither evaluated nor included: RASPA supplies only
+  // the framework-guest VDW term, while MBX supplies the retained many-body guest terms.
+  mbx.Electrostatics(calculateGradients);
+  terms.permanentElectrostatics = mbx.GetPermanentElectrostaticEnergy() - bareFrameworkPermanentEnergy;
+  terms.inducedElectrostatics = mbx.GetInducedElectrostaticEnergy();
+  return terms;
+}
+
+[[nodiscard]] RunningEnergy asRunningEnergy(const MBXEnergyTerms& terms)
+{
+  RunningEnergy energy;
+  energy.mbxEnergy = terms.includedEnergy() / Units::EnergyToKCalPerMol;
+  return energy;
+}
+
+[[nodiscard]] std::optional<std::pair<std::size_t, std::size_t>> selectedExistingMolecule(
+    const System& system, std::size_t selectedComponent, std::span<const Atom> selectedMoleculeAtoms)
+{
+  if (selectedMoleculeAtoms.empty() || selectedComponent >= system.numberOfMoleculesPerComponent.size())
+  {
+    return std::nullopt;
+  }
+  if (selectedComponent >= system.components.size() ||
+      selectedMoleculeAtoms.size() != system.components[selectedComponent].atoms.size())
+  {
+    return std::nullopt;
+  }
+
+  // Atom::moleculeId is global across the component-major molecule storage, whereas addSystemMonomers()
+  // enumerates molecules locally within each component. Convert the validated global ID to that local index.
+  std::size_t firstGlobalMoleculeId{};
+  for (std::size_t componentId = 0; componentId < selectedComponent; ++componentId)
+  {
+    firstGlobalMoleculeId += system.numberOfMoleculesPerComponent[componentId];
+  }
+
+  const std::size_t globalMoleculeId = static_cast<std::size_t>(selectedMoleculeAtoms.front().moleculeId);
+  if (globalMoleculeId < firstGlobalMoleculeId) return std::nullopt;
+
+  const std::size_t componentMoleculeId = globalMoleculeId - firstGlobalMoleculeId;
+  if (componentMoleculeId >= system.numberOfMoleculesPerComponent[selectedComponent]) return std::nullopt;
+  if (!std::ranges::all_of(selectedMoleculeAtoms,
+                           [selectedComponent, globalMoleculeId](const Atom& atom)
+                           {
+                             return static_cast<std::size_t>(atom.componentId) == selectedComponent &&
+                                    static_cast<std::size_t>(atom.moleculeId) == globalMoleculeId;
+                           }))
+  {
+    return std::nullopt;
+  }
+  return std::pair{selectedComponent, componentMoleculeId};
+}
+}  // namespace
+
+double Interactions::computeFrameworkElecPermMBXEnergy(const System& system, const SimulationBox& simulationBox,
+                                                       const std::optional<Framework>& framework,
+                                                       std::span<const Atom> frameworkAtoms)
+{
+  if (!framework.has_value() || frameworkAtoms.empty()) return 0.0;
+
+  bblock::System mbx;
+  int nextTag{1};
+  mbx.SetUpFromJson(readMBXSettings(system));
+  addFrameworkCharges(mbx, framework, frameworkAtoms, nextTag);
+  setPeriodicCell(mbx, simulationBox);
+  constexpr bool calculateGradients{false};
+  mbx.Electrostatics(calculateGradients);
+  return mbx.GetPermanentElectrostaticEnergy();
+}
+
+RunningEnergy Interactions::computeMBXEnergySystem(const System& system, const std::vector<Component>& components,
+                                                   const SimulationBox& simulationBox,
+                                                   const std::optional<Framework>& framework,
+                                                   std::span<const Atom> frameworkAtoms,
+                                                   std::span<const Atom> moleculeAtoms, std::span<double> mbxEnergyLog)
+{
+  if (!mbxEnergyLog.empty() && mbxEnergyLog.size() != numberOfMBXEnergyTerms)
+  {
+    throw std::invalid_argument(
+        std::format("MBX energy log requires {} entries, received {}", numberOfMBXEnergyTerms, mbxEnergyLog.size()));
+  }
+
+  bblock::System mbx;
+  int nextTag{1};
+  addSystemMonomers(mbx, system, components, moleculeAtoms, nextTag);
+  mbx.SetUpFromJson(readMBXSettings(system));
+  addFrameworkCharges(mbx, framework, frameworkAtoms, nextTag);
+  setPeriodicCell(mbx, simulationBox);
+
+  const MBXEnergyTerms terms = evaluateMBX(mbx, system.elecPermFrameworkMBX);
+  terms.copyTo(mbxEnergyLog);
+  return asRunningEnergy(terms);
+}
+
+RunningEnergy Interactions::computeMBXEnergy(const System& system, const std::vector<Component>& components,
+                                             const SimulationBox& simulationBox,
+                                             const std::optional<Framework>& framework, std::size_t selectedComponent,
+                                             std::span<const Atom> frameworkAtoms, std::span<const Atom> moleculeAtoms,
+                                             std::span<const Atom> selectedMoleculeAtoms,
+                                             bool includeSelectedMoleculeAtoms, std::vector<double>* mbxEnergyLog)
+{
+  if (selectedComponent >= components.size())
+  {
+    throw std::out_of_range(std::format("[MBX]: selected component {} is out of range", selectedComponent));
+  }
+  if (mbxEnergyLog != nullptr && mbxEnergyLog->size() != numberOfMBXEnergyTerms)
+  {
+    throw std::invalid_argument(
+        std::format("MBX energy log requires {} entries, received {}", numberOfMBXEnergyTerms, mbxEnergyLog->size()));
+  }
+  if (includeSelectedMoleculeAtoms && selectedMoleculeAtoms.empty())
+  {
+    throw std::invalid_argument("[MBX]: cannot include an empty selected molecule");
+  }
+  if (!selectedMoleculeAtoms.empty() && selectedMoleculeAtoms.size() != components[selectedComponent].atoms.size())
+  {
+    throw std::invalid_argument(std::format("[MBX]: selected component '{}' requires {} atoms, received {}",
+                                            components[selectedComponent].name,
+                                            components[selectedComponent].atoms.size(), selectedMoleculeAtoms.size()));
+  }
+
+  bblock::System mbx;
+  int nextTag{1};
+  addSystemMonomers(mbx, system, components, moleculeAtoms, nextTag,
+                    selectedExistingMolecule(system, selectedComponent, selectedMoleculeAtoms));
+  if (includeSelectedMoleculeAtoms)
+  {
+    addMonomer(mbx, components[selectedComponent], selectedMoleculeAtoms, nextTag);
+  }
+  mbx.SetUpFromJson(readMBXSettings(system));
+  addFrameworkCharges(mbx, framework, frameworkAtoms, nextTag);
+  setPeriodicCell(mbx, simulationBox);
+
+  const MBXEnergyTerms terms = evaluateMBX(mbx, system.elecPermFrameworkMBX);
+  if (mbxEnergyLog != nullptr) terms.copyTo(std::span<double>(*mbxEnergyLog));
+  return asRunningEnergy(terms);
+}
+
+RunningEnergy Interactions::computeMBXEnergyDifference(
+    const System& system, const std::vector<Component>& components, const SimulationBox& simulationBox,
+    const std::optional<Framework>& framework, std::size_t selectedComponent, std::span<const Atom> frameworkAtoms,
+    std::span<const Atom> moleculeAtoms, std::span<const Atom> newMoleculeAtoms, std::span<const Atom> oldMoleculeAtoms)
+{
+  if (oldMoleculeAtoms.empty() || newMoleculeAtoms.empty())
+  {
+    throw std::invalid_argument(
+        "[MBX]: replacement energy differences require nonempty old and new molecule configurations; "
+        "insertion, deletion, and Widom states must be evaluated explicitly");
+  }
+
+  const auto oldMolecule = selectedExistingMolecule(system, selectedComponent, oldMoleculeAtoms);
+  const auto newMolecule = selectedExistingMolecule(system, selectedComponent, newMoleculeAtoms);
+  if (!oldMolecule.has_value() || !newMolecule.has_value() || oldMolecule != newMolecule)
+  {
+    throw std::invalid_argument(
+        "[MBX]: replacement energy differences require old and new configurations of the same existing molecule");
+  }
+
+  const RunningEnergy oldEnergy = computeMBXEnergy(system, components, simulationBox, framework, selectedComponent,
+                                                   frameworkAtoms, moleculeAtoms, oldMoleculeAtoms, true);
+  const RunningEnergy newEnergy = computeMBXEnergy(system, components, simulationBox, framework, selectedComponent,
+                                                   frameworkAtoms, moleculeAtoms, newMoleculeAtoms, true);
+  return newEnergy - oldEnergy;
 }

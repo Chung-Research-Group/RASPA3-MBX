@@ -1,0 +1,227 @@
+module;
+
+export module monte_carlo;
+
+import std;
+
+import randomnumbers;
+import threadpool;
+
+import averages;
+import system;
+import mc_moves;
+import input_reader;
+import energy_status;
+import archive;
+import json;
+import simulation_schedule;
+
+/**
+ * \brief Performs Monte Carlo simulations for molecular systems.
+ *
+ * The MonteCarlo struct orchestrates the execution of Monte Carlo simulations,
+ * including initialization, equilibration, and production stages. It manages multiple systems,
+ * random number generation, simulation parameters, and output generation.
+ */
+export struct MonteCarlo
+{
+  /**
+   * \brief Enumeration of weighting methods for sampling.
+   */
+  enum class WeightingMethod : std::size_t
+  {
+    LambdaZero = 0,  ///< Use only lambda = 0 in sampling.
+    AllLambdas = 1   ///< Use all lambda values in sampling.
+  };
+
+  /**
+   * \brief Enumeration of simulation stages.
+   */
+  enum class SimulationStage : std::size_t
+  {
+    Uninitialized = 0,      ///< Simulation not initialized.
+    PreInitialization = 1,  ///< Pre-initialization stage.
+    Initialization = 2,     ///< Initialization stage.
+    Equilibration = 3,      ///< Equilibration stage.
+    Production = 4          ///< Production stage.
+  };
+
+  /**
+   * \brief Default constructor for the MonteCarlo class.
+   *
+   * Initializes a MonteCarlo object with default parameters.
+   */
+  MonteCarlo();
+
+
+  MonteCarlo(const MonteCarlo&) = delete;
+  MonteCarlo& operator=(const MonteCarlo&) = delete;
+
+
+  /**
+   * \brief Constructs a MonteCarlo object with simulation parameters from an InputReader.
+   *
+   * \param reader InputReader containing simulation parameters.
+   */
+  MonteCarlo(InputReader &reader) noexcept;
+
+  /**
+   * \brief Constructs a MonteCarlo object with specified simulation parameters.
+   *
+   * \param schedule Run-control settings (cycle counts and periodic action intervals).
+   * \param systems Vector of System objects to simulate.
+   * \param randomSeed Random number generator seed.
+   * \param numberOfBlocks Number of blocks for error estimation.
+   * \param outputToFiles Whether output should be written to files.
+   */
+  MonteCarlo(const SimulationSchedule &schedule, const std::vector<System> &systems,
+             std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles);
+
+  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+
+  bool outputToFiles{true};
+  RandomNumber random;  ///< Random number generator.
+
+  std::size_t numberOfProductionCycles;         ///< Number of production cycles.
+  std::size_t numberOfPreInitializationCycles;  ///< Number of pre-initialization cycles.
+  std::size_t numberOfInitializationCycles;     ///< Number of initialization cycles.
+  std::size_t numberOfEquilibrationCycles;      ///< Number of equilibration cycles.
+  std::size_t numberOfSteps;                    ///< Total number of steps performed.
+
+  std::size_t printEvery;               ///< Frequency of printing status reports.
+  std::size_t writeRestartEvery;        ///< Frequency of writing restart files.
+  std::size_t writeBinaryRestartEvery;  ///< Frequency of writing binary restart files.
+  std::size_t rescaleWangLandauEvery;   ///< Frequency of rescaling Wang-Landau factors.
+  std::size_t optimizeMCMovesEvery;     ///< Frequency of optimizing MC moves.
+
+  std::size_t currentCycle{0};                                      ///< Current cycle number.
+  std::size_t absoluteCurrentCycle{0};                              ///< Current overall cycle number.
+  SimulationStage simulationStage{SimulationStage::Uninitialized};  ///< Current simulation stage.
+
+  std::vector<System> systems;              ///< Vector of systems to simulate.
+  std::size_t fractionalMoleculeSystem{0};  // the system where the fractional molecule is located
+
+  std::vector<std::ofstream> streams;            ///< Output streams for writing data.
+  std::vector<std::string> outputJsonFileNames;  ///< Filenames for output JSON files.
+  std::vector<nlohmann::json> outputJsons;       ///< Output data in JSON format.
+
+  BlockErrorEstimation estimation{};  ///< Block error estimation object.
+
+  std::chrono::duration<double> totalGridCreationTime{0};  ///< Total time for calculating the interpolation grid.
+  std::chrono::duration<double> totalPreInitializationSimulationTime{0};  ///< Total time for pre-initialization stage.
+  std::chrono::duration<double> totalInitializationSimulationTime{0};  ///< Total time for initialization stage.
+  std::chrono::duration<double> totalEquilibrationSimulationTime{0};   ///< Total time for equilibration stage.
+  std::chrono::duration<double> totalProductionSimulationTime{0};      ///< Total time for production stage.
+  std::chrono::duration<double> totalSimulationTime{0};                ///< Total simulation time.
+
+  /**
+   * \brief Creates output files for writing simulation data.
+   */
+  void createOutputFiles();
+
+  /**
+   * \brief Writes the periodic binary restart file and services a pending shutdown signal.
+   */
+  void checkpointIfDue(std::size_t currentCycle);
+
+
+  /**
+   * \brief Write the output header
+   */
+  void writeOutputHeader();
+
+  /**
+   * \brief Creates energy interpolation grids
+   */
+  void createInterpolationGrids();
+
+  /**
+   * \brief Runs the Monte Carlo simulation.
+   *
+   * Orchestrates the simulation by executing initialization, equilibration,
+   * and production stages sequentially.
+   */
+  void run();
+
+  /**
+   * \brief Performs a single Monte Carlo cycle.
+   *
+   * Executes a number of Monte Carlo steps, updates system properties,
+   * and handles output generation and restart file writing.
+   */
+  void performCycle();
+
+  /**
+   * \brief Performs the pre-initialization stage of the simulation.
+   *
+   * Runs the specified number of pre-initialization cycles using only a
+   * restricted set of moves (translation, rotation, reinsertion and
+   * partial-reinsertion) to relax the initial configuration before the
+   * regular initialization stage.
+   */
+  void preInitialize(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
+
+  /**
+   * \brief Performs the initialization stage of the simulation.
+   *
+   * Sets up the simulation systems, writes initial output, and runs
+   * the specified number of initialization cycles.
+   */
+  void initialize(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
+
+  /**
+   * \brief Performs the equilibration stage of the simulation.
+   *
+   * Equilibrates the systems by running the specified number of equilibration cycles,
+   * and adjusts Wang-Landau biasing factors.
+   */
+  void setup();
+
+  /**
+   * \brief Performs the equilibration stage of the simulation.
+   *
+   * Equilibrates the systems by running the specified number of equilibration cycles,
+   * and adjusts Wang-Landau biasing factors.
+   */
+  void tearDown();
+
+  /**
+   * \brief Performs the equilibration stage of the simulation.
+   *
+   * Equilibrates the systems by running the specified number of equilibration cycles,
+   * and adjusts Wang-Landau biasing factors.
+   */
+  void equilibrate(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
+
+  /**
+   * \brief Performs the production stage of the simulation.
+   *
+   * Runs the main simulation cycles, collects statistics, and samples properties.
+   */
+  void production(std::function<void()> call_back_function = []{}, std::size_t callBackEvery = 100);
+
+  /**
+   * \brief Generates the final output of the simulation.
+   *
+   * Writes energy statistics, move statistics, CPU timings, and
+   * other properties to output files.
+   */
+  void output();
+
+  /**
+   * \brief Selects a random system from the list of systems.
+   *
+   * \return Reference to a randomly selected System object.
+   */
+  System &randomSystem();
+
+  /**
+   * \brief Returns a string representation of the MonteCarlo object.
+   *
+   * \return A string describing the MonteCarlo object.
+   */
+  std::string repr() const;
+
+  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const MonteCarlo &mc);
+  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, MonteCarlo &mc);
+};

@@ -1,33 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <istream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <tuple>
-#include <utility>
-#include <vector>
-#include <string>
-#include <filesystem>
-#include "mdspanwrapper.h"
-#endif
-
 #ifdef BLAS_ILP64
 typedef long long blas_int;
 #else
@@ -42,9 +14,7 @@ extern "C"
 
 module interpolation_energy_grid;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import uint3;
@@ -59,7 +29,7 @@ import simulationbox;
 import interactions_framework_molecule_grid;
 import interactions_external_field_grid;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-//import mdspan;
+import mdspan;
 #endif
 
 // For a framework that is kept rigid it is effecient to precompute the energy and forces.
@@ -3610,7 +3580,7 @@ const uint3 InterpolationEnergyGrid::parseExternalFieldGridDimensions(const std:
  * This function extracts parameters specific to external field grids,
  * allowing to use this data in construction of external field interpolation grid in simulations.
  *
- * \param filename The name of the CUBE file containing the external field data.
+ * \param filename The name of the CUBE file containing the external field data. The file is expected to be column-major ordered
  * \return A pair containing the 3D grid of external field values and the grid dimensions.
  */
 const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(const std::string& filename)
@@ -3627,13 +3597,23 @@ const std::vector<double> InterpolationEnergyGrid::parseExternalFieldGridCube(co
 
   std::vector<double> gridFlat(gridDims.x * gridDims.y * gridDims.z);
   double value{};
-  for (std::size_t i = 0; i < gridDims.x * gridDims.y * gridDims.z; i++)
+
+  for (std::size_t iz = 0; iz < gridDims.z; iz++)
   {
-    if (!(infile >> value)){
-      throw std::runtime_error("Unexpected end of cube data: " + filename);
+    for (std::size_t iy = 0; iy < gridDims.y; iy++)
+    {
+      for (std::size_t ix = 0; ix < gridDims.x; ix++)
+      {
+        if (!(infile >> value)){
+          throw std::runtime_error("Unexpected end of cube data: " + filename);
+        }
+        std::size_t idx = ix * (gridDims.y * gridDims.z) 
+                        + iy * gridDims.z
+                        + iz;
+
+        gridFlat[idx] = value * Units::KelvinToEnergy;
+      }
     }
-    // TODO: add options for different input units
-    gridFlat[i] = value * Units::KelvinToEnergy;
   }
 
   return gridFlat;
@@ -3655,7 +3635,7 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
     double percent = 100.0 / static_cast<double>(numberOfGridPoints.x * numberOfGridPoints.y * numberOfGridPoints.z);
 
     double counter{};
-    std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
+    std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
     for (std::size_t k = 0; k < static_cast<std::size_t>(numberOfGridPoints.z); ++k)
     {
       for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfGridPoints.y); ++j)
@@ -3806,7 +3786,7 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
         }
       }
     }
-    std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
+    std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
 
     std::chrono::duration<double> time_duration = time_end - time_begin;
     std::print(stream, "Grid done... ({:14f} [s])\n", time_duration.count());
@@ -3816,6 +3796,7 @@ void InterpolationEnergyGrid::makeExternalFieldInterpolationGrid(std::ostream& s
 
 // The grid files are stored row-order (std::layout_right)
 // The grid is arranged with the x axis as the outer loop and the z axis as the inner loop
+// calculateEnergyAtPosition using ForceField::InterpolationGridType::EwaldReal calcalulates energy for a unit-charge
 void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& stream,
                                                     ForceField::InterpolationGridType interpolationGridType,
                                                     const ForceField& forceField, const Framework& framework,
@@ -3837,7 +3818,7 @@ void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& strea
              number_of_unit_cells.z);
 
   double counter{};
-  std::chrono::system_clock::time_point time_begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point time_begin = std::chrono::steady_clock::now();
   for (std::size_t k = 0; k < static_cast<std::size_t>(numberOfGridPoints.z); ++k)
   {
     for (std::size_t j = 0; j < static_cast<std::size_t>(numberOfGridPoints.y); ++j)
@@ -3989,7 +3970,7 @@ void InterpolationEnergyGrid::makeFrameworkInterpolationGrid(std::ostream& strea
       }
     }
   }
-  std::chrono::system_clock::time_point time_end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> time_duration = time_end - time_begin;
   std::print(stream, "Grid done... ({:14f} [s])\n", time_duration.count());

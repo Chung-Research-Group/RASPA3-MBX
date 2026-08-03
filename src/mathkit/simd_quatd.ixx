@@ -1,25 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <format>
-#include <fstream>
-#include <map>
-#include <ostream>
-#include <string>
-#include <string_view>
-#include <vector>
-#endif
-
 export module simd_quatd;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import archive;
@@ -64,6 +47,12 @@ export union simd_quatd
   simd_quatd& operator-=(const simd_quatd& b)
   {
     this->ix -= b.ix, this->iy -= b.iy, this->iz -= b.iz, this->r -= b.r;
+    return *this;
+  }
+
+  simd_quatd& operator*=(const double& b)
+  {
+    this->ix *= b, this->iy *= b, this->iz *= b, this->r *= b;
     return *this;
   }
 

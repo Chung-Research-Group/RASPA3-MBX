@@ -1,0 +1,1338 @@
+module;
+
+module monte_carlo;
+
+import std;
+
+import stringutils;
+import hardware_info;
+import archive;
+import graceful_shutdown;
+import system;
+import framework;
+import randomnumbers;
+import input_reader;
+import component;
+import averages;
+import property_loading;
+import units;
+import property_enthalpy;
+import simulationbox;
+import forcefield;
+import sample_movies;
+import energy_status;
+import energy_status_intra;
+import energy_status_inter;
+import running_energy;
+import atom;
+import double3;
+import double3x3;
+import property_lambda_probability_histogram;
+import reaction;
+import property_widom;
+import property_simulationbox;
+import property_energy;
+import mc_moves;
+import mc_moves_probabilities;
+import mc_moves_cputime;
+import mc_moves_statistics;
+import mc_moves_move_types;
+import molecule;
+import property_pressure;
+import transition_matrix;
+import interactions_ewald;
+import interactions_intermolecular;
+import equation_of_states;
+import interpolation_energy_grid;
+import simulation_schedule;
+
+MonteCarlo::MonteCarlo() : outputToFiles(false), random(std::nullopt) {};
+
+MonteCarlo::MonteCarlo(InputReader& reader) noexcept
+    : outputToFiles(true),
+      random(reader.randomSeed),
+      numberOfProductionCycles(reader.numberOfProductionCycles),
+      numberOfPreInitializationCycles(reader.numberOfPreInitializationCycles),
+      numberOfInitializationCycles(reader.numberOfInitializationCycles),
+      numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
+      printEvery(reader.printEvery),
+      writeRestartEvery(5000),
+      writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
+      rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
+      optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
+      systems(std::move(reader.systems)),
+      outputJsons(systems.size()),
+      estimation(reader.numberOfBlocks, reader.numberOfProductionCycles)
+{
+}
+
+MonteCarlo::MonteCarlo(const SimulationSchedule &schedule, const std::vector<System> &systems,
+                       std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles)
+    : outputToFiles(outputToFiles),
+      random(RandomNumber(randomSeed)),
+      numberOfProductionCycles(schedule.numberOfProductionCycles),
+      numberOfPreInitializationCycles(schedule.numberOfPreInitializationCycles),
+      numberOfInitializationCycles(schedule.numberOfInitializationCycles),
+      numberOfEquilibrationCycles(schedule.numberOfEquilibrationCycles),
+      printEvery(schedule.printEvery),
+      writeRestartEvery(5000),
+      writeBinaryRestartEvery(schedule.writeBinaryRestartEvery),
+      rescaleWangLandauEvery(schedule.rescaleWangLandauEvery),
+      optimizeMCMovesEvery(schedule.optimizeMCMovesEvery),
+      systems(systems),
+      outputJsons(systems.size()),
+      estimation(numberOfBlocks, schedule.numberOfProductionCycles)
+{
+}
+
+System& MonteCarlo::randomSystem()
+{
+  return systems[std::size_t(random.uniform() * static_cast<double>(systems.size()))];
+}
+
+void MonteCarlo::run()
+{
+  for (const System& system : systems)
+  {
+    system.validateMBXMonteCarloConfiguration();
+  }
+
+  switch (simulationStage)
+  {
+    case SimulationStage::Uninitialized:
+      setup();
+      break;
+    case SimulationStage::PreInitialization:
+      goto continuePreInitializationStage;
+    case SimulationStage::Initialization:
+      goto continueInitializationStage;
+    case SimulationStage::Equilibration:
+      goto continueEquilibrationStage;
+    case SimulationStage::Production:
+      goto continueProductionStage;
+    default:
+      // an unlisted stage (e.g. a newly added stage without resume dispatch) must fail loudly
+      // instead of silently rerunning the simulation from the beginning
+      throw std::runtime_error("MonteCarlo::run(): no resume dispatch for the checkpointed simulation stage");
+  }
+
+continuePreInitializationStage:
+  preInitialize();
+continueInitializationStage:
+  initialize();
+continueEquilibrationStage:
+  equilibrate();
+continueProductionStage:
+  production();
+
+  tearDown();
+}
+
+void MonteCarlo::setup()
+{
+  // this case only happens at first run, not when using a binary-restart file
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    system.forceField.initializeAutomaticCutOff(system.simulationBox);
+    system.forceField.initializeEwaldParameters(system.simulationBox);
+
+    // switch the fractional molecule on in the first system, and off in all others (serial Gibbs CFCMC)
+    if (system.usesGibbsConventionalCFCMC() || system_id == 0uz)
+      system.containsTheFractionalMolecule = true;
+    else
+      system.containsTheFractionalMolecule = false;
+
+    // inactive fractional molecules must not contribute dUdlambda: set their groupId to zero
+    system.initializeGibbsSwapFractionalMoleculeGroupIds();
+
+    if (system.usesGibbsConventionalCFCMC())
+    {
+      system.initializeGibbsConventionalFractionalMolecules();
+      system.precomputeTotalRigidEnergy();
+      system.runningEnergies = system.computeTotalEnergies();
+    }
+
+    // if a gradient-based move is on (MC/MD hybrid or translation/rotation smart MC), make sure that the
+    // interpolation method includes gradients
+    bool usesGradientMove = system.mc_moves_probabilities.getProbability(Move::Types::HybridMC) > 0.0 ||
+                            system.mc_moves_probabilities.getProbability(Move::Types::TranslationSmartMCAll) > 0.0 ||
+                            system.mc_moves_probabilities.getProbability(Move::Types::RotationSmartMCAll) > 0.0;
+    for (const Component& component : system.components)
+    {
+      usesGradientMove |=
+          component.mc_moves_probabilities.getProbability(Move::Types::TranslationSmartMC) > 0.0 ||
+          component.mc_moves_probabilities.getProbability(Move::Types::RotationSmartMC) > 0.0 ||
+          component.mc_moves_probabilities.getProbability(Move::Types::TranslationRotationSmartMC) > 0.0;
+    }
+    if (usesGradientMove &&
+        system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
+    {
+      system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;
+    }
+
+    ++system_id;
+  }
+  if (outputToFiles)
+  {
+    createOutputFiles();
+    writeOutputHeader();
+  }
+
+  createInterpolationGrids();
+}
+
+void MonteCarlo::tearDown()
+{
+  if (outputToFiles)
+  {
+    output();
+  }
+}
+
+void MonteCarlo::createOutputFiles()
+{
+  // on a binary-restart resume append to the existing output files instead of truncating them,
+  // so each log continues where the interrupted run left off
+  const std::ios::openmode mode =
+      (simulationStage != SimulationStage::Uninitialized) ? std::ios::app : std::ios::out;
+
+  std::filesystem::create_directories("output");
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    std::string fileNameString =
+        std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system_id);
+    streams.emplace_back(fileNameString, mode);
+    fileNameString =
+        std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
+    outputJsonFileNames.emplace_back(fileNameString);
+
+    ++system_id;
+  }
+}
+
+void MonteCarlo::checkpointIfDue(std::size_t currentCycle)
+{
+  // periodic binary restart file
+  if (currentCycle % writeBinaryRestartEvery == 0uz && outputToFiles)
+  {
+    writeBinaryRestartFile(*this);
+  }
+
+  // graceful shutdown: checkpoint at this cycle boundary and exit cleanly
+  if (GracefulShutdown::requested())
+  {
+    writeBinaryRestartFile(*this);
+    // std::exit skips stack unwinding: flush the text output streams explicitly
+    for (std::ofstream& outputStream : streams) std::flush(outputStream);
+    GracefulShutdown::exitAfterCheckpoint();
+  }
+}
+
+void MonteCarlo::writeOutputHeader()
+{
+  if (outputToFiles)
+  {
+    for (std::size_t system_id{0}; const System& system : systems)
+    {
+      std::ostream stream(streams[system_id].rdbuf());
+
+      std::print(stream, "{}", system.writeOutputHeader());
+      std::print(stream, "Random seed: {}\n\n", random.seed);
+      std::print(stream, "{}\n", HardwareInfo::writeInfo());
+      std::print(stream, "{}", Units::printStatus());
+      std::print(stream, "{}", system.writeSystemStatus());
+      std::print(stream, "{}", system.forceField.printPseudoAtomStatus());
+      std::print(stream, "{}", system.forceField.printForceFieldStatus());
+      std::print(stream, "{}", system.writeComponentStatus());
+      std::print(stream, "{}", system.writeNumberOfPseudoAtoms());
+      std::print(stream, "{}", system.reactions.printStatus());
+
+#ifdef VERSION
+#define QUOTE(str) #str
+#define EXPAND_AND_QUOTE(str) QUOTE(str)
+      outputJsons[system_id]["version"] = EXPAND_AND_QUOTE(VERSION);
+#endif
+
+      outputJsons[system_id]["seed"] = random.seed;
+      outputJsons[system_id]["initialization"]["hardwareInfo"] = HardwareInfo::jsonInfo();
+      outputJsons[system_id]["initialization"]["units"] = Units::jsonStatus();
+      outputJsons[system_id]["initialization"]["initialConditions"] = system.jsonSystemStatus();
+      outputJsons[system_id]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
+      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] =
+          system.forceField.jsonPseudoAtomStatus();
+      outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
+      outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
+
+      std::ofstream json(outputJsonFileNames[system_id]);
+      json << outputJsons[system_id].dump(4);
+
+      ++system_id;
+    }
+  }
+}
+
+void MonteCarlo::createInterpolationGrids()
+{
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    if (outputToFiles)
+    {
+      std::ostream stream(streams[system_id].rdbuf());
+      system.createExternalFieldInterpolationGrid(stream, system_id);
+      system.createFrameworkInterpolationGrids(stream);
+    }
+    else
+    {
+      std::ostringstream local;
+      system.createExternalFieldInterpolationGrid(local, system_id);
+      system.createFrameworkInterpolationGrids(local);
+    }
+
+    ++system_id;
+  }
+}
+
+void MonteCarlo::performCycle()
+{
+  for (const System& system : systems)
+  {
+    system.validateMBXMonteCarloConfiguration();
+  }
+
+  std::size_t totalNumberOfMolecules{0uz};
+  std::size_t totalNumberOfComponents{0uz};
+  std::size_t numberOfStepsPerCycle{0uz};
+
+  totalNumberOfMolecules = std::transform_reduce(
+      systems.begin(), systems.end(), 0uz, [](const std::size_t& acc, const std::size_t& b) { return acc + b; },
+      [](const System& system) { return system.numberOfMolecules(); });
+  totalNumberOfComponents = systems.front().numerOfAdsorbateComponents();
+
+  numberOfStepsPerCycle = std::max(totalNumberOfMolecules, 20uz) * totalNumberOfComponents;
+
+  for (std::size_t j = 0uz; j != numberOfStepsPerCycle; j++)
+  {
+    // move to 'slide' when implemented in llvm
+    // [[maybe_unused]] auto s = std::ranges::views::iota(0uz, systems.size());
+    // std::ranges::views::slide(s, 2uz);
+
+    std::pair<std::size_t, std::size_t> selectedSystemPair = random.randomPairAdjacentIntegers(systems.size());
+    System& selectedSystem = systems[selectedSystemPair.first];
+    System& selectedSecondSystem = systems[selectedSystemPair.second];
+
+    std::size_t selectedComponent = selectedSystem.randomComponent(random);
+
+    switch (simulationStage)
+    {
+      case SimulationStage::Uninitialized:
+        break;
+      case SimulationStage::PreInitialization:
+        MC_Moves::performRandomMovePreInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                     fractionalMoleculeSystem);
+        break;
+      case SimulationStage::Initialization:
+        MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                  fractionalMoleculeSystem);
+        break;
+      case SimulationStage::Equilibration:
+        MC_Moves::performRandomMoveEquilibration(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                                 fractionalMoleculeSystem);
+
+        selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
+
+        selectedSecondSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample,
+            selectedSecondSystem.containsTheFractionalMolecule);
+
+        if (selectedSystem.usesGibbsConventionalCFCMC())
+        {
+          selectedSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
+          selectedSecondSystem.components[selectedComponent].lambdaGibbs.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, true);
+        }
+
+        selectedSystem.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        selectedSecondSystem.pairSwapLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+
+        selectedSystem.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        selectedSecondSystem.reactionLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample);
+        break;
+      case SimulationStage::Production:
+        MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
+                                              fractionalMoleculeSystem, estimation.currentBin);
+        numberOfSteps++;
+        break;
+    }
+
+    selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
+    selectedSecondSystem.components[selectedComponent].lambdaGC.sampleOccupancy(
+        selectedSecondSystem.containsTheFractionalMolecule);
+    if (selectedSystem.usesGibbsConventionalCFCMC())
+    {
+      selectedSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
+      selectedSecondSystem.components[selectedComponent].lambdaGibbs.sampleOccupancy(true);
+    }
+    selectedSystem.pairSwapLambdaSampleOccupancy();
+    selectedSecondSystem.pairSwapLambdaSampleOccupancy();
+    selectedSystem.reactionLambdaSampleOccupancy();
+    selectedSecondSystem.reactionLambdaSampleOccupancy();
+  }
+}
+
+void MonteCarlo::preInitialize(std::function<void()> call_back_function, std::size_t callBackEvery)
+{
+  std::chrono::steady_clock::time_point t1, t2;
+
+  if (simulationStage == SimulationStage::PreInitialization) goto continuePreInitializationStage;
+  simulationStage = SimulationStage::PreInitialization;
+
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    system.precomputeTotalRigidEnergy();
+    system.runningEnergies = system.computeTotalEnergies();
+
+    if (outputToFiles)
+    {
+      if (system_id >= streams.size())
+      {
+        throw std::runtime_error("Output not opened, did you forgot to call 'setup'?\n");
+      }
+
+      std::ostream stream(streams[system_id].rdbuf());
+      stream << system.runningEnergies.printMC("Recomputed from scratch");
+      std::print(stream, "\n\n\n\n");
+
+      system.writeRestartFile(system_id);
+    }
+
+    ++system_id;
+  }
+
+  for (currentCycle = 0uz; currentCycle != numberOfPreInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  {
+    t1 = std::chrono::steady_clock::now();
+
+    performCycle();
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
+
+    if (currentCycle % printEvery == 0uz)
+    {
+      for (std::size_t system_id{0}; System& system : systems)
+      {
+        system.loadings =
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+
+        if (outputToFiles)
+        {
+          std::ostream stream(streams[system_id].rdbuf());
+          std::print(stream, "{}",
+                     system.writePreInitializationStatusReport(currentCycle, numberOfPreInitializationCycles));
+          std::flush(stream);
+        }
+
+        ++system_id;
+      }
+    }
+
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if (call_back_function)
+      {
+        call_back_function();
+      }
+    }
+
+    if (currentCycle % optimizeMCMovesEvery == 0uz)
+    {
+      for (System& system : systems)
+      {
+        system.optimizeMCMoves();
+      }
+    }
+
+    checkpointIfDue(currentCycle);
+
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      if (system.propertyNumberOfMoleculesEvolution.has_value())
+      {
+        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+      if (system.propertyVolumeEvolution.has_value())
+      {
+        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+
+      ++system_id;
+    }
+
+    if (currentCycle % writeRestartEvery == 0uz)
+    {
+      // write restart
+      if (outputToFiles)
+      {
+        for (std::size_t system_id{0}; System& system : systems)
+        {
+          system.writeRestartFile(system_id);
+
+          ++system_id;
+        }
+      }
+    }
+
+    t2 = std::chrono::steady_clock::now();
+
+    totalPreInitializationSimulationTime += (t2 - t1);
+    totalSimulationTime += (t2 - t1);
+
+  continuePreInitializationStage:;
+  }
+}
+
+void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_t callBackEvery)
+{
+  std::chrono::steady_clock::time_point t1, t2;
+
+  if (simulationStage == SimulationStage::Initialization) goto continueInitializationStage;
+  simulationStage = SimulationStage::Initialization;
+
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    system.precomputeTotalRigidEnergy();
+    system.runningEnergies = system.computeTotalEnergies();
+
+    if (outputToFiles)
+    {
+      if(system_id >= streams.size())
+      {
+        throw std::runtime_error("Output not opened, did you forgot to call 'setup'?\n");
+      }
+
+      std::ostream stream(streams[system_id].rdbuf());
+      stream << system.runningEnergies.printMC("Recomputed from scratch");
+      std::print(stream, "\n\n\n\n");
+
+      system.writeRestartFile(system_id);
+    }
+
+    ++system_id;
+  }
+
+  for (currentCycle = 0uz; currentCycle != numberOfInitializationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  {
+    t1 = std::chrono::steady_clock::now();
+
+    performCycle();
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
+
+    if (currentCycle % printEvery == 0uz)
+    {
+      for (std::size_t system_id{0}; System& system : systems)
+      {
+        system.loadings =
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+
+        if (outputToFiles)
+        {
+          std::ostream stream(streams[system_id].rdbuf());
+          std::print(stream, "{}", system.writeInitializationStatusReport(currentCycle, numberOfInitializationCycles));
+          std::flush(stream);
+        }
+
+        ++system_id;
+      }
+    }
+
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if(call_back_function)
+      {
+        call_back_function();
+      }
+    }
+
+    if (currentCycle % optimizeMCMovesEvery == 0uz)
+    {
+      for (System& system : systems)
+      {
+        system.optimizeMCMoves();
+      }
+    }
+
+    checkpointIfDue(currentCycle);
+
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      {
+        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+      if(system.propertyVolumeEvolution.has_value())
+      {
+        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+
+      ++system_id;
+    }
+
+    if (currentCycle % writeRestartEvery == 0uz)
+    {
+      // write restart
+      if (outputToFiles)
+      {
+        for (std::size_t system_id{0}; System& system : systems)
+        {
+          system.writeRestartFile(system_id);
+
+          ++system_id;
+        }
+      }
+    }
+
+    t2 = std::chrono::steady_clock::now();
+
+    totalInitializationSimulationTime += (t2 - t1);
+    totalSimulationTime += (t2 - t1);
+
+  continueInitializationStage:;
+  }
+}
+
+void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size_t callBackEvery)
+{
+  std::chrono::steady_clock::time_point t1, t2;
+
+  if (simulationStage == SimulationStage::Equilibration) goto continueEquilibrationStage;
+  simulationStage = SimulationStage::Equilibration;
+
+  for (System& system : systems)
+  {
+    system.runningEnergies = system.computeTotalEnergies();
+
+    for (Component& component : system.components)
+    {
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
+                                             system.containsTheFractionalMolecule);
+      component.lambdaGC.clear();
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize,
+                                                  true);
+        component.lambdaGibbs.clear();
+      }
+    }
+
+    system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+    system.pairSwapLambdaClearBookkeeping();
+
+    system.reactionLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Initialize);
+    system.reactionLambdaClearBookkeeping();
+  };
+
+  for (currentCycle = 0uz; currentCycle != numberOfEquilibrationCycles; ++currentCycle, ++absoluteCurrentCycle)
+  {
+    t1 = std::chrono::steady_clock::now();
+
+    performCycle();
+
+    for (System& system : systems)
+    {
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+    }
+
+    if (currentCycle % printEvery == 0uz)
+    {
+      for (std::size_t system_id{0}; System& system : systems)
+      {
+        system.loadings =
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+
+        if (outputToFiles)
+        {
+          std::ostream stream(streams[system_id].rdbuf());
+          std::print(stream, "{}", system.writeEquilibrationStatusReportMC(currentCycle, numberOfEquilibrationCycles));
+          std::flush(stream);
+        }
+
+        ++system_id;
+      }
+    }
+
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if(call_back_function)
+      {
+        call_back_function();
+      }
+    }
+
+    if (currentCycle % optimizeMCMovesEvery == 0uz)
+    {
+      for (System& system : systems)
+      {
+        system.optimizeMCMoves();
+      }
+    }
+
+    if (currentCycle % rescaleWangLandauEvery == 0uz)
+    {
+      for (std::size_t system_id{0}; System& system : systems)
+      {
+        for (Component& component : system.components)
+        {
+          component.lambdaGC.WangLandauIteration(
+              PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors,
+              system.containsTheFractionalMolecule);
+          if (system.usesGibbsConventionalCFCMC())
+          {
+            component.lambdaGibbs.WangLandauIteration(
+                PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors, true);
+          }
+        }
+
+        system.pairSwapLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
+
+        system.reactionLambdaWangLandauIteration(
+            PropertyLambdaProbabilityHistogram::WangLandauPhase::AdjustBiasingFactors);
+
+        if (outputToFiles)
+        {
+          std::filesystem::create_directories("bias_factors");
+          for (Component& component : system.components)
+          {
+            component.lambdaGC.writeBiasingFile(
+                std::format("bias_factors/lambda_bias_{}.s{}.json", component.name, system_id));
+            if (system.usesGibbsConventionalCFCMC())
+            {
+              component.lambdaGibbs.writeBiasingFile(
+                  std::format("bias_factors/lambda_gibbs_bias_{}.s{}.json", component.name, system_id));
+            }
+          }
+          system.pairSwapLambdaWriteBiasingFiles(system_id);
+          for (Reaction& reaction : system.reactions.list)
+          {
+            system.activeReactionLambdaHistogram(reaction).writeBiasingFile(
+                std::format("bias_factors/lambda_bias_reaction_{}.s{}.json", reaction.id, system_id));
+          }
+        }
+
+        ++system_id;
+      }
+    }
+
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      {
+        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+      if(system.propertyVolumeEvolution.has_value())
+      {
+        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+
+      ++system_id;
+    }
+
+    checkpointIfDue(currentCycle);
+
+    if (currentCycle % writeRestartEvery == 0uz)
+    {
+      // write restart
+      if (outputToFiles)
+      {
+        for (std::size_t system_id{0}; System& system : systems)
+        {
+          system.writeRestartFile(system_id);
+
+          ++system_id;
+        }
+      }
+    }
+
+    t2 = std::chrono::steady_clock::now();
+
+    totalEquilibrationSimulationTime += (t2 - t1);
+    totalSimulationTime += (t2 - t1);
+
+  continueEquilibrationStage:;
+  }
+}
+
+void MonteCarlo::production(std::function<void()> call_back_function, std::size_t callBackEvery)
+{
+  double minBias{0uz};
+  std::chrono::steady_clock::time_point t1, t2;
+
+  if (simulationStage == SimulationStage::Production) goto continueProductionStage;
+  simulationStage = SimulationStage::Production;
+
+  for (System& system : systems)
+  {
+    system.runningEnergies = system.computeTotalEnergies();
+
+    system.mc_moves_statistics.clearMoveStatistics();
+    system.mc_moves_cputime.clearTimingStatistics();
+
+    for (Component& component : system.components)
+    {
+      component.mc_moves_statistics.clearMoveStatistics();
+      component.mc_moves_cputime.clearTimingStatistics();
+
+      component.lambdaGC.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize,
+                                             system.containsTheFractionalMolecule);
+      component.lambdaGC.clear();
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        component.lambdaGibbs.WangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize, true);
+        component.lambdaGibbs.clear();
+      }
+    }
+
+    system.pairSwapLambdaWangLandauIteration(PropertyLambdaProbabilityHistogram::WangLandauPhase::Finalize);
+    system.pairSwapLambdaClearBookkeeping();
+
+    system.reactionLambdaFinalize();
+    system.reactionLambdaClearBookkeeping();
+  };
+
+  minBias = std::numeric_limits<double>::max();
+  for (System& system : systems)
+  {
+    for (Component& component : system.components)
+    {
+      double currentMinBias =
+          *std::min_element(component.lambdaGC.biasFactor.cbegin(), component.lambdaGC.biasFactor.cend());
+      minBias = currentMinBias < minBias ? currentMinBias : minBias;
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        const double gibbsMinBias =
+            *std::min_element(component.lambdaGibbs.biasFactor.cbegin(), component.lambdaGibbs.biasFactor.cend());
+        minBias = gibbsMinBias < minBias ? gibbsMinBias : minBias;
+      }
+    }
+
+    const double pairSwapMinBias = system.pairSwapLambdaMinBias();
+    if (pairSwapMinBias < minBias)
+    {
+      minBias = pairSwapMinBias;
+    }
+
+    if (system.usesReactionConventionalCFCMC())
+    {
+      const double reactionMinBias = system.reactionLambdaMinBias();
+      if (reactionMinBias < minBias)
+      {
+        minBias = reactionMinBias;
+      }
+    }
+  }
+  for (System& system : systems)
+  {
+    for (Component& component : system.components)
+    {
+      component.lambdaGC.normalize(minBias);
+      if (system.usesGibbsConventionalCFCMC())
+      {
+        component.lambdaGibbs.normalize(minBias);
+      }
+    }
+    system.pairSwapLambdaNormalize(minBias);
+    system.reactionLambdaNormalize(minBias);
+  }
+
+  if (outputToFiles)
+  {
+    std::filesystem::create_directories("bias_factors");
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      for (Component& component : system.components)
+      {
+        component.lambdaGC.writeBiasingFile(
+            std::format("bias_factors/lambda_bias_{}.s{}.json", component.name, system_id));
+        if (system.usesGibbsConventionalCFCMC())
+        {
+          component.lambdaGibbs.writeBiasingFile(
+              std::format("bias_factors/lambda_gibbs_bias_{}.s{}.json", component.name, system_id));
+        }
+      }
+      system.pairSwapLambdaWriteBiasingFiles(system_id);
+      for (Reaction& reaction : system.reactions.list)
+      {
+        system.activeReactionLambdaHistogram(reaction).writeBiasingFile(
+            std::format("bias_factors/lambda_bias_reaction_{}.s{}.json", reaction.id, system_id));
+      }
+
+      ++system_id;
+    }
+  }
+
+  numberOfSteps = 0uz;
+  for (currentCycle = 0uz; currentCycle != numberOfProductionCycles; ++currentCycle, ++absoluteCurrentCycle)
+  {
+    t1 = std::chrono::steady_clock::now();
+
+    estimation.setCurrentSample(currentCycle);
+
+    performCycle();
+
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      system.sampleProperties(system_id, estimation.currentBin, currentCycle);
+      system.samplePropertiesEvolution(absoluteCurrentCycle);
+      if (system.forceBasedRDFSampleDue(currentCycle))
+      {
+        system.sampleForceBasedRDFWithFullGradients(currentCycle, estimation.currentBin);
+      }
+
+      if (currentCycle % 10uz == 0uz || currentCycle % printEvery == 0uz)
+      {
+        std::chrono::steady_clock::time_point time1 = std::chrono::steady_clock::now();
+        std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
+        system.currentEnergyStatus = molecularPressure.first;
+        system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+        std::chrono::steady_clock::time_point time2 = std::chrono::steady_clock::now();
+
+        system.mc_moves_cputime.energyPressureComputation += (time2 - time1);
+        system.averageEnergies.addSample(estimation.currentBin, molecularPressure.first, system.weight());
+
+        if (std::getenv("RASPA_PRESSURE_FD") != nullptr && currentCycle % printEvery == 0uz)
+        {
+          double vol = system.simulationBox.volume;
+          double analyticExcess = molecularPressure.second.trace() / (3.0 * vol);
+          double deltaFD = 1e-5;
+          SimulationBox boxP = system.simulationBox.scaled(std::cbrt(1.0 + deltaFD));
+          SimulationBox boxM = system.simulationBox.scaled(std::cbrt(1.0 - deltaFD));
+          auto posP = system.scaledCenterOfMassPositions(system.simulationBox, boxP);
+          auto posM = system.scaledCenterOfMassPositions(system.simulationBox, boxM);
+          double eP = (Interactions::computeInterMolecularEnergy(system.forceField, boxP, posP.second) +
+                       Interactions::computeInterMolecularTailEnergyAggregated(
+                           system.forceField, boxP, system.effectiveNumberOfPseudoAtomsVDW,
+                           system.fractionalPseudoAtomCountsPerGroup))
+                          .potentialEnergy();
+          double eM = (Interactions::computeInterMolecularEnergy(system.forceField, boxM, posM.second) +
+                       Interactions::computeInterMolecularTailEnergyAggregated(
+                           system.forceField, boxM, system.effectiveNumberOfPseudoAtomsVDW,
+                           system.fractionalPseudoAtomCountsPerGroup))
+                          .potentialEnergy();
+          double fdExcess = -(eP - eM) / (boxP.volume - boxM.volume);
+          std::print(std::cerr,
+                     "[RASPA_PRESSURE_FD] cycle={} analytic={:.8e} FD={:.8e} delta={:.8e} relative={:.4e}\n",
+                     currentCycle, analyticExcess, fdExcess, analyticExcess - fdExcess,
+                     std::abs(analyticExcess - fdExcess) / std::max(1.0, std::abs(fdExcess)));
+        }
+      }
+
+      ++system_id;
+    }
+
+    if (currentCycle % printEvery == 0uz)
+    {
+      for (std::size_t system_id{0}; System& system : systems)
+      {
+        system.loadings =
+            LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+
+        if (outputToFiles)
+        {
+          std::ostream stream(streams[system_id].rdbuf());
+          std::string status_line{std::format("Current cycle: {} out of {}\n", currentCycle, numberOfProductionCycles)};
+          std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
+          std::flush(stream);
+        }
+
+        ++system_id;
+      }
+    }
+
+    if (currentCycle % callBackEvery == 0uz)
+    {
+      if(call_back_function)
+      {
+        call_back_function();
+      }
+    }
+
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      if (system.propertyConventionalRadialDistributionFunction.has_value())
+      {
+        system.propertyConventionalRadialDistributionFunction->writeOutput(
+            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
+            currentCycle);
+      }
+
+      if (system.propertyRadialDistributionFunction.has_value())
+      {
+        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system_id,
+                                                               system.simulationBox.volume,
+                                                               system.totalNumberOfPseudoAtoms, currentCycle);
+      }
+      if (system.propertyDensityGrid.has_value())
+      {
+        system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField,
+                                                system.framework, system.components, currentCycle);
+      }
+      if (system.averageEnergyHistogram.has_value())
+      {
+        system.averageEnergyHistogram->writeOutput(system_id, currentCycle);
+      }
+      if (system.averageNumberOfMoleculesHistogram.has_value())
+      {
+        system.averageNumberOfMoleculesHistogram->writeOutput(system_id, system.components, currentCycle);
+      }
+      if (system.propertyMoleculeProperties.has_value())
+      {
+        system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
+      }
+
+      ++system_id;
+    }
+
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      {
+        system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+      if(system.propertyVolumeEvolution.has_value())
+      {
+        system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
+      }
+
+      ++system_id;
+    }
+
+
+    checkpointIfDue(currentCycle);
+
+    if (currentCycle % writeRestartEvery == 0uz)
+    {
+      // write restart
+      if (outputToFiles)
+      {
+        for (std::size_t system_id{0}; System& system : systems)
+        {
+          system.writeRestartFile(system_id);
+
+          ++system_id;
+        }
+      }
+    }
+
+    t2 = std::chrono::steady_clock::now();
+    switch (simulationStage)
+    {
+      case SimulationStage::Initialization:
+        totalInitializationSimulationTime += (t2 - t1);
+        break;
+      case SimulationStage::Equilibration:
+        totalEquilibrationSimulationTime += (t2 - t1);
+        break;
+      case SimulationStage::Production:
+        totalProductionSimulationTime += (t2 - t1);
+        break;
+      default:
+        throw std::runtime_error("Unexpected simulation stage");
+    }
+    totalSimulationTime += (t2 - t1);
+
+  continueProductionStage:;
+  }
+
+  // Carry out last write of properties after simulation has finished
+  if (outputToFiles)
+  {
+    // Write out last status
+    for (std::size_t system_id{0}; System& system : systems)
+    {
+      system.writeRestartFile(system_id);
+
+      system.forceField.initializeAutomaticCutOff(system.simulationBox);
+
+      std::pair<EnergyStatus, double3x3> molecularPressure = system.computeMolecularPressure();
+      system.currentEnergyStatus = molecularPressure.first;
+      system.currentExcessPressureTensor = molecularPressure.second / system.simulationBox.volume;
+
+      system.loadings =
+          LoadingData(system.components.size(), system.numberOfIntegerMoleculesPerComponent, system.simulationBox);
+
+      std::ostream stream(streams[system_id].rdbuf());
+
+      std::print(stream, "\n");
+      std::print(stream, "===============================================================================\n");
+      std::print(stream, "                             Simulation finished!\n");
+      std::print(stream, "===============================================================================\n");
+      std::print(stream, "\n");
+
+      std::string status_line{std::format("Final state after {} cycles\n", numberOfProductionCycles)};
+      std::print(stream, "{}", system.writeProductionStatusReportMC(status_line));
+      std::flush(stream);
+
+      if (system.propertyConventionalRadialDistributionFunction.has_value())
+      {
+        system.propertyConventionalRadialDistributionFunction->writeOutput(
+            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
+            currentCycle);
+      }
+
+      if (system.propertyRadialDistributionFunction.has_value())
+      {
+        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system_id,
+                                                               system.simulationBox.volume,
+                                                               system.totalNumberOfPseudoAtoms, currentCycle);
+      }
+      if (system.propertyDensityGrid.has_value())
+      {
+        system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField,
+                                                system.framework, system.components, currentCycle);
+      }
+      if (system.averageEnergyHistogram.has_value())
+      {
+        system.averageEnergyHistogram->writeOutput(system_id, currentCycle);
+      }
+      if (system.averageNumberOfMoleculesHistogram.has_value())
+      {
+        system.averageNumberOfMoleculesHistogram->writeOutput(system_id, system.components, currentCycle);
+      }
+      if (system.propertyMoleculeProperties.has_value())
+      {
+        system.propertyMoleculeProperties->writeOutput(system_id, system.components, currentCycle);
+      }
+
+      ++system_id;
+    }
+  }
+}
+
+void MonteCarlo::output()
+{
+  MCMoveCpuTime total;
+  MCMoveStatistics countTotal;
+  for (const System& system : systems)
+  {
+    total += system.mc_moves_cputime;
+    countTotal += system.mc_moves_statistics;
+    for (const Component& component : system.components)
+    {
+      countTotal += component.mc_moves_statistics;
+    }
+  }
+
+  for (std::size_t system_id{0}; System& system : systems)
+  {
+    std::ostream stream(streams[system_id].rdbuf());
+
+    RunningEnergy recomputedEnergies = system.computeTotalEnergies();
+    RunningEnergy drift = system.runningEnergies - recomputedEnergies;
+    stream << system.runningEnergies.printMCDiff(recomputedEnergies);
+
+    std::print(stream, "\n\n");
+
+    std::print(stream, "Monte-Carlo moves statistics\n");
+    std::print(stream, "===============================================================================\n\n");
+
+    std::print(stream, "{}", system.writeMCMoveStatistics());
+
+    std::print(stream, "Production run counting of the MC moves summed over systems and components\n");
+    std::print(stream, "===============================================================================\n\n");
+
+    std::print(stream, "{}", countTotal.writeMCMoveStatistics(numberOfSteps));
+
+    std::print(stream, "\n\n");
+
+    std::print(stream, "Production run CPU timings of the MC moves\n");
+    std::print(stream, "===============================================================================\n\n");
+
+    for (std::size_t componentId{0}; const Component& component : system.components)
+    {
+      std::print(stream, "{}",
+                 component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
+
+      ++componentId;
+    }
+    std::print(stream, "{}", system.mc_moves_cputime.writeMCMoveCPUTimeStatistics());
+
+    std::print(stream, "Production run CPU timings of the MC moves summed over systems and components\n");
+    std::print(stream, "===============================================================================\n\n");
+
+    std::print(stream, "{}", total.writeMCMoveCPUTimeStatistics(totalProductionSimulationTime));
+    if (totalGridCreationTime.count() > 1e-4)
+    {
+      std::print(stream, "Grid creation time:             {:14f} [s]\n", totalGridCreationTime.count());
+    }
+    std::print(stream, "Pre-initialization simulation time: {:14f} [s]\n",
+               totalPreInitializationSimulationTime.count());
+    std::print(stream, "Initalization simulation time:  {:14f} [s]\n", totalInitializationSimulationTime.count());
+    std::print(stream, "Equilibration simulation time:  {:14f} [s]\n", totalEquilibrationSimulationTime.count());
+    std::print(stream, "Production simulation time:     {:14f} [s]\n", totalProductionSimulationTime.count());
+    std::print(stream, "Total simulation time:          {:14f} [s]\n", totalSimulationTime.count());
+    std::print(stream, "\n\n");
+
+    std::print(
+        stream, "{}",
+        system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
+
+    if (!(system.framework.has_value() && system.framework->rigid))
+    {
+      std::print(stream, "{}", system.averagePressure.writeAveragesStatistics());
+    }
+
+    std::print(
+        stream, "{}",
+        system.averageEnthalpiesOfAdsorption.writeAveragesStatistics(system.swappableComponents, system.components));
+    std::print(
+        stream, "{}",
+        system.averagePartialMolarProperties.writeAveragesStatistics(system.swappableComponents, system.components));
+    std::print(stream, "{}",
+               system.averageLoadings.writeAveragesStatistics(
+                   system.components, system.frameworkMass(),
+                   system.framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
+
+    std::flush(stream);
+
+    // json statistics
+    outputJsons[system_id]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
+    outputJsons[system_id]["output"]["recomputedEnergies"] = recomputedEnergies.jsonMC();
+    outputJsons[system_id]["output"]["drift"] = drift.jsonMC();
+
+    outputJsons[system_id]["output"]["MCMoveStatistics"]["system"] = system.jsonMCMoveStatistics();
+    // outputJsons[system.systemId]["output"]["MCMoveStatistics"]["summedOverAllSystems"] =
+    //    countTotal.jsonAllSystemStatistics(numberOfSteps);
+
+    outputJsons[system_id]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
+        total.jsonOverallMCMoveCPUTimeStatistics(totalProductionSimulationTime);
+    outputJsons[system_id]["output"]["cpuTimings"]["gridCreation"] = totalGridCreationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["preInitialization"] =
+        totalPreInitializationSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["total"] = totalSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["system"] =
+        system.mc_moves_cputime.jsonSystemMCMoveCPUTimeStatistics();
+
+    outputJsons[system_id]["properties"]["averageEnergies"] =
+        system.averageEnergies.jsonAveragesStatistics(system.hasExternalField, system.framework, system.components);
+    outputJsons[system_id]["properties"]["averagePressure"] = system.averagePressure.jsonAveragesStatistics();
+    outputJsons[system_id]["properties"]["averageEnthalpy"] =
+        system.averageEnthalpiesOfAdsorption.jsonAveragesStatistics(system.swappableComponents, system.components);
+    outputJsons[system_id]["properties"]["averagePartialMolarProperties"] =
+        system.averagePartialMolarProperties.jsonAveragesStatistics(system.swappableComponents, system.components);
+
+    for (const Component& component : system.components)
+    {
+      // outputJsons[system.systemId]["output"]["MCMoveStatistics"][component.name]["percentage"] =
+      //     component.mc_moves_statistics.jsonMCMoveStatistics(numberOfSteps);
+      outputJsons[system_id]["output"]["cpuTimings"][component.name] =
+          component.mc_moves_cputime.jsonComponentMCMoveCPUTimeStatistics();
+    }
+
+    std::ofstream json(outputJsonFileNames[system_id]);
+    json << outputJsons[system_id].dump(4);
+
+    ++system_id;
+  }
+}
+
+Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteCarlo& mc)
+{
+  archive << mc.versionNumber;
+
+  archive << mc.outputToFiles;
+  archive << mc.random;
+
+  archive << mc.numberOfProductionCycles;
+  archive << mc.numberOfPreInitializationCycles;
+  archive << mc.numberOfInitializationCycles;
+  archive << mc.numberOfEquilibrationCycles;
+  archive << mc.numberOfSteps;
+
+  archive << mc.printEvery;
+  archive << mc.writeBinaryRestartEvery;
+  archive << mc.rescaleWangLandauEvery;
+  archive << mc.optimizeMCMovesEvery;
+
+  archive << mc.currentCycle;
+  archive << mc.simulationStage;
+
+  archive << mc.systems;
+  archive << mc.fractionalMoleculeSystem;
+
+  archive << mc.estimation;
+
+  // not written: totalGridCreationTime
+
+  archive << mc.totalPreInitializationSimulationTime;
+  archive << mc.totalInitializationSimulationTime;
+  archive << mc.totalEquilibrationSimulationTime;
+  archive << mc.totalProductionSimulationTime;
+  archive << mc.totalSimulationTime;
+
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+
+  return archive;
+}
+
+Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& mc)
+{
+  std::uint64_t versionNumber;
+  archive >> versionNumber;
+  if (versionNumber > mc.versionNumber)
+  {
+    const std::source_location& location = std::source_location::current();
+    throw std::runtime_error(std::format("Invalid version reading 'MonteCarlo' at line {} in file {}\n",
+                                         location.line(), location.file_name()));
+  }
+  archive >> mc.outputToFiles;
+  archive >> mc.random;
+
+  archive >> mc.numberOfProductionCycles;
+  archive >> mc.numberOfPreInitializationCycles;
+  archive >> mc.numberOfInitializationCycles;
+  archive >> mc.numberOfEquilibrationCycles;
+  archive >> mc.numberOfSteps;
+
+  archive >> mc.printEvery;
+  archive >> mc.writeBinaryRestartEvery;
+  archive >> mc.rescaleWangLandauEvery;
+  archive >> mc.optimizeMCMovesEvery;
+
+  archive >> mc.currentCycle;
+  archive >> mc.simulationStage;
+
+  archive >> mc.systems;
+  archive >> mc.fractionalMoleculeSystem;
+
+  archive >> mc.estimation;
+
+  // not written: totalGridCreationTime
+
+  archive >> mc.totalPreInitializationSimulationTime;
+  archive >> mc.totalInitializationSimulationTime;
+  archive >> mc.totalEquilibrationSimulationTime;
+  archive >> mc.totalProductionSimulationTime;
+  archive >> mc.totalSimulationTime;
+
+  std::uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("MonteCarlo: Invalid magic number {} at the end of the restart data\n",
+                                         magicNumber));
+  }
+  return archive;
+}

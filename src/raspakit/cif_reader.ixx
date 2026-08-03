@@ -1,21 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <optional>
-#include <string>
-#include <vector>
-#endif
-
 export module cif_reader;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import scanner;
 import characterset;
@@ -34,6 +21,26 @@ import forcefield;
 export struct CIFReader
 {
   /**
+   * \brief Enumeration for specifying the source of atomic charges.
+   *
+   * UseChargesFrom defines the source from which atomic charges should be obtained.
+   * Options include using charges from pseudo-atoms, the CIF file, or by performing
+   * charge equilibration calculations.
+   */
+  enum class UseChargesFrom : std::size_t
+  {
+    PseudoAtoms = 0,         ///< Use charges from pseudo-atoms defined in the force field.
+    CIF_File = 1,            ///< Use charges specified in the CIF file.
+    ChargeEquilibration = 2  ///< Compute charges using charge equilibration methods.
+  };
+
+  enum class ParseError : std::size_t
+  {
+    invalidInput = 0,
+    invalidForceField = 1
+  };
+
+  /**
    * \brief Constructs a CIFReader with the given CIF content and force field.
    *
    * Initializes the CIFReader by setting up the scanner with the provided content
@@ -42,7 +49,11 @@ export struct CIFReader
    * \param content The CIF file content as a string.
    * \param forceField The force field to be used for parsing atom types and interactions.
    */
-  CIFReader(const std::string& content, const ForceField& forceField);
+  CIFReader(const std::string& content);
+
+  static auto readCIFString(const std::string& content, const ForceField& forceField, CIFReader::UseChargesFrom useChargesFrom) ->
+    std::expected<std::tuple<SimulationBox, std::size_t, std::vector<Atom>, std::vector<Atom>>, CIFReader::ParseError>;
+
 
   /**
    * \brief Parses a generic line from the CIF content.
@@ -106,7 +117,7 @@ export struct CIFReader
    * \param string The loop line from the CIF content.
    * \param forceField The force field used for interpreting atom types.
    */
-  void parseLoop([[maybe_unused]] std::string& string, const ForceField& forceField);
+  std::expected<void, ParseError> parseLoop([[maybe_unused]] std::string& string, const ForceField& forceField);
 
   /**
    * \brief Skips over comment lines in the CIF content.
@@ -161,16 +172,23 @@ export struct CIFReader
    */
   std::optional<std::string> scanString();
 
-  Scanner _scanner;                                   ///< Scanner object for navigating through the CIF content.
-  std::string::const_iterator _previousScanLocation;  ///< Iterator pointing to the previous scan location.
+  static std::vector<Atom> expandDefinedAtomsToUnitCell(const SimulationBox &simulation_box,
+                  std::size_t spaceGroupHallNumber, const std::vector<Atom> &definedAtoms);
 
-  std::vector<Atom> fractionalAtoms;                 ///< List of atoms with fractional coordinates.
-  SimulationBox simulationBox;                       ///< The simulation box defined by cell parameters.
-  std::optional<std::size_t> _spaceGroupHallNumber;  ///< Optional space group Hall number.
-  double _a;                                         ///< Cell length a.
-  double _b;                                         ///< Cell length b.
-  double _c;                                         ///< Cell length c.
-  double _alpha;                                     ///< Cell angle alpha in degrees.
-  double _beta;                                      ///< Cell angle beta in degrees.
-  double _gamma;                                     ///< Cell angle gamma in degrees.
+  void resolveSpaceGroupHallNumber(const SimulationBox& simulation_box);
+
+  Scanner scanner;                                  ///< Scanner object for navigating through the CIF content.
+  
+
+  std::vector<Atom> fractionalAtoms;                ///< List of atoms with fractional coordinates.
+  std::optional<std::size_t> spaceGroupHallNumber;  ///< Optional space group Hall number.
+  std::optional<std::size_t> spaceGroupInternationalNumber;
+  std::string hmSymbol;
+  std::vector<std::string> symmetryOperationStrings;
+  double a;                                         ///< Cell length a.
+  double b;                                         ///< Cell length b.
+  double c;                                         ///< Cell length c.
+  double alpha;                                     ///< Cell angle alpha in degrees.
+  double beta;                                      ///< Cell angle beta in degrees.
+  double gamma;                                     ///< Cell angle gamma in degrees.
 };

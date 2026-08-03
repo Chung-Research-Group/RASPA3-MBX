@@ -1,26 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module property_msd;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;
@@ -31,6 +13,7 @@ import molecule;
 import simulationbox;
 import forcefield;
 import component;
+import mean_squared_displacement_data;
 
 // Computes Mean Squared Displacement (MSD) using order-N algorithm
 
@@ -38,13 +21,24 @@ export struct PropertyMeanSquaredDisplacement
 {
   PropertyMeanSquaredDisplacement() {};
 
-  PropertyMeanSquaredDisplacement(std::size_t numberOfComponents, std::size_t numberOfParticles,
-                                  std::size_t sampleEvery, std::size_t writeEvery, std::size_t numberOfBlockElementsMSD)
-      : sampleEvery(sampleEvery),
-        writeEvery(writeEvery),
-        numberOfComponents(numberOfComponents),
-        numberOfParticles(numberOfParticles),
+  PropertyMeanSquaredDisplacement(std::size_t sampleEvery, std::optional<std::size_t> writeEvery,
+                                  std::size_t numberOfBlockElementsMSD = 25):
         numberOfBlockElementsMSD(numberOfBlockElementsMSD),
+        sampleEvery(sampleEvery),
+        writeEvery(writeEvery)
+  {
+  }
+
+  PropertyMeanSquaredDisplacement(const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::size_t numberOfParticles,
+                                  double timeStep, std::size_t numberOfBlockElementsMSD, 
+                                  std::size_t sampleEvery, std::optional<std::size_t> writeEvery):
+        numberOfMoleculesPerComponent(numberOfMoleculesPerComponent),
+        numberOfComponents(numberOfMoleculesPerComponent.size()),
+        numberOfParticles(numberOfParticles),
+        timeStep(timeStep),
+        numberOfBlockElementsMSD(numberOfBlockElementsMSD),
+        sampleEvery(sampleEvery),
+        writeEvery(writeEvery),
         maxNumberOfBlocksMSD(1),
         blockLengthMSD(maxNumberOfBlocksMSD),
         msdSelfCount(maxNumberOfBlocksMSD,
@@ -72,15 +66,16 @@ export struct PropertyMeanSquaredDisplacement
 
   std::uint64_t versionNumber{1};
 
-  std::size_t numberOfBlocks;
-  std::size_t sampleEvery;
-  std::size_t writeEvery;
-  std::size_t numberOfComponents;
-  std::size_t numberOfParticles;
-  std::size_t numberOfBlockElementsMSD;
-  std::size_t maxNumberOfBlocksMSD;
+  std::vector<std::size_t> numberOfMoleculesPerComponent;
+  std::size_t numberOfComponents{0uz};
+  std::size_t numberOfParticles{0uz};
+  double timeStep{0.0};
+  std::size_t numberOfBlockElementsMSD{25uz};
+  std::size_t sampleEvery{1uz};
+  std::optional<std::size_t> writeEvery;
+  std::size_t maxNumberOfBlocksMSD{1uz};
   std::size_t countMSD{0uz};
-  std::size_t numberOfBlocksMSD;
+  std::size_t numberOfBlocksMSD{0uz};
   std::vector<std::size_t> blockLengthMSD;
 
   std::vector<std::vector<std::vector<std::size_t>>> msdSelfCount;
@@ -91,10 +86,11 @@ export struct PropertyMeanSquaredDisplacement
   std::vector<std::vector<std::vector<double3>>> blockDataMSDOnsager;
   std::vector<std::vector<std::vector<std::vector<double4>>>> msdOnsager;
 
-  void addSample(std::size_t currentCycle, const std::vector<Component> &components,
-                 const std::vector<std::size_t> &numberOfMoleculesPerComponent, std::vector<Molecule> &molecules);
+  void addSample(std::size_t currentCycle, std::vector<Molecule> &molecules);
+
+  std::vector<std::vector<MeanSquaredDisplacementData>> result();
+
   void writeOutput(std::size_t systemId, const std::vector<Component> &components,
-                   const std::vector<std::size_t> &numberOfMoleculesPerComponent, double deltaT,
                    std::size_t currentCycle);
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive,

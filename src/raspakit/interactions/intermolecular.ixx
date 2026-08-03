@@ -1,33 +1,19 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 export module interactions_intermolecular;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double3x3;
 import atom;
+import atom_dynamics;
 import running_energy;
 import energy_status;
 import simulationbox;
-import energy_factor;
-import gradient_factor;
 import forcefield;
 import component;
+import interactions_pair_kernel;
 
 export namespace Interactions
 {
@@ -42,7 +28,7 @@ export namespace Interactions
  * \param moleculeAtoms A span of atoms for which to compute inter-molecular energies.
  * \return The total inter-molecular energy contributions.
  */
-RunningEnergy computeInterMolecularEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+RunningEnergy computeInterMolecularEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
                                           std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
@@ -56,8 +42,54 @@ RunningEnergy computeInterMolecularEnergy(const ForceField &forceField, const Si
  * \param moleculeAtoms A span of atoms for which to compute the tail energy correction.
  * \return The tail energy contributions to the total energy.
  */
-RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, const SimulationBox &simulationBox,
+RunningEnergy computeInterMolecularTailEnergy(const ForceField& forceField, const SimulationBox& simulationBox,
                                               std::span<const Atom> moleculeAtoms) noexcept;
+
+/**
+ * \brief Reference (per-atom, O(N^2)) inter-molecular van der Waals tail correction.
+ *
+ * Retained as the oracle for validating the Brick-CFCMC-style aggregated accounting; not used on the hot path.
+ */
+RunningEnergy computeInterMolecularTailEnergyReference(const ForceField& forceField, const SimulationBox& simulationBox,
+                                                       std::span<const Atom> moleculeAtoms) noexcept;
+
+/**
+ * \brief Brick-CFCMC-style aggregated inter-molecular van der Waals tail correction.
+ *
+ * Computes the tail energy and its per-group dU/dlambda from effective (fractionally-weighted) pseudo-atom-type
+ * counts, U_tail = (2 pi / V) sum_a sum_b eff_a eff_b C_ab, in O(nType^2). Mathematically identical to the
+ * per-atom sum because the tail constant C_ab depends only on the atom types.
+ *
+ * \param forceField The force field parameters.
+ * \param simulationBox The simulation box (provides the volume).
+ * \param effectiveTypeCounts Per-type sum of scalingVDW over all molecule atoms.
+ * \param groupCounts Per dU/dlambda group, the number of molecule atoms of each type in that group.
+ * \return The tail energy and per-group dU/dlambda contributions.
+ */
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyAggregated(
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const double> effectiveTypeCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& groupCounts) noexcept;
+
+/**
+ * \brief Aggregated inter-molecular tail-correction difference for replacing \p oldatoms with \p newatoms.
+ *
+ * Given the effective type counts of the system in its current ("old") configuration, returns
+ * Aggregated(counts - oldatoms + newatoms) - Aggregated(counts). Correct-by-construction parity (energy and
+ * dU/dlambda) with computeInterMolecularTailEnergyDifference.
+ */
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifferenceAggregated(
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const double> effectiveTypeCounts,
+    const std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& groupCounts, std::span<const Atom> newatoms,
+    std::span<const Atom> oldatoms) noexcept;
+
+/**
+ * \brief Advances local effective type counts by (+newatoms, -oldatoms).
+ *
+ * Used by CFCMC moves to thread the intermediate effective counts across sequential sub-steps.
+ */
+void updateEffectiveTypeCounts(std::vector<double>& effectiveTypeCounts,
+                               std::array<std::vector<double>, maximumNumberOfDUDlambdaGroups>& groupCounts,
+                               std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 
 /**
  * \brief Computes the difference in inter-molecular energy due to atom changes.
@@ -74,7 +106,7 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, cons
  * \return The energy difference due to the atom changes, or std::nullopt if an overlap occurs.
  */
 [[nodiscard]] std::optional<RunningEnergy> computeInterMolecularEnergyDifference(
-    const ForceField &forceField, const SimulationBox &simulationBox, std::span<const Atom> moleculeAtoms,
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const Atom> moleculeAtoms,
     std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 
 /**
@@ -91,11 +123,34 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, cons
  * \param oldatoms A span of atoms to be removed from the system.
  * \return The change in tail energy contributions due to the atom changes.
  */
-[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifference(const ForceField &forceField,
-                                                                      const SimulationBox &simulationBox,
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifference(const ForceField& forceField,
+                                                                      const SimulationBox& simulationBox,
                                                                       std::span<const Atom> moleculeAtoms,
                                                                       std::span<const Atom> newatoms,
                                                                       std::span<const Atom> oldatoms) noexcept;
+
+/**
+ * \brief Computes inter-molecular tail energy from pseudo-atom type counts.
+ */
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyFromTypeCounts(
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const std::size_t> typeCounts) noexcept;
+
+/**
+ * \brief Tail correction difference when replacing one molecule type with another (identity change).
+ *
+ * Equivalent to RASPA2 TailMolecularEnergyDifferenceAddRemove.
+ */
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifferenceAddRemove(
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const std::size_t> currentTypeCounts,
+    const Component& componentToAdd, const Component& componentToRemove) noexcept;
+
+/**
+ * \brief Tail correction difference for a reaction ensemble move (RASPA2 TailMolecularEnergyDifferenceRXMX).
+ */
+[[nodiscard]] RunningEnergy computeInterMolecularTailEnergyDifferenceReaction(
+    const ForceField& forceField, const SimulationBox& simulationBox, std::span<const std::size_t> currentTypeCounts,
+    const std::vector<std::size_t>& reactantStoichiometry, const std::vector<std::size_t>& productStoichiometry,
+    const std::vector<Component>& components, bool forward) noexcept;
 
 /**
  * \brief Computes the inter-molecular forces and energy.
@@ -109,8 +164,31 @@ RunningEnergy computeInterMolecularTailEnergy(const ForceField &forceField, cons
  * \param moleculeAtoms A span of atoms for which to compute inter-molecular forces and energies.
  * \return The total inter-molecular energy contributions.
  */
-RunningEnergy computeInterMolecularGradient(const ForceField &forceField, const SimulationBox &simulationBox,
-                                            std::span<Atom> moleculeAtoms) noexcept;
+RunningEnergy computeInterMolecularGradient(const ForceField& forceField, const SimulationBox& simulationBox,
+                                            std::span<const Atom> moleculeAtoms,
+                                            std::span<AtomDynamics> moleculeDynamics) noexcept;
+
+/**
+ * \brief Computes the inter-molecular gradient (force) acting on a single, selected molecule.
+ *
+ * Unlike \ref computeInterMolecularGradient, which evaluates the force on every molecule (an O(N^2) loop
+ * over all pairs), this variant only accumulates the gradient on the atoms of one selected molecule due to
+ * the atoms of all other molecules. The cost is O(n_selected * N), matching the cost of a single-molecule
+ * energy-difference evaluation. It is intended for force-biased single-molecule moves.
+ *
+ * Interactions between the selected molecule and itself are skipped through the molecule-id comparison, so
+ * \p selectedAtoms may be a trial configuration of a molecule that is still present (at other positions) in
+ * \p moleculeAtoms.
+ *
+ * \param forceField The force field parameters used for the calculations.
+ * \param simulationBox The simulation box containing the atoms.
+ * \param moleculeAtoms A span of all molecule atoms currently in the system.
+ * \param selectedAtoms A span of the atoms of the selected molecule (current or trial positions).
+ * \param selectedDynamics A span (size = selectedAtoms.size()) into which the per-atom gradient is accumulated.
+ */
+void computeInterMolecularGradientMolecule(const ForceField& forceField, const SimulationBox& simulationBox,
+                                           std::span<const Atom> moleculeAtoms, std::span<const Atom> selectedAtoms,
+                                           std::span<AtomDynamics> selectedDynamics) noexcept;
 
 /**
  * \brief Computes inter-molecular energy, forces, and strain derivative tensor.
@@ -123,12 +201,15 @@ RunningEnergy computeInterMolecularGradient(const ForceField &forceField, const 
  * \param components The list of components in the system.
  * \param simulationBox The simulation box containing the atoms.
  * \param moleculeAtoms A span of atoms for which to compute energies, forces, and strain derivatives.
+ * \param polarizationGather Optional accumulator: when non-null the Coulomb pair loop additionally
+ *        gathers the polarization field and its strain response (see PolarizationFieldStrain); the
+ *        caller must only pass it when inter-molecular polarization is active.
  * \return A pair containing the energy status and the strain derivative tensor.
  */
-std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative(const ForceField &forceField,
-                                                                               const std::vector<Component> &components,
-                                                                               const SimulationBox &simulationBox,
-                                                                               std::span<Atom> moleculeAtoms) noexcept;
+std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative(
+    const ForceField& forceField, const std::vector<Component>& components, const SimulationBox& simulationBox,
+    std::span<const Atom> moleculeAtoms, std::span<AtomDynamics> moleculeDynamics,
+    const PolarizationFieldStrain* polarizationGather = nullptr) noexcept;
 
 /**
  * \brief Computes the inter-molecular electric potential for each atom.
@@ -142,24 +223,9 @@ std::pair<EnergyStatus, double3x3> computeInterMolecularEnergyStrainDerivative(c
  * \param electricPotentialMolecules A span to store the computed electric potentials.
  * \param moleculeAtoms A span of atoms for which to compute the electric potentials.
  */
-void computeInterMolecularElectrostaticPotential(const ForceField &forceField, const SimulationBox &box,
+void computeInterMolecularElectrostaticPotential(const ForceField& forceField, const SimulationBox& box,
                                                  std::span<double> electricPotentialMolecules,
                                                  std::span<const Atom> moleculeAtoms) noexcept;
-
-/**
- * \brief Computes the inter-molecular polarization energy.
- *
- * Calculates the energy contribution from polarization interactions between atoms in \p moleculeAtoms,
- * excluding interactions within the same molecule.
- *
- * \param forceField The force field parameters used for the calculations.
- * \param simulationBox The simulation box containing the atoms.
- * \param moleculeAtoms A span of atoms for which to compute the polarization energy.
- * \return The total inter-molecular polarization energy.
- */
-Potentials::EnergyFactor computeInterMolecularPolarizationEnergy(const ForceField &forceField,
-                                                                 const SimulationBox &simulationBox,
-                                                                 std::span<const Atom> moleculeAtoms) noexcept;
 
 /**
  * \brief Computes the inter-molecular electric field for each atom.
@@ -174,7 +240,7 @@ Potentials::EnergyFactor computeInterMolecularPolarizationEnergy(const ForceFiel
  * \param moleculeAtoms A span of atoms for which to compute the electric fields.
  * \return The total inter-molecular energy contributions.
  */
-RunningEnergy computeInterMolecularElectricField(const ForceField &forceField, const SimulationBox &box,
+RunningEnergy computeInterMolecularElectricField(const ForceField& forceField, const SimulationBox& box,
                                                  std::span<double3> electricFieldMolecules,
                                                  std::span<const Atom> moleculeAtoms) noexcept;
 
@@ -196,7 +262,31 @@ RunningEnergy computeInterMolecularElectricField(const ForceField &forceField, c
  * \return The energy difference due to the atom changes, or std::nullopt if an overlap occurs.
  */
 std::optional<RunningEnergy> computeInterMolecularElectricFieldDifference(
-    const ForceField &forceField, const SimulationBox &box, std::span<double3> electricFieldMolecules,
+    const ForceField& forceField, const SimulationBox& box, std::span<double3> electricFieldMolecules,
     std::span<double3> electricFieldMolecule, std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms,
     std::span<const Atom> oldatoms) noexcept;
+
+/**
+ * \brief Computes the inter-molecular energy and electric-field difference for a single-molecule move.
+ *
+ * Variant of \ref computeInterMolecularElectricFieldDifference tailored to polarization in translation/rotation
+ * moves. Besides the van der Waals and Coulombic energy difference (with overlap detection), it fills three
+ * separate electric-field buffers using bare Coulomb gradients between *different* molecules:
+ *   - \p electricFieldMoleculeNew : field on the moved molecule at its trial positions (accumulated, size = moved
+ *     molecule),
+ *   - \p electricFieldMoleculeOld : field on the moved molecule at its current positions (accumulated, size = moved
+ *     molecule),
+ *   - \p electricFieldNeighborDelta : the change (new - old) of the field on every other atom in the system caused
+ *     by moving the molecule (accumulated, size = all molecule atoms; entries of the moved molecule stay zero).
+ *
+ * Keeping the moved-molecule new and old contributions separate allows the polarization energy of the moved
+ * molecule to be evaluated directly, while the neighbor delta is combined with the stored field to obtain the
+ * neighbors' polarization-energy change incrementally.
+ *
+ * \return The inter-molecular energy difference, or std::nullopt if an overlap is detected.
+ */
+[[nodiscard]] std::optional<RunningEnergy> computeInterMolecularPolarizationElectricFieldDifference(
+    const ForceField& forceField, const SimulationBox& box, std::span<double3> electricFieldNeighborDelta,
+    std::span<double3> electricFieldMoleculeNew, std::span<double3> electricFieldMoleculeOld,
+    std::span<const Atom> moleculeAtoms, std::span<const Atom> newatoms, std::span<const Atom> oldatoms) noexcept;
 };  // namespace Interactions

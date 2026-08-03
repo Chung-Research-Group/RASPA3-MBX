@@ -1,28 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <chrono>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <optional>
-#include <print>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 module mc_void_fraction;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double3x3;
@@ -39,9 +19,9 @@ import units;
 void MC_VoidFraction::run(const ForceField &forceField, const Framework &framework, double wellDepthFactor, std::string probePseudoAtom, std::optional<std::size_t> numberOfIterations)
 {
   RandomNumber random{std::nullopt};
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   std::optional<std::size_t> probeType = forceField.findPseudoAtom(probePseudoAtom);
 
@@ -67,7 +47,7 @@ void MC_VoidFraction::run(const ForceField &forceField, const Framework &framewo
     count += 1.0;
   }
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

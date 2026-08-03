@@ -1,27 +1,12 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <chrono>
-#include <complex>
-#include <cstddef>
-#include <iostream>
-#include <optional>
-#include <span>
-#include <vector>
-#endif
-
 module integrators;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import molecule;
 import atom;
+import atom_dynamics;
 import component;
 import running_energy;
 import thermostat;
@@ -29,75 +14,97 @@ import integrators_compute;
 import integrators_update;
 import integrators_cputime;
 import interpolation_energy_grid;
+import framework;
 
 RunningEnergy Integrators::velocityVerlet(
-    std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, const std::vector<Component> components,
-    double dt, std::optional<Thermostat>& thermostat, std::span<Atom> frameworkAtomPositions,
+    std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
+    const std::vector<Component> &components, double dt, std::optional<Thermostat>& thermostat,
+    std::span<Atom> frameworkAtomPositions,
     const ForceField& forceField, const SimulationBox& simulationBox, std::vector<std::complex<double>>& eik_x,
     std::vector<std::complex<double>>& eik_y, std::vector<std::complex<double>>& eik_z,
     std::vector<std::complex<double>>& eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& fixedFrameworkStoredEik,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
-    const std::vector<std::size_t> numberOfMoleculesPerComponent)
+    const std::vector<std::size_t> &numberOfMoleculesPerComponent, const std::optional<Framework>& framework,
+    std::span<AtomDynamics> frameworkDynamics, std::span<GroupState> groupData,
+    std::span<GroupState> frameworkGroupData)
 {
   // apply thermo for temperature control
   if (thermostat.has_value())
   {
     // Adjust velocities using Nose-Hoover thermostat
-    double UKineticTranslation = Integrators::computeTranslationalKineticEnergy(moleculeData);
-    double UKineticRotation = Integrators::computeRotationalKineticEnergy(moleculeData, components);
+    double UKineticTranslation = computeTranslationalKineticEnergy(
+        moleculeData, moleculeAtomPositions, moleculeDynamics, components, framework, frameworkAtomPositions,
+        frameworkDynamics, &forceField, groupData, frameworkGroupData);
+    double UKineticRotation =
+        computeRotationalKineticEnergy(moleculeData, components, groupData, framework, frameworkGroupData);
     std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
-    scaleVelocities(moleculeData, scaling);
+    scaleVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, scaling, framework,
+                    frameworkDynamics, groupData, frameworkGroupData);
   }
 
   // Start timing the integration step
   // NOTE: moved from first statement to here as workaround for parsing error in llvm 21.1.1
-  std::chrono::system_clock::time_point begin = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
 
   // evolve the positions a half timestep
-  updateVelocities(moleculeData, 0.5 * dt);
+  updateVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, dt, framework,
+                   frameworkAtomPositions, frameworkDynamics, &forceField, groupData, frameworkGroupData);
 
   // evolve the positions a full timestep
-  updatePositions(moleculeData, dt);
+  updatePositions(moleculeData, moleculeAtomPositions, moleculeDynamics, components, dt, framework,
+                  frameworkAtomPositions, frameworkDynamics, groupData, frameworkGroupData);
 
   // evolve the part of rigid bodies involving free rotation
-  noSquishFreeRotorOrderTwo(moleculeData, components, dt);
+  noSquishFreeRotorOrderTwo(moleculeData, components, dt, groupData, framework, frameworkGroupData);
 
   // create the Cartesian position from center of mass and orientation
-  createCartesianPositions(moleculeData, moleculeAtomPositions, components);
+  createCartesianPositions(moleculeData, moleculeAtomPositions, components, groupData, framework,
+                           frameworkAtomPositions, frameworkGroupData);
 
   // compute the gradient on all the atoms
   RunningEnergy runningEnergies = updateGradients(
-      moleculeAtomPositions, frameworkAtomPositions, forceField, simulationBox, components, eik_x, eik_y, eik_z, eik_xy,
-      totalEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent);
+      moleculeData, moleculeAtomPositions, moleculeDynamics, frameworkAtomPositions, forceField, simulationBox,
+      components, eik_x, eik_y, eik_z, eik_xy,
+      trialEik, fixedFrameworkStoredEik, interpolationGrids, numberOfMoleculesPerComponent, framework,
+      frameworkDynamics);
 
   // compute the gradients on the center of mass and the orientation
-  updateCenterOfMassAndQuaternionGradients(moleculeData, moleculeAtomPositions, components);
+  updateCenterOfMassAndQuaternionGradients(moleculeData, moleculeAtomPositions, moleculeDynamics, components, groupData,
+                                           framework, frameworkDynamics, frameworkGroupData);
 
   // evolve the positions a half timestep
-  updateVelocities(moleculeData, 0.5 * dt);
+  updateVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, dt, framework,
+                   frameworkAtomPositions, frameworkDynamics, &forceField, groupData, frameworkGroupData);
 
   // apply thermo for temperature control
   if (thermostat.has_value())
   {
     // Adjust velocities using Nose-Hoover thermostat
-    double UKineticTranslation = computeTranslationalKineticEnergy(moleculeData);
-    double UKineticRotation = computeRotationalKineticEnergy(moleculeData, components);
+    double UKineticTranslation = computeTranslationalKineticEnergy(
+        moleculeData, moleculeAtomPositions, moleculeDynamics, components, framework, frameworkAtomPositions,
+        frameworkDynamics, &forceField, groupData, frameworkGroupData);
+    double UKineticRotation =
+        computeRotationalKineticEnergy(moleculeData, components, groupData, framework, frameworkGroupData);
     std::pair<double, double> scaling = thermostat->NoseHooverNVT(UKineticTranslation, UKineticRotation);
-    scaleVelocities(moleculeData, scaling);
+    scaleVelocities(moleculeData, moleculeAtomPositions, moleculeDynamics, components, scaling, framework,
+                    frameworkDynamics, groupData, frameworkGroupData);
   }
 
   // Update the running energies with current kinetic energies
-  runningEnergies.translationalKineticEnergy = computeTranslationalKineticEnergy(moleculeData);
-  runningEnergies.rotationalKineticEnergy = computeRotationalKineticEnergy(moleculeData, components);
+  runningEnergies.translationalKineticEnergy = computeTranslationalKineticEnergy(
+      moleculeData, moleculeAtomPositions, moleculeDynamics, components, framework, frameworkAtomPositions,
+      frameworkDynamics, &forceField, groupData, frameworkGroupData);
+  runningEnergies.rotationalKineticEnergy =
+      computeRotationalKineticEnergy(moleculeData, components, groupData, framework, frameworkGroupData);
   if (thermostat.has_value())
   {
     runningEnergies.NoseHooverEnergy = thermostat->getEnergy();
   }
 
   // Update the CPU time spent in the integrator
-  std::chrono::system_clock::time_point end = std::chrono::system_clock::now();
+  std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
   integratorsCPUTime.velocityVerlet += end - begin;
   return runningEnergies;
 }

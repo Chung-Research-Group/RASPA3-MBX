@@ -2,15 +2,24 @@ add_executable(unit_tests_raspakit
   cbmc_interactions.cpp
   energy_decomposition.cpp
   gradients.cpp
+  translation_smart_mc.cpp
+  translation_rotation_smart_mc.cpp
   integrators.cpp
   pbc.cpp
   spacegroup.cpp
   dudlambda.cpp
+  coulomb_real_space_methods.cpp
   ewald.cpp
+  wolf_exclusion.cpp
+  wolf_strain_polarization.cpp
   insertion_deletion.cpp
   mc.cpp
   pressure.cpp
   static_energy.cpp
+  component_explicit_intra_pairs.cpp
+  forcefield_options.cpp
+  framework_intramolecular_reader.cpp
+  framework_vdw_replicas.cpp
   rigid_gradient.cpp
   electrostatic_potential.cpp
   electrostatic_field.cpp
@@ -27,10 +36,51 @@ add_executable(unit_tests_raspakit
   triquintic_derivative_inter_real_ewald.cpp
   intramolecular_energy_gradient_strain_bonds.cpp
   intramolecular_energy_gradient_strain_bends.cpp
+  minimization_hessian_bond.cpp
+  minimization_hessian_bend.cpp
+  minimization_hessian_torsion.cpp
+  minimization_hessian_cross.cpp
+  minimization_hessian_intermolecular.cpp
+  minimization_hessian_intermolecular_rigid.cpp
+  minimization_hessian_framework.cpp
+  minimization_hessian_mixed_framework.cpp
+  minimization_hessian_ewald.cpp
+  minimization_hessian_wolf.cpp
+  minimization_driver.cpp
+  minimization_variable_cell.cpp
+  elastic_constants.cpp
+  normal_modes.cpp
+  force_constants.cpp
+  phonon_dispersion.cpp
+  polarization_phonon.cpp
   rotation_matrix.cpp
+  vdw_potentials.cpp
+  internal_potentials.cpp
+  janaf.cpp
+  nasa_polynomials.cpp
+  partition_function.cpp
+  voronoi.cpp
+  apollonius.cpp
+  voronoi_analysis.cpp
+  apollonius_pore_analysis.cpp
+  apollonius_surface_area.cpp
+  exact_sphere_sweep.cpp
+  exact_parallel.cpp
+  exact_union_volume.cpp
+  exact_void_split.cpp
+  exact_solvent_excluded.cpp
+  exact_pore_size_distribution.cpp
+  exact_regression.cpp
+  boundary_components.cpp
   main.cpp)
 
-raspa_target_link_libraries(${PROJECT_NAME})
+raspa_target_link_libraries(unit_tests_raspakit)
+target_link_libraries(unit_tests_raspakit PUBLIC
+                      raspakit_base
+                      GTest::gtest
+                      GTest::gtest_main
+                      GTest::gmock
+                      GTest::gmock_main)
 
 gtest_add_tests(TARGET unit_tests_raspakit TEST_SUFFIX .noArgs TEST_LIST noArgsTests)
 

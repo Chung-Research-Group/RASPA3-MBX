@@ -1,35 +1,14 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <fstream>
-#include <map>
-#include <numbers>
-#include <print>
-#include <source_location>
-#include <tuple>
-#include <utility>
-#include <vector>
-#endif
-
 module out_of_plane_bend_potential;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import randomnumbers;
 import double3;
+import double3x3;
+import units;
 
 OutOfPlaneBendPotential::OutOfPlaneBendPotential(std::array<std::size_t, 4> identifiers, OutOfPlaneBendType type,
                                                  std::vector<double> vector_parameters)
@@ -74,6 +53,13 @@ double OutOfPlaneBendPotential::calculateEnergy([[maybe_unused]] const double3 &
     default:
       std::unreachable();
   }
+}
+
+std::tuple<double, std::array<double3, 4>, double3x3> OutOfPlaneBendPotential::potentialEnergyGradientStrain(
+    const double3 &posA, const double3 &posB, const double3 &posC, const double3 &posD) const
+{
+  const double U = calculateEnergy(posA, posB, posC, posD);
+  return {U, {double3{}, double3{}, double3{}, double3{}}, double3x3{}};
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const OutOfPlaneBendPotential &b)

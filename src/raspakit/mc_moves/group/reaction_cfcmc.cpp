@@ -1,76 +1,42 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <iomanip>
-#include <iostream>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 module mc_moves_reaction_cfcmc;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
-import component;
-import atom;
-import double3;
-import double3x3;
-import simd_quatd;
-import simulationbox;
-import cbmc;
-import cbmc_chain_data;
 import randomnumbers;
-import system;
-import energy_factor;
-import energy_status;
-import energy_status_inter;
-import running_energy;
-import property_lambda_probability_histogram;
-import property_widom;
-import averages;
-import interactions_framework_molecule;
-import interactions_intermolecular;
-import interactions_ewald;
-import interactions_external_field;
-import mc_moves_statistics;
+import reaction;
 import mc_moves_move_types;
-import mc_moves_probabilities;
+import running_energy;
+import system;
+import mc_moves_reaction_common;
 
-std::optional<RunningEnergy> MC_Moves::reactionMove_CFCMC(
-    [[maybe_unused]] RandomNumber& random, System& system,
-    [[maybe_unused]] const std::vector<std::size_t> reactantStoichiometry,
-    [[maybe_unused]] const std::vector<std::size_t> productStoichiometry)
+std::optional<RunningEnergy> MC_Moves::reactionMove_CFCMC(RandomNumber& random, System& system)
 {
-  std::size_t selectedComponent = 0;
-  std::size_t selectedMolecule = 0;
+  const Move::Types move = Move::Types::ReactionCFCMC;
 
-  double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb = system.forceField.cutOffCoulomb;
-  Component::GrowType growType = system.components[selectedComponent].growType;
+  if (system.reactions.list.empty())
+  {
+    return std::nullopt;
+  }
 
-  [[maybe_unused]] std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
-  // Fix groupID
-  std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, system.components[selectedComponent], system.hasExternalField, system.forceField, system.simulationBox,
-      system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule, 1.0, false, false);
+  system.mc_moves_statistics.addTrial(move);
 
-  if (!growData) return std::nullopt;
+  std::vector<Reaction*> serialReactions;
+  serialReactions.reserve(system.reactions.list.size());
+  for (Reaction& candidate : system.reactions.list)
+  {
+    if (candidate.reactionMove == move)
+    {
+      serialReactions.push_back(&candidate);
+    }
+  }
+  if (serialReactions.empty())
+  {
+    return std::nullopt;
+  }
 
-  return std::nullopt;
+  Reaction& reaction = *serialReactions[random.uniform_integer(0uz, serialReactions.size() - 1uz)];
+
+  return ReactionCommon::serialReactionMove(random, system, reaction, move, false);
 }

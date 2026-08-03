@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module reactions;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import stringutils;
@@ -56,8 +35,11 @@ nlohmann::json Reactions::jsonStatus() const
   if (list.empty()) return status;
   status["n_reactions"] = list.size();
 
-  nlohmann::json reactions(list.size());
-  for (std::size_t i = 0; i < list.size(); i++) reactions[i] = list[i].jsonStatus();
+  nlohmann::json reactions = nlohmann::json::array();
+  for (const Reaction& reaction : list)
+  {
+    reactions.push_back(reaction.jsonStatus());
+  }
   status["reactions"] = reactions;
   return status;
 }

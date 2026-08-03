@@ -1,40 +1,13 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <optional>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
-#include "mdspanwrapper.h"
-#endif
-
 module connectivity_table;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import stringutils;
 #if !(defined(__has_include) && __has_include(<mdspan>))
-//import mdspan;
+import mdspan;
 #endif
 
 #ifdef BLAS_ILP64
@@ -54,9 +27,9 @@ std::string ConnectivityTable::print(const std::string &prestring) const
 {
   std::ostringstream stream;
 
-  for (std::size_t i = 0; i != numberOfBeads - 1; ++i)
+  for (std::size_t i = 0; i + 1 < numberOfBeads; ++i)
   {
-    for (std::size_t j = i + 1; j != numberOfBeads; ++j)
+    for (std::size_t j = i + 1; j < numberOfBeads; ++j)
     {
       if (table[i * numberOfBeads + j])
       {
@@ -301,7 +274,8 @@ std::vector<std::array<std::size_t, 2>> ConnectivityTable::findAllBonds() const
 {
   std::vector<std::array<std::size_t, 2>> result{};
 
-  for (std::size_t i = 0; i < numberOfBeads - 1; ++i)
+  // Use i + 1 < n: with unsigned size_t, `i < n - 1` underflows when n == 0.
+  for (std::size_t i = 0; i + 1 < numberOfBeads; ++i)
   {
     for (std::size_t j = i + 1; j < numberOfBeads; ++j)
     {
@@ -401,9 +375,13 @@ std::vector<std::array<std::size_t, 4>> ConnectivityTable::findAllTorsions() con
 std::vector<std::array<std::size_t, 2>> ConnectivityTable::findAllVanDerWaals() const
 {
   std::vector<std::array<std::size_t, 2>> result{};
+  if (numberOfBeads < 2)
+  {
+    return result;
+  }
   result.reserve(numberOfBeads * (numberOfBeads - 1) / 2);
 
-  for (std::size_t i = 0; i < numberOfBeads - 1; ++i)
+  for (std::size_t i = 0; i + 1 < numberOfBeads; ++i)
   {
     for (std::size_t j = i + 1; j < numberOfBeads; ++j)
     {

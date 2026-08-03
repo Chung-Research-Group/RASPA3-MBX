@@ -1,31 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <chrono>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <optional>
-#include <print>
-#include <string>
-#include <vector>
-#pragma push_macro("__SSE3__")
-#undef __SSE3__
-#include <random>
-#pragma pop_macro("__SSE3__")
-#endif
-
 module mc_pore_size_distribution;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double3x3;
@@ -41,12 +18,12 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
                                   std::optional<double> maximumRange)
 {
   RandomNumber random{std::nullopt};
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
   std::size_t number_of_iterations = numberOfIterations.value_or(10000);
   std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   double delta_r = maximumRange.value_or(10.0) / static_cast<double>(numberOfBins);
 
@@ -92,7 +69,7 @@ void MC_PoreSizeDistribution::run(const ForceField &forceField, const Framework 
     }
   }
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

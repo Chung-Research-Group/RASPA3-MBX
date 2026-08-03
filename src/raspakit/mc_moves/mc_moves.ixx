@@ -1,23 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <fstream>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 export module mc_moves;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import component;
@@ -29,25 +14,24 @@ import randomnumbers;
 import system;
 import energy_status;
 import running_energy;
+import mc_moves_move_types;
 import mc_moves_translation;
 export namespace MC_Moves
 {
-/**
- * \brief Performs a random Monte Carlo move on the selected system.
- *
- * This function selects and executes a random Monte Carlo move for the specified component in the selected system,
- * based on the configured move probabilities.
- *
- * The function updates the system's state and running energies as necessary after the move.
- *
- * \param random Reference to the random number generator.
- * \param selectedSystem The system on which to perform the move.
- * \param selectedSecondSystem A secondary system, used in moves involving two systems (e.g., Gibbs ensemble moves).
- * \param selectedComponent The index of the component on which the move is to be performed.
- * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
- */
-void performRandomMoveInitialization(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                                     std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
+enum class ParticleExchangeResult : std::uint8_t
+{
+  Rejected,
+  Inserted,
+  Deleted
+};
+
+// On return 'exchangedMolecule' holds the molecule index (within the component) of the inserted or
+// deleted molecule; it is unspecified when the move was rejected. The caller needs it to keep
+// per-molecule bookkeeping such as the rigid-group states (GroupState) of semi-flexible molecules
+// aligned with the molecule layout.
+ParticleExchangeResult performMolecularDynamicsSwap(RandomNumber& random, System& system,
+                                                     std::size_t selectedComponent,
+                                                     std::size_t& exchangedMolecule);
 
 /**
  * \brief Performs a random Monte Carlo move on the selected system.
@@ -63,8 +47,43 @@ void performRandomMoveInitialization(RandomNumber& random, System& selectedSyste
  * \param selectedComponent The index of the component on which the move is to be performed.
  * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
  */
-void performRandomMoveEquilibration(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                                    std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
+/**
+ * \brief Performs a restricted random Monte Carlo move during the pre-initialization stage.
+ *
+ * This function selects and executes a random Monte Carlo move for the specified component in the selected system,
+ * but is restricted to only translation, rotation, reinsertion and partial-reinsertion moves. Any other move type
+ * that is sampled from the move probabilities is skipped. This is used to relax the initial configuration before the
+ * regular initialization stage.
+ *
+ * \param random Reference to the random number generator.
+ * \param selectedSystem The system on which to perform the move.
+ * \param selectedSecondSystem A secondary system, used in moves involving two systems (e.g., Gibbs ensemble moves).
+ * \param selectedComponent The index of the component on which the move is to be performed.
+ * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
+ */
+Move::Types performRandomMovePreInitialization(RandomNumber& random, System& selectedSystem,
+                                               System& selectedSecondSystem, std::size_t selectedComponent,
+                                               std::size_t& fractionalMoleculeSystem);
+
+Move::Types performRandomMoveInitialization(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
+                                            std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
+
+/**
+ * \brief Performs a random Monte Carlo move on the selected system.
+ *
+ * This function selects and executes a random Monte Carlo move for the specified component in the selected system,
+ * based on the configured move probabilities.
+ *
+ * The function updates the system's state and running energies as necessary after the move.
+ *
+ * \param random Reference to the random number generator.
+ * \param selectedSystem The system on which to perform the move.
+ * \param selectedSecondSystem A secondary system, used in moves involving two systems (e.g., Gibbs ensemble moves).
+ * \param selectedComponent The index of the component on which the move is to be performed.
+ * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
+ */
+Move::Types performRandomMoveEquilibration(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
+                                           std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem);
 
 /**
  * \brief Performs a random Monte Carlo move during production runs, with statistics tracking.
@@ -80,7 +99,7 @@ void performRandomMoveEquilibration(RandomNumber& random, System& selectedSystem
  * \param fractionalMoleculeSystem Reference to the system index holding the fractional molecule (used in CFCMC moves).
  * \param currentBlock The current block number, used for statistics aggregation.
  */
-void performRandomMoveProduction(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
-                                 std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem,
-                                 std::size_t currentBlock);
+Move::Types performRandomMoveProduction(RandomNumber& random, System& selectedSystem, System& selectedSecondSystem,
+                                        std::size_t selectedComponent, std::size_t& fractionalMoleculeSystem,
+                                        std::size_t currentBlock);
 };  // namespace MC_Moves

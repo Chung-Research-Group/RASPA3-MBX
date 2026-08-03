@@ -1,33 +1,15 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <fstream>
-#include <map>
-#include <print>
-#include <source_location>
-#include <utility>
-#include <vector>
-#endif
-
 module urey_bradley_potential;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import randomnumbers;
 import double3;
+import double3x3;
+import bond_potential;
+import distance_potential_gradient_strain;
 
 UreyBradleyPotential::UreyBradleyPotential(std::array<std::size_t, 2> identifiers, UreyBradleyType type,
                                            std::vector<double> vector_parameters)
@@ -108,7 +90,7 @@ std::string UreyBradleyPotential::print() const
                          identifiers[0], identifiers[1], parameters[0] * Units::EnergyToKelvin, parameters[1],
                          parameters[2] * Units::EnergyToKelvin);
     case UreyBradleyType::RestrainedHarmonic:
-      return std::format("{} - {} : BUCKINGHAM p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", identifiers[0],
+      return std::format("{} - {} : RESTRAINED_HARMONIC p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", identifiers[0],
                          identifiers[1], parameters[0] * Units::EnergyToKelvin, parameters[1], parameters[2]);
     case UreyBradleyType::Quartic:
       return std::format("{} - {} : QUARTIC p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [K/Å^3], p_3={:g} [K/Å^4]\n",
@@ -189,7 +171,7 @@ double UreyBradleyPotential::generateUreyBradleyLength(RandomNumber &random, dou
       do
       {
         ureyBradley_length = 3.0 * random.uniform();
-        temp = std::pow(parameters[1] / (ureyBradley_length * ureyBradley_length), 3);
+        temp = std::pow((parameters[1] * parameters[1]) / (ureyBradley_length * ureyBradley_length), 3);
         energy = 4.0 * parameters[0] * (temp * (temp - 1.0));
       } while (random.uniform() > (ureyBradley_length * ureyBradley_length) * std::exp(-beta * energy));
       return ureyBradley_length;
@@ -316,7 +298,7 @@ double UreyBradleyPotential::calculateEnergy(const double3 &posA, const double3 
       // ===============================================
       // p_0/k_B [K]
       // p_1     [Å]
-      rri = (parameters[1] / rr);
+      rri = (parameters[1] * parameters[1]) / rr;
       temp = rri * rri * rri;
       return 4.0 * parameters[0] * (temp * (temp - 1.0));
     case UreyBradleyType::Buckingham:
@@ -325,7 +307,7 @@ double UreyBradleyPotential::calculateEnergy(const double3 &posA, const double3 
       // p_0/k_B [K]
       // p_1     [Å^-1]
       // p_2/k_B [K Å^6]
-      rri = (parameters[1] / rr);
+      rri = 1.0 / rr;
       temp = rri * rri * rri;
       return parameters[0] * std::exp(-parameters[1] * r) - parameters[2] * temp;
     case UreyBradleyType::RestrainedHarmonic:
@@ -370,6 +352,13 @@ double UreyBradleyPotential::calculateEnergy(const double3 &posA, const double3 
     default:
       std::unreachable();
   }
+}
+
+std::tuple<double, std::array<double3, 2>, double3x3> UreyBradleyPotential::potentialEnergyGradientStrain(
+    const double3 &posA, const double3 &posB) const
+{
+  const auto bond_type = static_cast<BondType>(std::to_underlying(type));
+  return Potentials::Internal::distancePotentialEnergyGradientStrain(bond_type, parameters, posA, posB, false);
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const UreyBradleyPotential &b)

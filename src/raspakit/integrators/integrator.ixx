@@ -1,25 +1,12 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <cstddef>
-#include <optional>
-#include <span>
-#include <vector>
-#endif
-
 export module integrators;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import molecule;
 import atom;
+import atom_dynamics;
 import component;
 import running_energy;
 import thermostat;
@@ -28,6 +15,7 @@ import integrators_update;
 import simulationbox;
 import forcefield;
 import interpolation_energy_grid;
+import framework;
 
 // integrators.ixx
 
@@ -54,17 +42,23 @@ export namespace Integrators
  * \param eik_xy Preallocated complex exponentials for Ewald summation in xy-plane.
  * \param fixedFrameworkStoredEik Precomputed Ewald sums for the fixed framework.
  * \param numberOfMoleculesPerComponent The number of molecules for each component type.
+ * \param framework Optional framework definition; flexible frameworks are propagated.
+ * \param frameworkDynamics Per-framework-atom velocities and gradients.
  *
  * \return The updated running energies after the integration step.
  */
 RunningEnergy velocityVerlet(
-    std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, const std::vector<Component> components,
-    double dt, std::optional<Thermostat>& thermostat, std::span<Atom> frameworkAtomPositions,
+    std::span<Molecule> moleculeData, std::span<Atom> moleculeAtomPositions, std::span<AtomDynamics> moleculeDynamics,
+    const std::vector<Component> &components, double dt, std::optional<Thermostat>& thermostat,
+    std::span<Atom> frameworkAtomPositions,
     const ForceField& forceField, const SimulationBox& simulationBox, std::vector<std::complex<double>>& eik_x,
     std::vector<std::complex<double>>& eik_y, std::vector<std::complex<double>>& eik_z,
     std::vector<std::complex<double>>& eik_xy,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>>& totalEik,
-    std::vector<std::pair<std::complex<double>, std::complex<double>>>& fixedFrameworkStoredEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& trialEik,
+    std::vector<std::pair<std::complex<double>, std::array<std::complex<double>, 4>>>& fixedFrameworkStoredEik,
     const std::vector<std::optional<InterpolationEnergyGrid>>& interpolationGrids,
-    const std::vector<std::size_t> numberOfMoleculesPerComponent);
+    const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+    const std::optional<Framework>& framework = std::nullopt,
+    std::span<AtomDynamics> frameworkDynamics = {}, std::span<GroupState> groupData = {},
+    std::span<GroupState> frameworkGroupData = {});
 }  // namespace Integrators

@@ -1,21 +1,9 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <complex>
-#include <cstddef>
-#include <span>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
 import std;
-#endif
 
 import int3;
 import double3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -25,7 +13,6 @@ import framework;
 import component;
 import system;
 import simulationbox;
-import energy_factor;
 import running_energy;
 import interactions_intermolecular;
 import interactions_framework_molecule;
@@ -33,11 +20,11 @@ import interactions_ewald;
 
 TEST(static_energy, Test_2_CO2_in_ITQ_29_1x1x1)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Framework f = TestFactories::makeITQ29(forceField, int3(1, 1, 1));
-  Component c = TestFactories::makeCO2(forceField, 0, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework f = Framework::makeITQ29(forceField, int3(1, 1, 1));
+  Component c = Component::makeCO2(forceField, 0, true);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -61,11 +48,11 @@ TEST(static_energy, Test_2_CO2_in_ITQ_29_1x1x1)
 
 TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_shifted)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Component c = TestFactories::makeCO2(forceField, 0, true);
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component c = Component::makeCO2(forceField, 0, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
   std::span<const Atom> frameworkAtoms = system.spanOfFrameworkAtoms();
@@ -89,14 +76,14 @@ TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_shifted)
 
 TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_truncated)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, false, true, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, false, true, true);
 
   forceField.automaticEwald = false;
   forceField.EwaldAlpha = 0.25;
   forceField.numberOfWaveVectors = int3(8, 8, 8);
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
-  Component c = TestFactories::makeCO2(forceField, 0, true);
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {2}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
   moleculeAtomPositions[0].position = double3(10.011, 4.97475 + 2.0, 1.149);
@@ -116,4 +103,86 @@ TEST(static_energy, Test_2_CO2_in_MFI_2x2x2_truncated)
   // EXPECT_NEAR(energy.tail * Units::EnergyToKelvin, -127.72803736223419, 1e-6);
   EXPECT_NEAR((energy.ewald_fourier + energy.ewald_self + energy.ewald_exclusion) * Units::EnergyToKelvin,
               -1197.23909965, 1e-6);
+}
+
+// The Brick-CFCMC-style aggregated tail correction must reproduce the per-atom O(N^2) reference exactly, for
+// both the tail energy and every per-group dU/dlambda accumulator, at all fractional-molecule lambda values.
+TEST(static_energy, tail_correction_aggregated_matches_per_atom_reference)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, false, true, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {4}, 5);
+
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  ASSERT_GE(atomData.size(), static_cast<std::size_t>(6));
+
+  // Tail corrections are position-independent, but give the atoms distinct positions anyway.
+  for (std::size_t i = 0; i < atomData.size(); ++i)
+  {
+    atomData[i].position =
+        double3(1.0 + 0.31 * static_cast<double>(i), 2.0 + 0.13 * static_cast<double>(i),
+                3.0 + 0.19 * static_cast<double>(i));
+  }
+
+  // Tag the first molecule as fractional in dU/dlambda group 1, the second as fractional in group 2, and leave
+  // the remaining molecules as integer molecules; sweep lambda over the full [0, 1] range.
+  for (double lambda : {0.0, 0.15, 0.37, 0.5, 0.66, 0.83, 1.0})
+  {
+    for (std::size_t i = 0; i < 3; ++i) atomData[i].setScalingToFractional(lambda, std::uint8_t{1});
+    for (std::size_t i = 3; i < 6; ++i) atomData[i].setScalingToFractional(1.0 - lambda, std::uint8_t{2});
+
+    RunningEnergy reference =
+        Interactions::computeInterMolecularTailEnergyReference(system.forceField, system.simulationBox, atomData);
+    RunningEnergy aggregated =
+        Interactions::computeInterMolecularTailEnergy(system.forceField, system.simulationBox, atomData);
+
+    EXPECT_NEAR(aggregated.tail, reference.tail, 1e-10);
+    for (std::size_t g = 0; g < maximumNumberOfDUDlambdaGroups; ++g)
+    {
+      EXPECT_NEAR(aggregated.dudlambdaVDW[g], reference.dudlambdaVDW[g], 1e-10);
+    }
+  }
+}
+
+// The aggregated difference (used on the CFCMC move hot path) must equal the per-atom tail-energy difference for
+// a fractional-molecule lambda change, for both the tail energy and every per-group dU/dlambda accumulator.
+TEST(static_energy, tail_correction_aggregated_difference_matches_per_atom_reference)
+{
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, false, true, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {4}, 5);
+
+  std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  ASSERT_GE(atomData.size(), static_cast<std::size_t>(6));
+
+  for (std::size_t i = 0; i < atomData.size(); ++i)
+  {
+    atomData[i].position =
+        double3(1.0 + 0.31 * static_cast<double>(i), 2.0 + 0.13 * static_cast<double>(i),
+                3.0 + 0.19 * static_cast<double>(i));
+  }
+
+  // Current state: first molecule fractional (group 1) at lambda = 0.4, everything else integer.
+  for (std::size_t i = 0; i < 3; ++i) atomData[i].setScalingToFractional(0.4, std::uint8_t{1});
+
+  system.computeTailCorrectionCounts();
+
+  // Trial state: the fractional molecule changes lambda to 0.7 (positions unchanged).
+  std::vector<Atom> oldFractional(atomData.begin(), atomData.begin() + 3);
+  std::vector<Atom> newFractional(oldFractional.begin(), oldFractional.end());
+  for (Atom& atom : newFractional) atom.setScalingToFractional(0.7, std::uint8_t{1});
+
+  RunningEnergy reference = Interactions::computeInterMolecularTailEnergyDifference(
+      system.forceField, system.simulationBox, atomData, newFractional, oldFractional);
+  RunningEnergy aggregated = Interactions::computeInterMolecularTailEnergyDifferenceAggregated(
+      system.forceField, system.simulationBox, system.effectiveNumberOfPseudoAtomsVDW,
+      system.fractionalPseudoAtomCountsPerGroup, newFractional, oldFractional);
+
+  EXPECT_NEAR(aggregated.tail, reference.tail, 1e-10);
+  for (std::size_t g = 0; g < maximumNumberOfDUDlambdaGroups; ++g)
+  {
+    EXPECT_NEAR(aggregated.dudlambdaVDW[g], reference.dudlambdaVDW[g], 1e-10);
+  }
 }

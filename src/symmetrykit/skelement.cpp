@@ -1,24 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <cstdlib>
-#include <map>
-#include <set>
-#include <string>
-#include <type_traits>
-#include <vector>
-#endif
-
 module skelement;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 SKElement::SKElement() {}
 
@@ -291,10 +275,7 @@ std::map<std::string, std::size_t, PredefinedElements::InsensitiveCompare> Prede
     {std::string("Al"), 13},
     {std::string("Si"), 14},
     {std::string("P"), 15},
-    {
-        std::string("S"),
-        16,
-    },
+    {std::string("S"), 16},
     {std::string("Cl"), 17},
     {std::string("Ar"), 18},
     {std::string("K"), 19},
@@ -312,10 +293,7 @@ std::map<std::string, std::size_t, PredefinedElements::InsensitiveCompare> Prede
     {std::string("Ga"), 31},
     {std::string("Ge"), 32},
     {std::string("As"), 33},
-    {
-        std::string("Se"),
-        34,
-    },
+    {std::string("Se"), 34},
     {std::string("Br"), 35},
     {std::string("Kr"), 36},
     {std::string("Rb"), 37},
@@ -395,7 +373,7 @@ std::map<std::string, std::size_t, PredefinedElements::InsensitiveCompare> Prede
     {std::string("Rg"), 111},
     {std::string("Cn"), 112},
     {std::string("Nh"), 113},
-    {std::string("Fl("), 114},
+    {std::string("Fl"), 114},
     {std::string("Mc"), 115},
     {std::string("Lv"), 116},
     {std::string("Ts"), 117},

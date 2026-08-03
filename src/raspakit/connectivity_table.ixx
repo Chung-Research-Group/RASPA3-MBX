@@ -1,29 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cstddef>
-#include <cstring>
-#include <fstream>
-#include <map>
-#include <optional>
-#include <print>
-#include <string>
-#include <tuple>
-#include <type_traits>
-#include <utility>
-#include <vector>
-#endif
-
 export module connectivity_table;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import archive;
@@ -32,10 +11,10 @@ export struct ConnectivityTable
 {
   std::uint64_t versionNumber{1};
 
-  std::size_t numberOfBeads;
-  std::vector<bool> table;
+  std::size_t numberOfBeads{0};
+  std::vector<bool> table{};
 
-  ConnectivityTable() {};
+  ConnectivityTable() = default;
   ConnectivityTable(std::size_t numberOfBeads) : numberOfBeads(numberOfBeads), table(numberOfBeads * numberOfBeads) {};
 
   bool operator[](std::size_t i, std::size_t j) const { return table[i * numberOfBeads + j]; }

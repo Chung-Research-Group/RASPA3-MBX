@@ -1,31 +1,12 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <cstddef>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <iterator>
-#include <optional>
-#include <print>
-#include <random>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
 import std;
-#endif
 
 import double3;
 import double3x3;
 import randomnumbers;
 
-import skposcarlegacyparser;
+import skposcarparser;
 import sksymmetrycell;
 import skspacegroup;
 import skpointgroup;
@@ -51,7 +32,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Triclinic)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -63,12 +44,12 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Triclinic)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    size_t leastOccuringAtomType = index->first;
+    size_t leastOccurringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double>> reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
     double3x3 unitCell = parser.movies().front().front()->cell->unitCell();
     bool allowPartialOccupancies = false;
     double symmetryPrecision = 1e-5;
@@ -221,7 +202,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Monoclinic)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -233,12 +214,12 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Monoclinic)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    size_t leastOccuringAtomType = index->first;
+    size_t leastOccurringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double>> reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
     double3x3 unitCell = parser.movies().front().front()->cell->unitCell();
     bool allowPartialOccupancies = false;
     double symmetryPrecision = 1e-5;
@@ -767,7 +748,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Orthorhombic)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -779,12 +760,12 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Orthorhombic)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    size_t leastOccuringAtomType = index->first;
+    size_t leastOccurringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double>> reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
     double3x3 unitCell = parser.movies().front().front()->cell->unitCell();
     bool allowPartialOccupancies = false;
     double symmetryPrecision = 1e-5;
@@ -1405,7 +1386,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Tetragonal)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -1417,12 +1398,12 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Tetragonal)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    size_t leastOccuringAtomType = index->first;
+    size_t leastOccurringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double>> reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
     double3x3 unitCell = parser.movies().front().front()->cell->unitCell();
     bool allowPartialOccupancies = false;
     double symmetryPrecision = 1e-5;
@@ -1667,7 +1648,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Trigonal)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -1679,12 +1660,12 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Trigonal)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    size_t leastOccuringAtomType = index->first;
+    size_t leastOccurringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double>> reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
     double3x3 unitCell = parser.movies().front().front()->cell->unitCell();
     bool allowPartialOccupancies = false;
     double symmetryPrecision = 1e-5;
@@ -1921,7 +1902,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Hexagonal)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -1933,12 +1914,12 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Hexagonal)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    size_t leastOccuringAtomType = index->first;
+    size_t leastOccurringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double>> reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
     double3x3 unitCell = parser.movies().front().front()->cell->unitCell();
     bool allowPartialOccupancies = false;
     double symmetryPrecision = 1e-5;
@@ -2191,7 +2172,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Cubic)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -2203,12 +2184,12 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Cubic)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    size_t leastOccuringAtomType = index->first;
+    size_t leastOccurringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double>> reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
     double3x3 unitCell = parser.movies().front().front()->cell->unitCell();
     bool allowPartialOccupancies = false;
     double symmetryPrecision = 1e-5;
@@ -2961,7 +2942,7 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Virtual)
     std::ifstream t(fileName.c_str());
     std::string fileContent((std::istreambuf_iterator<char>(t)), std::istreambuf_iterator<char>());
 
-    SKPOSCARLegacyParser parser = SKPOSCARLegacyParser(fileContent);
+    SKPOSCARParser parser = SKPOSCARParser(fileContent);
     parser.startParsing();
 
     std::vector<std::tuple<double3, size_t, double>> atoms = parser.firstTestFrame();
@@ -2973,12 +2954,12 @@ TEST(FindSmallestPrimitiveCellNoPartialOccupancies, Virtual)
     }
     std::map<size_t, size_t>::iterator index = std::min_element(
         histogram.begin(), histogram.end(), [](const auto& l, const auto& r) { return l.second < r.second; });
-    size_t leastOccuringAtomType = index->first;
+    size_t leastOccurringAtomType = index->first;
 
     std::vector<std::tuple<double3, size_t, double>> reducedAtoms{};
     std::copy_if(atoms.begin(), atoms.end(), std::back_inserter(reducedAtoms),
-                 [leastOccuringAtomType](std::tuple<double3, size_t, double> a)
-                 { return std::get<1>(a) == leastOccuringAtomType; });
+                 [leastOccurringAtomType](std::tuple<double3, size_t, double> a)
+                 { return std::get<1>(a) == leastOccurringAtomType; });
     double3x3 unitCell = parser.movies().front().front()->cell->unitCell();
     bool allowPartialOccupancies = false;
     double symmetryPrecision = 1e-5;

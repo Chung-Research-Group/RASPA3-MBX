@@ -1,346 +1,186 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <numbers>
-#include <numeric>
-#include <optional>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 export module property_pressure;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3x3;
 import averages;
 import units;
 import json;
+export import property_block_average;
 
-inline std::pair<double, double> pair_acc_pressure(const std::pair<double, double> &lhs,
-                                                   const std::pair<double, double> &rhs)
+export struct PressureData
 {
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-}
+  PressureData():
+    totalPressureTensor(double3x3()),
+    excessPressureTensor(double3x3()),
+    idealGasPressureTensor(double3x3()),
+    totalPressure(0.0),
+    excessPressure(0.0),
+    idealGasPressure(0.0)
+  {
+  };
 
-inline std::pair<double3x3, double> pair_acc_pressure2(const std::pair<double3x3, double> &lhs,
-                                                       const std::pair<double3x3, double> &rhs)
-{
-  return std::make_pair(lhs.first + rhs.first, lhs.second + rhs.second);
-}
-
-export struct PropertyPressure
-{
-  PropertyPressure() {};
-
-  PropertyPressure(std::size_t numberOfBlocks)
-      : numberOfBlocks(numberOfBlocks),
-        bookKeepingExcessPressure(numberOfBlocks),
-        bookKeepingIdealGasPressure(numberOfBlocks)
+  PressureData(double3x3 totalPressureTensor, double3x3 excessPressureTensor, double3x3 idealGasPressureTensor,
+               double totalPressure, double excessPressure, double idealGasPressure):
+               totalPressureTensor(totalPressureTensor),
+               excessPressureTensor(excessPressureTensor),
+               idealGasPressureTensor(idealGasPressureTensor),
+               totalPressure(totalPressure),
+               excessPressure(excessPressure),
+               idealGasPressure(idealGasPressure)
   {
   }
+
+  inline PressureData& operator+=(const PressureData& b)
+  {
+    totalPressureTensor += b.totalPressureTensor;
+    excessPressureTensor += b.excessPressureTensor;
+    idealGasPressureTensor += b.idealGasPressureTensor;
+
+    totalPressure += b.totalPressure;
+    excessPressure += b.excessPressure;
+    idealGasPressure += b.idealGasPressure;
+
+    return *this;
+  }
+
+  std::uint64_t versionNumber{1};
+
+  double3x3 totalPressureTensor{};
+  double3x3 excessPressureTensor{};
+  double3x3 idealGasPressureTensor{};
+  double totalPressure{};
+  double excessPressure{};
+  double idealGasPressure{};
+
+  friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const PressureData& l);
+  friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, PressureData& l);
+};
+
+export inline PressureData operator+(const PressureData &a, const PressureData &b)
+{
+  PressureData m{}; 
+
+  m.totalPressureTensor = a.totalPressureTensor + b.totalPressureTensor;
+  m.excessPressureTensor = a.excessPressureTensor + b.excessPressureTensor;
+  m.idealGasPressureTensor = a.idealGasPressureTensor + b.idealGasPressureTensor;
+
+  m.totalPressure = a.totalPressure + b.totalPressure;
+  m.excessPressure = a.excessPressure + b.excessPressure;
+  m.idealGasPressure = a.idealGasPressure + b.idealGasPressure;
+
+  return m;
+}
+
+export inline PressureData operator-(const PressureData &a, const PressureData &b)
+{
+  PressureData m{};
+
+  m.totalPressureTensor = a.totalPressureTensor - b.totalPressureTensor;
+  m.excessPressureTensor = a.excessPressureTensor - b.excessPressureTensor;
+  m.idealGasPressureTensor = a.idealGasPressureTensor - b.idealGasPressureTensor;
+
+  m.totalPressure = a.totalPressure - b.totalPressure;
+  m.excessPressure = a.excessPressure - b.excessPressure;
+  m.idealGasPressure = a.idealGasPressure - b.idealGasPressure;
+
+  return m;
+}
+
+export inline PressureData operator*(const PressureData &a, const PressureData &b)
+{
+  PressureData m{};
+
+  m.totalPressureTensor = double3x3::multiplyElementWise(a.totalPressureTensor, b.totalPressureTensor);
+  m.excessPressureTensor = double3x3::multiplyElementWise(a.excessPressureTensor, b.excessPressureTensor);
+  m.idealGasPressureTensor = double3x3::multiplyElementWise(a.idealGasPressureTensor, b.idealGasPressureTensor);
+
+  m.totalPressure = a.totalPressure * b.totalPressure;
+  m.excessPressure = a.excessPressure * b.excessPressure;
+  m.idealGasPressure = a.idealGasPressure * b.idealGasPressure;
+
+  return m;
+}
+
+export inline PressureData operator*(const double& a, const PressureData &b)
+{
+  PressureData m{};
+
+  m.totalPressureTensor = a * b.totalPressureTensor;
+  m.excessPressureTensor = a * b.excessPressureTensor;
+  m.idealGasPressureTensor = a * b.idealGasPressureTensor;
+
+  m.totalPressure = a * b.totalPressure;
+  m.excessPressure = a * b.excessPressure;
+  m.idealGasPressure = a * b.idealGasPressure;
+
+  return m;
+}
+
+export inline PressureData operator/(const PressureData &a, const double& b)
+{
+  PressureData m{};
+
+  double inv_b = 1.0 / b;
+
+  m.totalPressureTensor = inv_b * a.totalPressureTensor;
+  m.excessPressureTensor = inv_b * a.excessPressureTensor;
+  m.idealGasPressureTensor = inv_b * a.idealGasPressureTensor;
+
+  m.totalPressure = inv_b * a.totalPressure;
+  m.excessPressure = inv_b * a.excessPressure;
+  m.idealGasPressure = inv_b * a.idealGasPressure;
+
+  return m;
+}
+
+export inline PressureData sqrt(const PressureData &a)
+{
+  PressureData m{};
+
+  m.totalPressureTensor = sqrt(a.totalPressureTensor);
+  m.excessPressureTensor = sqrt(a.excessPressureTensor);
+  m.idealGasPressureTensor = sqrt(a.idealGasPressureTensor);
+
+  m.totalPressure = std::sqrt(a.totalPressure);
+  m.excessPressure = std::sqrt(a.excessPressure);
+  m.idealGasPressure = std::sqrt(a.idealGasPressure);
+
+  return m;
+}
+
+export struct PropertyPressure : BlockAverage<PressureData>
+{
+  PropertyPressure() = default;
+
+  PropertyPressure(std::size_t numberOfBlocks) : BlockAverage<PressureData>(numberOfBlocks) {}
 
   bool operator==(PropertyPressure const &) const = default;
 
-  std::uint64_t versionNumber{1};
-  std::size_t numberOfBlocks;
-  std::vector<std::pair<double3x3, double>> bookKeepingExcessPressure;
-  std::vector<std::pair<double, double>> bookKeepingIdealGasPressure;
+  using BlockAverage<PressureData>::addSample;
 
-  inline void addSample(std::size_t blockIndex, double idealGasPressureValue, double3x3 excessPressureValue,
+  /// Builds the full PressureData sample (tensors and scalar traces) from the sampled
+  /// ideal-gas pressure and excess pressure tensor.
+  inline void addSample(std::size_t blockIndex, double idealGasPressureValue, double3x3 excessPressureTensor,
                         double weight)
   {
-    bookKeepingIdealGasPressure[blockIndex].first += weight * idealGasPressureValue;
-    bookKeepingIdealGasPressure[blockIndex].second += weight;
+    double3x3 ideal_gas_pressure_tensor = double3x3(idealGasPressureValue, idealGasPressureValue, idealGasPressureValue);
+    double excess_pressure = excessPressureTensor.trace() / 3.0;
 
-    bookKeepingExcessPressure[blockIndex].first += weight * excessPressureValue;
-    bookKeepingExcessPressure[blockIndex].second += weight;
-  }
+    PressureData sample;
+    sample.totalPressureTensor = excessPressureTensor + ideal_gas_pressure_tensor;
+    sample.excessPressureTensor = excessPressureTensor;
+    sample.idealGasPressureTensor = ideal_gas_pressure_tensor;
+    sample.totalPressure = idealGasPressureValue + excess_pressure;
+    sample.excessPressure = excess_pressure;
+    sample.idealGasPressure = idealGasPressureValue;
 
-  //====================================================================================================================
-
-  double3x3 averagedExcessPressureTensor(std::size_t blockIndex) const
-  {
-    return bookKeepingExcessPressure[blockIndex].first / std::max(1.0, bookKeepingExcessPressure[blockIndex].second);
-  }
-
-  double3x3 averagedExcessPressureTensor() const
-  {
-    std::pair<double3x3, double> summedBlocks = std::accumulate(
-        bookKeepingExcessPressure.begin(), bookKeepingExcessPressure.end(),
-        std::make_pair(double3x3(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 0.0), pair_acc_pressure2);
-    return summedBlocks.first / std::max(1.0, summedBlocks.second);
-  }
-
-  std::pair<double3x3, double3x3> averageExcessPressureTensor() const
-  {
-    double3x3 average = averagedExcessPressureTensor();
-
-    double3x3 sumOfSquares{};
-    std::size_t numberOfSamples = 0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      if (bookKeepingExcessPressure[blockIndex].second / std::max(1.0, bookKeepingExcessPressure[0].second) > 0.5)
-      {
-        double3x3 value = averagedExcessPressureTensor(blockIndex) - average;
-        sumOfSquares += sqr(value);
-        ++numberOfSamples;
-      }
-    }
-
-    double3x3 confidenceIntervalError{};
-    if (numberOfSamples >= 3)
-    {
-      std::size_t degreesOfFreedom = numberOfSamples - 1;
-      double3x3 standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double3x3 standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-    }
-
-    return std::make_pair(average, confidenceIntervalError);
-  }
-
-  //====================================================================================================================
-
-  double3x3 averagedIdealGasPressureTensor(std::size_t blockIndex) const
-  {
-    return (bookKeepingIdealGasPressure[blockIndex].first /
-            std::max(1.0, bookKeepingIdealGasPressure[blockIndex].second)) *
-           double3x3::identity();
-  }
-
-  double3x3 averagedIdealGasPressureTensor() const
-  {
-    std::pair<double3x3, double> summedBlocks{};
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      summedBlocks.first += bookKeepingIdealGasPressure[blockIndex].first * double3x3::identity();
-      summedBlocks.second += bookKeepingIdealGasPressure[blockIndex].second;
-    }
-
-    return (summedBlocks.first / std::max(1.0, summedBlocks.second));
-  }
-
-  std::pair<double3x3, double3x3> averageIdealGasPressureTensor() const
-  {
-    double3x3 average = averagedIdealGasPressureTensor();
-
-    double3x3 sumOfSquares{};
-    std::size_t numberOfSamples = 0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      if (bookKeepingIdealGasPressure[blockIndex].second / std::max(1.0, bookKeepingIdealGasPressure[0].second) > 0.5)
-      {
-        double3x3 value = averagedIdealGasPressureTensor(blockIndex) - average;
-        sumOfSquares += sqr(value);
-        ++numberOfSamples;
-      }
-    }
-
-    double3x3 confidenceIntervalError{};
-    if (numberOfSamples >= 3)
-    {
-      std::size_t degreesOfFreedom = numberOfSamples - 1;
-      double3x3 standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double3x3 standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-    }
-
-    return std::make_pair(average, confidenceIntervalError);
-  }
-
-  //====================================================================================================================
-
-  double3x3 averagedPressureTensor(std::size_t blockIndex) const
-  {
-    return (bookKeepingIdealGasPressure[blockIndex].first /
-            std::max(1.0, bookKeepingIdealGasPressure[blockIndex].second)) *
-               double3x3::identity() +
-           (bookKeepingExcessPressure[blockIndex].first / std::max(1.0, bookKeepingExcessPressure[blockIndex].second));
-  }
-
-  std::pair<double3x3, double3x3> averagePressureTensor() const
-  {
-    double3x3 average = averagedExcessPressureTensor() + averagedIdealGasPressureTensor();
-
-    double3x3 sumOfSquares{};
-    std::size_t numberOfSamples = 0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      if (bookKeepingExcessPressure[blockIndex].second / std::max(1.0, bookKeepingExcessPressure[0].second) > 0.5)
-      {
-        double3x3 value =
-            (averagedExcessPressureTensor(blockIndex) + averagedIdealGasPressureTensor(blockIndex)) - average;
-        sumOfSquares += sqr(value);
-        ++numberOfSamples;
-      }
-    }
-
-    double3x3 confidenceIntervalError{};
-    if (numberOfSamples >= 3)
-    {
-      std::size_t degreesOfFreedom = numberOfSamples - 1;
-      double3x3 standardDeviation = sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double3x3 standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-    }
-
-    return std::make_pair(average, confidenceIntervalError);
-  }
-
-  //====================================================================================================================
-
-  double averagedExcessPressure(std::size_t blockIndex) const
-  {
-    return bookKeepingExcessPressure[blockIndex].first.trace() /
-           (3.0 * std::max(1.0, bookKeepingExcessPressure[blockIndex].second));
-  }
-
-  double averagedExcessPressure() const
-  {
-    std::pair<double3x3, double> summedBlocks = std::accumulate(
-        bookKeepingExcessPressure.begin(), bookKeepingExcessPressure.end(),
-        std::make_pair(double3x3(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0), 0.0), pair_acc_pressure2);
-    return summedBlocks.first.trace() / (3.0 * std::max(1.0, summedBlocks.second));
-  }
-
-  std::pair<double, double> averageExcessPressure() const
-  {
-    double average = averagedExcessPressure();
-
-    double sumOfSquares{0.0};
-    std::size_t numberOfSamples = 0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      if (bookKeepingExcessPressure[blockIndex].second / std::max(1.0, bookKeepingExcessPressure[0].second) > 0.5)
-      {
-        double value = averagedExcessPressure(blockIndex) - average;
-        sumOfSquares += value * value;
-        ++numberOfSamples;
-      }
-    }
-
-    double confidenceIntervalError{0.0};
-    if (numberOfSamples >= 3)
-    {
-      std::size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-    }
-
-    return std::make_pair(average, confidenceIntervalError);
-  }
-
-  //====================================================================================================================
-
-  double averagedIdealGasPressure(std::size_t blockIndex) const
-  {
-    return (bookKeepingIdealGasPressure[blockIndex].first /
-            std::max(1.0, bookKeepingIdealGasPressure[blockIndex].second));
-  }
-
-  double averagedIdealGasPressure() const
-  {
-    std::pair<double, double> summedBlocks{0.0, 0.0};
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      summedBlocks.first += bookKeepingIdealGasPressure[blockIndex].first;
-      summedBlocks.second += bookKeepingIdealGasPressure[blockIndex].second;
-    }
-
-    return (summedBlocks.first / std::max(1.0, summedBlocks.second));
-  }
-
-  std::pair<double, double> averageIdealGasPressure() const
-  {
-    double average = averagedIdealGasPressure();
-
-    double sumOfSquares = 0.0;
-    std::size_t numberOfSamples = 0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      if (bookKeepingIdealGasPressure[blockIndex].second / std::max(1.0, bookKeepingIdealGasPressure[0].second) > 0.5)
-      {
-        double value = averagedIdealGasPressure(blockIndex) - average;
-        sumOfSquares += value * value;
-        ++numberOfSamples;
-      }
-    }
-
-    double confidenceIntervalError = 0.0;
-    if (numberOfSamples >= 3)
-    {
-      std::size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-    }
-
-    return std::make_pair(average, confidenceIntervalError);
-  }
-
-  //====================================================================================================================
-
-  double averagedPressure(std::size_t blockIndex) const
-  {
-    return (bookKeepingIdealGasPressure[blockIndex].first /
-            std::max(1.0, bookKeepingIdealGasPressure[blockIndex].second)) +
-           (bookKeepingExcessPressure[blockIndex].first.trace() /
-            (3.0 * std::max(1.0, bookKeepingExcessPressure[blockIndex].second)));
-  }
-
-  std::pair<double, double> averagePressure() const
-  {
-    double average = averagedExcessPressure() + averagedIdealGasPressure();
-
-    double sumOfSquares = 0.0;
-    std::size_t numberOfSamples = 0;
-    for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-    {
-      if (bookKeepingExcessPressure[blockIndex].second / std::max(1.0, bookKeepingExcessPressure[0].second) > 0.5)
-      {
-        double value = (averagedExcessPressure(blockIndex) + averagedIdealGasPressure(blockIndex)) - average;
-        sumOfSquares += value * value;
-        ++numberOfSamples;
-      }
-    }
-
-    double confidenceIntervalError{};
-    if (numberOfSamples >= 3)
-    {
-      std::size_t degreesOfFreedom = numberOfSamples - 1;
-      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-      confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-    }
-
-    return std::make_pair(average, confidenceIntervalError);
+    addSample(blockIndex, sample, weight);
   }
 
   std::string writeAveragesStatistics() const;
   nlohmann::json jsonAveragesStatistics() const;
-
-  friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyPressure &e);
-  friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyPressure &e);
 };

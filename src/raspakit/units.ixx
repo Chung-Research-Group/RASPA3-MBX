@@ -1,22 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <numbers>
-#include <print>
-#include <sstream>
-#include <string>
-#endif
-
 export module units;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import json;
 /**
@@ -163,7 +149,7 @@ export struct Units
   /// Conversion factor for enthalpy from simulation units to J
   static double EnthalpyConversionFactor;
   /// Conversion factor for polarizability from simulation units to SI units.
-  static double PolarizilibityConversionFactor;
+  static double PolarizabilityConversionFactor;
   /// Conversion factor for dielectric constant from simulation units to SI units.
   static double DielectricConstantConversionFactor;
   /// Conversion factor for Coulomb potential from simulation units to SI units.

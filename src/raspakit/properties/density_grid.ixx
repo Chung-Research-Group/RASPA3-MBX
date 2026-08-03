@@ -1,27 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstdint>
-#include <optional>
-#include <span>
-#include <string>
-#include <vector>
-#include "mdspanwrapper.h"
-#endif
-
 export module property_density_grid;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import int3;
@@ -74,7 +55,7 @@ export struct PropertyDensityGrid
   {
   }
 
-  std::uint64_t versionNumber{4};
+  std::uint64_t versionNumber{1};
 
   std::size_t numberOfFrameworks;
   std::size_t numberOfComponents;
@@ -92,7 +73,7 @@ export struct PropertyDensityGrid
   std::size_t numberOfSamples{0};
 
   void sample(const std::optional<Framework> &frameworks, const SimulationBox &simulationBox,
-              std::span<const Atom> moleculeAtoms, std::size_t currrentCycle);
+              std::span<const Atom> moleculeAtoms, std::size_t currentCycle);
   void writeOutput(std::size_t systemId, const SimulationBox &simulationBox, const ForceField &forceField,
                    const std::optional<Framework> &frameworkComponents, const std::vector<Component> &components,
                    std::size_t currentCycle);

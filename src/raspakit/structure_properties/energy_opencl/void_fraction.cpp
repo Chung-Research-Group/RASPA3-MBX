@@ -1,33 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <istream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <utility>
-#include <vector>
-#include "mdspanwrapper.h"
-#endif
-
 #define CL_TARGET_OPENCL_VERSION 120
 #define CL_SILENCE_DEPRECATION
 #ifdef __APPLE__
@@ -36,25 +8,11 @@ module;
 #include <CL/cl.h>
 #else
 #include <CL/opencl.h>
-#endif
-
-#ifdef USE_STD_IMPORT
-#define CL_TARGET_OPENCL_VERSION 120
-#define CL_SILENCE_DEPRECATION
-#ifdef __APPLE__
-#include <OpenCL/cl.h>
-#elif _WIN32
-#include <CL/cl.h>
-#else
-#include <CL/opencl.h>
-#endif
 #endif
 
 module energy_opencl_void_fraction;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import opencl;
 import uint3;
@@ -156,10 +114,11 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
   double3x3 unitCell = framework.simulationBox.cell;
   int3 numberOfReplicas = framework.simulationBox.smallestNumberOfUnitCellsForMinimumImagesConvention(cutoff);
   std::vector<double3> positions = framework.fractionalAtomPositionsUnitCell();
+  std::print("check: {}\n", positions.size());
   std::vector<double2> potentialParameters = framework.atomUnitCellLennardJonesPotentialParameters(forceField);
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   // Energy-grid computation step
   // ==================================================================================================================================================================
@@ -184,6 +143,8 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
 
   double3 correction =
       double3(1.0 / double(numberOfReplicas.x), 1.0 / double(numberOfReplicas.y), 1.0 / double(numberOfReplicas.z));
+
+  std::print("numberOfAtoms: {}\n", numberOfAtoms);
 
   if (numberOfAtoms > 0)
   {
@@ -405,7 +366,7 @@ void EnergyOpenCLVoidFraction::run(const ForceField& forceField, const Framework
     double fraction = 0.0;
     for (size_t i = 0; i < nWorkGroups; i++) fraction += double(sumReduction[i]);
 
-    time_end = std::chrono::system_clock::now();
+    time_end = std::chrono::steady_clock::now();
 
     std::chrono::duration<double> timing = time_end - time_begin;
 

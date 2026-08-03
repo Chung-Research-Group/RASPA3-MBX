@@ -1,39 +1,13 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <map>
-#include <optional>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module property_enthalpy;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import stringutils;
 import component;
 import units;
-import enthalpy_of_adsorption;
 import averages;
 import json;
 import averages;
@@ -52,16 +26,16 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
   }
   else
   {
-    std::pair<EnthalpyOfAdsorption, EnthalpyOfAdsorption> enthalpy = averageEnthalpy();
+    std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> enthalpy = average();
     for (std::size_t k = 0; k < swappableComponents.size(); k++)
     {
       std::size_t index = swappableComponents[k];
       double idealGasTerm = components[index].idealGasEnergy.value_or(0.0);
-      std::print(stream, "Component {} [{}]\n", components[index].componentId, components[index].name);
+      std::print(stream, "Component {} [{}]\n", index, components[index].name);
       std::print(stream, "-------------------------------------------------------------------------------\n");
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
-        EnthalpyOfAdsorption average = averagedEnthalpy(i);
+        EnthalpyOfAdsorptionData average = averaged(i);
         std::print(stream, "    Block[ {:2d}] {: .6e}\n", i,
                    Units::EnergyToKelvin * (average.values[k] - idealGasTerm));
       }
@@ -83,33 +57,21 @@ std::string PropertyEnthalpy::writeAveragesStatistics(std::vector<std::size_t> &
       std::print(stream, "Total enthalpy of adsorption\n");
       std::print(stream, "-------------------------------------------------------------------------------\n");
 
-      std::vector<double> totalEnthalpyBlocks{};
-      double sum = 0.0;
-      double sumSquares = 0.0;
+      std::vector<double> totalEnthalpyBlocks(numberOfBlocks);
       for (std::size_t i = 0; i < numberOfBlocks; ++i)
       {
         double totalEnthalpyOfAdsorption = 0.0;
-        EnthalpyOfAdsorption average = averagedEnthalpy(i);
+        EnthalpyOfAdsorptionData average = averaged(i);
         for (std::size_t k = 0; k < swappableComponents.size(); k++)
         {
           std::size_t index = swappableComponents[k];
           double idealGasTerm = components[index].idealGasEnergy.value_or(0.0);
           totalEnthalpyOfAdsorption += components[index].molFraction * (average.values[k] - idealGasTerm);
         }
-        sum += totalEnthalpyOfAdsorption;
-        sumSquares += totalEnthalpyOfAdsorption * totalEnthalpyOfAdsorption;
-        totalEnthalpyBlocks.push_back(totalEnthalpyOfAdsorption);
+        totalEnthalpyBlocks[i] = totalEnthalpyOfAdsorption;
         std::print(stream, "    Block[ {:2d}] {}\n", i, Units::EnergyToKelvin * totalEnthalpyOfAdsorption);
       }
-      std::size_t numberOfSamples = totalEnthalpyBlocks.size();
-      double average = sum / static_cast<double>(numberOfSamples);
-      std::size_t degreesOfFreedom = numberOfSamples - 1;
-      double sumOfSquares = sumSquares - sum * sum / static_cast<double>(numberOfSamples);
-      double standardDeviation = std::sqrt((1.0 / static_cast<double>(degreesOfFreedom)) * sumOfSquares);
-      double standardError = (1.0 / std::sqrt(static_cast<double>(numberOfSamples))) * standardDeviation;
-      double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-      double confidenceIntervalError = intermediateStandardNormalDeviate * standardError;
-      std::pair<double, double> totalEnthalpy = std::make_pair(average, confidenceIntervalError);
+      std::pair<double, double> totalEnthalpy = meanConfidence(totalEnthalpyBlocks);
       std::print(stream, "    ---------------------------------------------------------------------------\n");
       std::print(stream, "    Enthalpy of adsorption: {: .6e} +/- {: .6e} [K]\n",
                  Units::EnergyToKelvin * totalEnthalpy.first, Units::EnergyToKelvin * totalEnthalpy.second);
@@ -140,7 +102,7 @@ nlohmann::json PropertyEnthalpy::jsonAveragesStatistics(std::vector<std::size_t>
 
   if (!swappableComponents.empty())
   {
-    std::pair<EnthalpyOfAdsorption, EnthalpyOfAdsorption> enthalpy = averageEnthalpy();
+    std::pair<EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData> enthalpy = average();
     for (std::size_t k = 0; k < swappableComponents.size(); k++)
     {
       std::size_t index = swappableComponents[k];
@@ -188,13 +150,10 @@ nlohmann::json PropertyEnthalpy::jsonAveragesStatistics(std::vector<std::size_t>
   return status;
 }
 
-Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyEnthalpy &p)
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnthalpyOfAdsorptionData &p)
 {
-  archive << p.versionNumber;
-
-  archive << p.numberOfBlocks;
-  archive << p.numberOfComponents;
-  archive << p.bookKeepingEnthalpyOfAdsorptionTerms;
+  archive << p.size;
+  archive << p.values;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -203,20 +162,10 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   return archive;
 }
 
-Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEnthalpy &p)
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnthalpyOfAdsorptionData &p)
 {
-  std::uint64_t versionNumber;
-  archive >> versionNumber;
-  if (versionNumber > p.versionNumber)
-  {
-    const std::source_location &location = std::source_location::current();
-    throw std::runtime_error(std::format("Invalid version reading 'PropertyEnthalpy' at line {} in file {}\n",
-                                         location.line(), location.file_name()));
-  }
-
-  archive >> p.numberOfBlocks;
-  archive >> p.numberOfComponents;
-  archive >> p.bookKeepingEnthalpyOfAdsorptionTerms;
+  archive >> p.size;
+  archive >> p.values;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;
@@ -224,6 +173,45 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyEnth
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
     throw std::runtime_error(std::format("PropertyEnthalpy: Error in binary restart\n"));
+  }
+#endif
+
+  return archive;
+}
+
+Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnthalpyOfAdsorptionTerms &p)
+{
+  archive << p.size;
+  archive << p.swappableComponents;
+  archive << p.totalEnergyTimesNumberOfMolecules;
+  archive << p.numberOfMoleculesSquared;
+  archive << p.numberOfMolecules;
+  archive << p.temperature;
+  archive << p.totalEnergy;
+
+#if DEBUG_ARCHIVE
+  archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
+#endif
+
+  return archive;
+}
+
+Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnthalpyOfAdsorptionTerms &p)
+{
+  archive >> p.size;
+  archive >> p.swappableComponents;
+  archive >> p.totalEnergyTimesNumberOfMolecules;
+  archive >> p.numberOfMoleculesSquared;
+  archive >> p.numberOfMolecules;
+  archive >> p.temperature;
+  archive >> p.totalEnergy;
+
+#if DEBUG_ARCHIVE
+  std::uint64_t magicNumber;
+  archive >> magicNumber;
+  if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
+  {
+    throw std::runtime_error(std::format("EnthalpyOfAdsorptionTerms: Error in binary restart\n"));
   }
 #endif
 

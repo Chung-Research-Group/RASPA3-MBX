@@ -1,37 +1,15 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <fstream>
-#include <limits>
-#include <map>
-#include <print>
-#include <source_location>
-#include <tuple>
-#include <utility>
-#include <vector>
-#endif
-
 module bond_potential;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import randomnumbers;
 import double3;
 import double3x3;
-import gradient_factor;
+import distance_potential_gradient_strain;
+import distance_potential_gradient_hessian_strain;
 
 BondPotential::BondPotential(std::array<std::size_t, 2> identifiers, BondType type,
                              std::vector<double> vector_parameters)
@@ -115,7 +93,7 @@ std::string BondPotential::print() const
                          identifiers[0], identifiers[1], parameters[0] * Units::EnergyToKelvin, parameters[1],
                          parameters[2] * Units::EnergyToKelvin);
     case BondType::RestrainedHarmonic:
-      return std::format("{} - {} : BUCKINGHAM p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", identifiers[0],
+      return std::format("{} - {} : RESTRAINED_HARMONIC p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [Å]\n", identifiers[0],
                          identifiers[1], parameters[0] * Units::EnergyToKelvin, parameters[1], parameters[2]);
     case BondType::Quartic:
       return std::format("{} - {} : QUARTIC p_0/k_B={:g} [K/Å^2], p_1={:g} [Å], p_2={:g} [K/Å^3], p_3={:g} [K/Å^4]\n",
@@ -197,7 +175,7 @@ double BondPotential::generateBondLength(RandomNumber &random, double beta) cons
       do
       {
         bond_length = 3.0 * random.uniform();
-        temp = std::pow(parameters[1] / (bond_length * bond_length), 3);
+        temp = std::pow((parameters[1] * parameters[1]) / (bond_length * bond_length), 3);
         energy = 4.0 * parameters[0] * (temp * (temp - 1.0));
       } while (random.uniform() > (bond_length * bond_length) * std::exp(-beta * energy));
       return bond_length;
@@ -326,7 +304,7 @@ double BondPotential::calculateEnergy(const double3 &posA, const double3 &posB) 
       // ===============================================
       // p_0/k_B [K]
       // p_1     [Å]
-      rri = (parameters[1] / rr);
+      rri = (parameters[1] * parameters[1]) / rr;
       temp = rri * rri * rri;
       return 4.0 * parameters[0] * (temp * (temp - 1.0));
     case BondType::Buckingham:
@@ -335,7 +313,7 @@ double BondPotential::calculateEnergy(const double3 &posA, const double3 &posB) 
       // p_0/k_B [K]
       // p_1     [Å^-1]
       // p_2/k_B [K Å^6]
-      rri = (parameters[1] / rr);
+      rri = 1.0 / rr;
       temp = rri * rri * rri;
       return parameters[0] * std::exp(-parameters[1] * r) - parameters[2] * temp;
     case BondType::RestrainedHarmonic:
@@ -385,148 +363,13 @@ double BondPotential::calculateEnergy(const double3 &posA, const double3 &posB) 
 std::tuple<double, std::array<double3, 2>, double3x3> BondPotential::potentialEnergyGradientStrain(
     const double3 &posA, const double3 &posB) const
 {
-  double temp, temp2;
-  double r1, rri;
-  double U{}, DF{};
-  double3 du_dr, du_da, du_db;
-  double3x3 strain_derivative;
+  return Potentials::Internal::distancePotentialEnergyGradientStrain(type, parameters, posA, posB, false);
+}
 
-  double3 dr = posA - posB;
-  double rr = double3::dot(dr, dr);
-  double r = std::sqrt(rr);
-
-  switch (type)
-  {
-    case BondType::None:
-    case BondType::Fixed:
-      U = 0.0;
-      DF = 0.0;
-      break;
-    case BondType::Harmonic:
-      // 0.5 * p0 * SQR(r - p1);
-      // ===============================================
-      // p_0/k_B [K/Å^2]   force constant
-      // p_1     [Å]       reference bond distance
-      U = 0.5 * parameters[0] * (r - parameters[1]) * (r - parameters[1]);
-      DF = parameters[0] * (r - parameters[1]) / r;
-      break;
-    case BondType::CoreShellSpring:
-      // 0.5 * p0 * SQR(r);
-      // ===============================================
-      // p_0/k_B [K/Å^2]   force constant
-      U = 0.5 * parameters[0] * r * r;
-      DF = 0.0;
-      break;
-    case BondType::Morse:
-      // p_0*[(1.0-{exp(-p_1*(r-p_2))})^2-1.0]
-      // ===============================================
-      // p_0/k_B [K]       force constant
-      // p_1     [Å^-1]    parameter
-      // p_2     [Å]       reference bond distance
-      temp = std::exp(parameters[1] * (parameters[2] - r));
-      U = parameters[0] * ((1.0 - temp) * (1.0 - temp) - 1.0);
-      DF = 0.0;
-      break;
-    case BondType::LJ_12_6:
-      // A/r_ij^12-B/r_ij^6
-      // ===============================================
-      // p_0/k_B [K Å^12]
-      // p_1/k_B [K Å^6]
-      rri = (1.0 / rr);
-      temp = rri * rri * rri;
-      U = parameters[0] * temp * temp - parameters[1] * temp;
-      DF = 0.0;
-      break;
-    case BondType::LennardJones:
-      // 4*p_0*((p_1/r)^12-(p_1/r)^6)
-      // ===============================================
-      // p_0/k_B [K]
-      // p_1     [Å]
-      rri = (parameters[1] / rr);
-      temp = rri * rri * rri;
-      U = 4.0 * parameters[0] * (temp * (temp - 1.0));
-      DF = 0.0;
-      break;
-    case BondType::Buckingham:
-      // p_0*exp(-p_1 r)-p_2/r^6
-      // ===============================================
-      // p_0/k_B [K]
-      // p_1     [Å^-1]
-      // p_2/k_B [K Å^6]
-      rri = (parameters[1] / rr);
-      temp = rri * rri * rri;
-      U = parameters[0] * std::exp(-parameters[1] * r) - parameters[2] * temp;
-      DF = 0.0;
-      break;
-    case BondType::RestrainedHarmonic:
-      // 0.5*p_0*(r-p_1)^2                   |r-p_1|<=p_2
-      // 0.5*p_0*p_2^2+p_0*p_2*(|r-p_1|-p_2) |r-p_1|>p_2
-      // ===============================================
-      // p_0/k_B [K/Å^2]
-      // p_1     [Å]
-      // p_2     [Å]
-      r1 = r - parameters[1];
-      U = 0.5 * parameters[0] * std::pow(std::min(std::fabs(r1), parameters[2]), 2) +
-          parameters[0] * parameters[2] * std::max(std::fabs(r1) - parameters[2], 0.0);
-      DF = 0.0;
-      break;
-    case BondType::Quartic:
-      // (1/2)*p_0*(r-p_1)^2+(1/3)*p_2*(r-p_1)^3+(1/4)*p_3*(r-p_1)^4
-      // ===========================================================
-      // p_0/k_B [K/Å^2]
-      // p_1     [Å]
-      // p_2/k_B [K/Å^3]
-      // p_3/k_B [K/Å^4]
-      temp = r - parameters[1];
-      temp2 = temp * temp;
-      U = 0.5 * parameters[0] * temp2 + (1.0 / 3.0) * parameters[2] * temp * temp2 +
-          0.25 * parameters[3] * temp2 * temp2;
-      DF = 0.0;
-      break;
-    case BondType::CFF_Quartic:
-      // p_0*(r-p_1)^2+p_2*(r-p_1)^3+p_3*(r-p_1)^4
-      // ===============================================
-      // p_0/k_B [K/Å^2]
-      // p_1     [Å]
-      // p_2/k_B [K/Å^3]
-      // p_3/k_B [K/Å^4]
-      temp = r - parameters[1];
-      temp2 = temp * temp;
-      U = parameters[0] * temp2 + parameters[2] * temp * temp2 + parameters[3] * temp2 * temp2;
-      DF = 0.0;
-      break;
-    case BondType::MM3:
-      // p_0*(r-p_1)^2*(1.0-2.55*(r-p_1)+(7.0/12.0)*2.55^2*(r-p_1)^2)
-      // =================================================================
-      // p_0     [mdyne/Å molecule]
-      // p_1     [Å]
-      temp = r - parameters[1];
-      temp2 = temp * temp;
-      U = parameters[0] * temp2 * (1.0 - 2.55 * temp + (7.0 / 12.0) * 2.55 * 2.55 * temp2);
-      DF = 0.0;
-      break;
-    default:
-      std::unreachable();
-  }
-
-  du_dr = DF * dr;
-
-  du_da = du_dr;
-  du_db = -du_dr;
-
-  strain_derivative.ax = dr.x * du_dr.x;
-  strain_derivative.bx = dr.y * du_dr.x;
-  strain_derivative.cx = dr.z * du_dr.x;
-
-  strain_derivative.ay = dr.x * du_dr.y;
-  strain_derivative.by = dr.y * du_dr.y;
-  strain_derivative.cy = dr.z * du_dr.y;
-
-  strain_derivative.az = dr.x * du_dr.z;
-  strain_derivative.bz = dr.y * du_dr.z;
-  strain_derivative.cz = dr.z * du_dr.z;
-
-  return {U, {du_da, du_db}, strain_derivative};
+std::tuple<double, std::array<double3, 2>, double3x3, double, double>
+BondPotential::potentialEnergyGradientHessianStrain(const double3 &posA, const double3 &posB) const
+{
+  return Potentials::Internal::distancePotentialEnergyGradientHessianStrain(type, parameters, posA, posB, false);
 }
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const BondPotential &b)

@@ -1,22 +1,6 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <complex>
-#include <cstddef>
-#include <numbers>
-#include <print>
-#include <span>
-#include <sstream>
-#include <vector>
-#include "mdspanwrapper.h"
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
-#include "mdspanwrapper.h"
 import std;
-#endif
 
 import int3;
 import double3;
@@ -24,6 +8,7 @@ import double3x3;
 
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -31,9 +16,6 @@ import framework;
 import component;
 import system;
 import simulationbox;
-import energy_factor;
-import gradient_factor;
-import hessian_factor;
 import running_energy;
 import interactions_intermolecular;
 import interactions_framework_molecule;
@@ -70,7 +52,8 @@ TEST(grids, Test_CHA_grid)
   std::cout << forceField.printPseudoAtomStatus();
   std::cout << forceField.printForceFieldStatus();
 
-  Framework framework = Framework(0, forceField, "IRMOF-1",
+  const string fileContent = Framework::readFileContent("IRMOF-1");
+  Framework framework = Framework(0, forceField, fileContent,
                                   SimulationBox(25.832, 25.832, 25.832, 90.0 * std::numbers::pi / 180.0,
                                                 120.0 * std::numbers::pi / 180.0, 90.0 * std::numbers::pi / 180.0),
                                   523,
@@ -92,7 +75,7 @@ TEST(grids, Test_CHA_grid)
                            Atom(double3(0.0, 0.0, 0.0), 0.0, 1.0, 0, 7, 0, 0)},
                           5, 21);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {framework}, {c}, {1}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {c}, {1}, 5);
 
   // size_t typeB = forceField.pseudoAtoms.size() - 1;
   // size_t typeB = 7;
@@ -122,15 +105,16 @@ TEST(grids, Test_CHA_grid)
              cartesian_hessian.az, cartesian_hessian.by, cartesian_hessian.bz, cartesian_hessian.cz);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> dynamicsData = system.spanOfMoleculeDynamics();
   atomData[0].position = pos;
   atomData[0].charge = 1.0;
-  RunningEnergy energy =
-      Interactions::computeFrameworkMoleculeGradient(system.forceField, system.simulationBox, frameworkAtoms, atomData);
+  RunningEnergy energy = Interactions::computeFrameworkMoleculeGradient(
+      system.forceField, system.simulationBox, frameworkAtoms, atomData, dynamicsData, system.interpolationGrids);
   auto [l1, l2, hessian] = Interactions::calculateHessianAtPositionCoulomb(system.forceField, system.simulationBox, pos,
                                                                            1.0, frameworkAtoms);
 
-  std::print("energy: {}  gradient: {} {} {}\n", energy.frameworkMoleculeCharge, atomData[0].gradient.x,
-             atomData[0].gradient.y, atomData[0].gradient.z);
+  std::print("energy: {}  gradient: {} {} {}\n", energy.frameworkMoleculeCharge, dynamicsData[0].gradient.x,
+             dynamicsData[0].gradient.y, dynamicsData[0].gradient.z);
   std::print("CORRECT analytical hessian: {} {} {} {} {} {}\n", hessian.ax, hessian.ay, hessian.az, hessian.by,
              hessian.bz, hessian.cz);
 

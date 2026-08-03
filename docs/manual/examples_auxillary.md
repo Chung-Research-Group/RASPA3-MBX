@@ -15,7 +15,7 @@ To compare simulation values to experiments a reference state should be chosen. 
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
   "NumberOfInitializationCycles" : 0,
   "PrintEvery" : 5000,
 
@@ -43,7 +43,6 @@ Note that the ideal-gas Rosenbluth weight depends on the temperatures _and_ on t
   "CriticalTemperature" : 425.125,
   "CriticalPressure" : 3796000.0,
   "AcentricFactor" : 0.201,
-  "Type" : "flexible",
   "pseudoAtoms" :
     [
       ["CH3", [0.0, 0.0, 0.0]],
@@ -77,7 +76,7 @@ Note that for Rosenbluth weights several chains can be computed simultaneously, 
 ```
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
   "NumberOfInitializationCycles" : 0,
   "PrintEvery" : 5000,
 
@@ -136,7 +135,7 @@ Similarly, we can obtain the ideal-gas Rosenbluth weights of hexane isomers.
 ```
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
   "NumberOfInitializationCycles" : 0,
   "PrintEvery" : 5000,
 
@@ -194,7 +193,7 @@ TODO: not working yet ([charge equilibration]: no solution found').
 ```
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 0,
+  "NumberOfProductionCycles" : 0,
   "NumberOfInitializationCycles" : 0,
   "NumberOfEquilibrationCycles" : 0,
   "PrintEvery" : 5000,
@@ -226,7 +225,7 @@ Some simulations, especially with a large number of unitcells, by using grid-int
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 100000,
+  "NumberOfProductionCycles" : 100000,
   "NumberOfInitializationCycles" : 20000,
   "NumberOfEquilibrationCycles" : 50000,
   "PrintEvery" : 5000,

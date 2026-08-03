@@ -1,29 +1,12 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <fstream>
-#include <numeric>
-#include <ostream>
-#include <span>
-#include <sstream>
-#include <string>
-#include <utility>
-#include <vector>
-#endif
-
 export module sample_movies;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import atom;
+import component;
 import simulationbox;
 import forcefield;
 
@@ -32,12 +15,16 @@ export struct SampleMovie
   std::uint64_t versionNumber{1};
 
   SampleMovie() {};
-  SampleMovie(std::size_t systemId, std::size_t sampleEvery);
+  SampleMovie(std::size_t systemId, std::size_t sampleEvery, bool restrictToBox, std::optional<std::string> tag);
 
   void update(const ForceField& forceField, std::size_t systemId, const SimulationBox simulationBox,
-              const std::span<Atom> atomData, std::size_t currentCycle);
+              const std::span<Atom> atomData, const std::vector<Component> &components,
+              const std::vector<std::size_t> &numberOfMoleculesPerComponent,
+              std::size_t currentCycle, std::span<const Atom> frameworkAtoms = {});
 
   std::size_t sampleEvery{10};
+  bool restrictToBox;
+  std::optional<std::string> tag{};
 
   int modelNumber{1};
 

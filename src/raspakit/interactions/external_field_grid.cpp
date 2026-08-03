@@ -1,28 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <iostream>
-#include <numbers>
-#include <optional>
-#include <span>
-#include <type_traits>
-#include <array>
-#include <vector>
-#endif
-
 module interactions_external_field_grid;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import double3;
@@ -33,8 +13,6 @@ import simulationbox;
 import energy_status;
 import energy_status_inter;
 import units;
-import energy_factor;
-import gradient_factor;
 import running_energy;
 import component;
 import forcefield;

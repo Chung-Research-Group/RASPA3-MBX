@@ -1,97 +1,132 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cctype>
-#include <cmath>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <iostream>
-#include <map>
-#include <numbers>
-#include <optional>
-#include <print>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module cif_reader;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import skspacegroup;
+import skdefinitions;
+import skseitzmatrix;
 import skelement;
 import scanner;
 import characterset;
 import atom;
 import forcefield;
 import simulationbox;
+import charge_equilibration_wilmer_snurr;
 
-CIFReader::CIFReader(const std::string& content, const ForceField& forceField)
-    : _scanner(content, CharacterSet::whitespaceAndNewlineCharacterSet())
+CIFReader::CIFReader(const std::string& content)
+    :scanner(content, CharacterSet::whitespaceAndNewlineCharacterSet())
 {
-  while (!_scanner.isAtEnd())
+}
+
+auto CIFReader::readCIFString(const std::string& content, const ForceField& forceField, CIFReader::UseChargesFrom useChargesFrom) ->
+                              std::expected<std::tuple<SimulationBox, std::size_t, std::vector<Atom>, std::vector<Atom>>, CIFReader::ParseError>
+{
+  CIFReader cif_reader(content);
+
+  while (!cif_reader.scanner.isAtEnd())
   {
     std::string tempString;
 
-
     // scan to first keyword
-    _previousScanLocation = _scanner.scanLocation();
-    if (_scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString))
+    if (cif_reader.scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString))
     {
       // FIX: cast to lower case
       std::string keyword = tempString;
 
       if (keyword.starts_with(std::string("_audit")))
       {
-        parseAudit(keyword);
+        cif_reader.parseAudit(keyword);
       }
       else if (keyword.starts_with(std::string("_chemical")))
       {
-        parseChemical(keyword);
+        cif_reader.parseChemical(keyword);
       }
       else if (keyword.starts_with("_cell"))
       {
-        parseCell(keyword);
+        cif_reader.parseCell(keyword);
       }
       else if (keyword.starts_with(std::string("_symmetry")))
       {
-        parseSymmetry(keyword);
+        cif_reader.parseSymmetry(keyword);
       }
       else if (keyword.starts_with(std::string("_space_group")))
       {
-        parseSymmetry(keyword);
+        cif_reader.parseSymmetry(keyword);
       }
       else if (keyword.starts_with(std::string("data_")))
       {
-        parseName(keyword);
+        cif_reader.parseName(keyword);
       }
       else if (keyword.starts_with(std::string("loop_")))
       {
-        parseLoop(keyword, forceField);
+        if(auto loop = cif_reader.parseLoop(keyword, forceField); !loop.has_value()) return std::unexpected(loop.error());
       }
       else if (keyword.starts_with("#"))
       {
-        skipComment();
+        cif_reader.skipComment();
       };
     }
   }
 
   SimulationBox::Type type =
-      (std::abs(_alpha - 90.0) > 1.0e-3) || (std::abs(_beta - 90.0) > 1.0e-3) || (std::abs(_gamma - 90.0) > 1.0e-3)
+      (std::abs(cif_reader.alpha - 90.0) > 1.0e-3) || (std::abs(cif_reader.beta - 90.0) > 1.0e-3) || (std::abs(cif_reader.gamma - 90.0) > 1.0e-3)
           ? SimulationBox::Type::Triclinic
           : SimulationBox::Type::Rectangular;
-  simulationBox = SimulationBox(_a, _b, _c, _alpha * std::numbers::pi / 180.0, _beta * std::numbers::pi / 180.0,
-                                _gamma * std::numbers::pi / 180.0, type);
+  SimulationBox simulation_box(cif_reader.a, cif_reader.b, cif_reader.c, 
+                               cif_reader.alpha * std::numbers::pi / 180.0, 
+                               cif_reader.beta * std::numbers::pi / 180.0,
+                               cif_reader.gamma * std::numbers::pi / 180.0, type);
+
+  cif_reader.resolveSpaceGroupHallNumber(simulation_box);
+
+  if (useChargesFrom == UseChargesFrom::PseudoAtoms)
+  {
+    for (Atom& atom : cif_reader.fractionalAtoms)
+    {
+      atom.charge = forceField.pseudoAtoms[atom.type].charge;
+    }
+  }
+
+  for (std::size_t i = 0; i < cif_reader.fractionalAtoms.size(); ++i)
+  {
+    cif_reader.fractionalAtoms[i].moleculeId = static_cast<std::uint32_t>(i);
+  }
+
+  std::vector<Atom> atoms = CIFReader::expandDefinedAtomsToUnitCell(simulation_box, cif_reader.spaceGroupHallNumber.value_or(1), cif_reader.fractionalAtoms);
+
+  if (useChargesFrom == UseChargesFrom::ChargeEquilibration)
+  {
+    std::vector<Atom> unit_cell_atoms_cartesian = atoms;
+    for (Atom& atom : unit_cell_atoms_cartesian)
+    {
+      atom.position = simulation_box.cell * atom.position;
+    }
+
+    ChargeEquilibration::computeChargeEquilibration(forceField, simulation_box, unit_cell_atoms_cartesian,
+                                                      ChargeEquilibration::Type::PeriodicEwaldSum);
+
+    std::vector<std::size_t> count_charge(cif_reader.fractionalAtoms.size());
+    std::vector<double> sum_charge(cif_reader.fractionalAtoms.size());
+    for (const Atom& atom : unit_cell_atoms_cartesian)
+    {
+      ++count_charge[atom.moleculeId];
+      sum_charge[atom.moleculeId] += atom.charge;
+    }
+    for (std::size_t i = 0; i < cif_reader.fractionalAtoms.size(); ++i)
+    {
+      cif_reader.fractionalAtoms[i].charge = sum_charge[i] / static_cast<double>(count_charge[i]);
+    }
+    for (Atom& atom : atoms)
+    {
+      atom.charge = cif_reader.fractionalAtoms[atom.moleculeId].charge;
+    }
+  }
+
+
+  return std::tuple<SimulationBox, std::size_t, std::vector<Atom>, std::vector<Atom>>{simulation_box, cif_reader.spaceGroupHallNumber.value_or(1), cif_reader.fractionalAtoms, atoms};
 }
 
 void CIFReader::parseLine([[maybe_unused]] std::string& string) {}
@@ -104,28 +139,28 @@ void CIFReader::parseCell(std::string& string)
 {
   if (string == std::string("_cell_length_a") || string == std::string("_cell.length_a"))
   {
-    _a = scanDouble();
+    a = scanDouble();
   }
   if (string == std::string("_cell_length_b") || string == std::string("_cell.length_b"))
   {
-    _b = scanDouble();
+    b = scanDouble();
   }
   if (string == std::string("_cell_length_c") || string == std::string("_cell.length_c"))
   {
-    _c = scanDouble();
+    c = scanDouble();
   }
 
   if (string == std::string("_cell_angle_alpha") || string == std::string("_cell.angle_alpha"))
   {
-    _alpha = scanDouble();
+    alpha = scanDouble();
   }
   if (string == std::string("_cell_angle_beta") || string == std::string("_cell.angle_beta"))
   {
-    _beta = scanDouble();
+    beta = scanDouble();
   }
   if (string == std::string("_cell_angle_gamma") || string == std::string("_cell.angle_gamma"))
   {
-    _gamma = scanDouble();
+    gamma = scanDouble();
   }
 }
 
@@ -144,32 +179,78 @@ void CIFReader::parseSymmetry(std::string& string)
 
     if (possibleString)
     {
-      _spaceGroupHallNumber = SKSpaceGroup::HallNumber(*possibleString);
+      spaceGroupHallNumber = SKSpaceGroup::HallNumber(*possibleString);
     }
   }
 
-  if (!_spaceGroupHallNumber)
+  if ((string == std::string("_space_group_name_H-M_alt")) ||
+      (string == std::string("_symmetry_space_group_name_H-M")) ||
+      (string == std::string("_symmetry.pdbx_full_space_group_name_H-M")))
   {
-    if ((string == std::string("_space_group_name_H-M_alt")) ||
-        (string == std::string("_symmetry_space_group_name_H-M")) ||
-        (string == std::string("_symmetry.pdbx_full_space_group_name_H-M")))
+    std::optional<std::string> possibleString = scanString();
+    if (possibleString)
     {
-      std::optional<std::string> possibleString = scanString();
-      if (possibleString)
+      hmSymbol = *possibleString;
+      if (!spaceGroupHallNumber)
       {
-        _spaceGroupHallNumber = SKSpaceGroup::HallNumberFromHMString(*possibleString);
+        spaceGroupHallNumber = SKSpaceGroup::HallNumberFromHMString(*possibleString);
       }
     }
   }
 
-  if (!_spaceGroupHallNumber)
+  if (!spaceGroupHallNumber)
   {
     if ((string == std::string("_space_group_IT_number")) || (string == std::string("_symmetry_Int_Tables_number")) ||
         (string == std::string("_symmetry.Int_Tables_number")))
     {
-      std::size_t spaceGroupNumber = scanInt();
-      _spaceGroupHallNumber = SKSpaceGroup::HallNumberFromSpaceGroupNumber(spaceGroupNumber);
+      spaceGroupInternationalNumber = scanInt();
+      spaceGroupHallNumber = SKSpaceGroup::HallNumberFromSpaceGroupNumber(*spaceGroupInternationalNumber);
     }
+  }
+  else if ((string == std::string("_space_group_IT_number")) || (string == std::string("_symmetry_Int_Tables_number")) ||
+           (string == std::string("_symmetry.Int_Tables_number")))
+  {
+    spaceGroupInternationalNumber = scanInt();
+  }
+}
+
+void CIFReader::resolveSpaceGroupHallNumber(const SimulationBox& simulation_box)
+{
+  if (symmetryOperationStrings.empty())
+  {
+    return;
+  }
+
+  std::vector<SKSeitzMatrix> operations{};
+  operations.reserve(symmetryOperationStrings.size());
+  for (const std::string& symmetryOperationString : symmetryOperationStrings)
+  {
+    if (const std::optional<SKSeitzMatrix> operation =
+            SKSpaceGroup::parseCifSymmetryOperation(symmetryOperationString))
+    {
+      operations.push_back(*operation);
+    }
+  }
+
+  if (operations.empty())
+  {
+    return;
+  }
+
+  Centring centering = Centring::primitive;
+  if (!hmSymbol.empty())
+  {
+    centering = SKSpaceGroup::centringFromHMString(hmSymbol);
+  }
+  else if (spaceGroupHallNumber)
+  {
+    centering = SKSpaceGroup(spaceGroupHallNumber.value()).spaceGroupSetting().centring();
+  }
+
+  if (const std::optional<std::size_t> hallNumber = SKSpaceGroup::HallNumberFromSymmetryOperations(
+          operations, simulation_box.cell, centering, spaceGroupInternationalNumber))
+  {
+    spaceGroupHallNumber = hallNumber;
   }
 }
 
@@ -178,18 +259,18 @@ void CIFReader::parseName([[maybe_unused]] std::string& string) {}
 void CIFReader::skipComment()
 {
   std::string tempString;
-  _scanner.scanUpToCharacters(CharacterSet::newlineCharacterSet(), tempString);
+  scanner.scanUpToCharacters(CharacterSet::newlineCharacterSet(), tempString);
 }
 
-void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField& forceField)
+std::expected<void, CIFReader::ParseError> CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField& forceField)
 {
   std::string tempString;
   std::string::const_iterator previousScanLocation;
   std::vector<std::string> tags;
 
   // part 1: read the 'tags'
-  previousScanLocation = _scanner.scanLocation();
-  while (_scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString) &&
+  previousScanLocation = scanner.scanLocation();
+  while (scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString) &&
          (tempString.size() > 0) &&
          (tempString.starts_with(std::string("_")) || (tempString.starts_with(std::string("#")))))
   {
@@ -199,12 +280,44 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
     if (tag.starts_with(std::string("_")))
     {
       tags.push_back(tag);
-      previousScanLocation = _scanner.scanLocation();
+      previousScanLocation = scanner.scanLocation();
     }
   }
 
   // set scanner back to the first <value>
-  _scanner.setScanLocation(previousScanLocation);
+  scanner.setScanLocation(previousScanLocation);
+
+  const bool isSymmetryLoop = std::ranges::any_of(
+      tags,
+      [](const std::string& tag)
+      {
+        return tag == std::string("_symmetry_equiv_pos_as_xyz") || tag == std::string("_symmetry.equiv_pos_as_xyz");
+      });
+
+  if (isSymmetryLoop)
+  {
+    std::optional<std::string> symmetryValue = std::nullopt;
+    do
+    {
+      for (const std::string& tag : tags)
+      {
+        if (tag == std::string("_symmetry_equiv_pos_as_xyz") || tag == std::string("_symmetry.equiv_pos_as_xyz"))
+        {
+          symmetryValue = parseValue();
+          if (symmetryValue)
+          {
+            symmetryOperationStrings.push_back(*symmetryValue);
+          }
+        }
+        else
+        {
+          symmetryValue = parseValue();
+        }
+      }
+    } while (symmetryValue);
+
+    return std::expected<void, CIFReader::ParseError>();
+  }
 
   std::optional<std::string> value1 = std::nullopt;
   do
@@ -261,7 +374,8 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
             // TODO: add pseudoAtom if not found
             if (!index1.has_value())
             {
-              throw std::runtime_error(std::format("[cif reader]: atom type {} not recognized\n", value2));
+              return std::unexpected(CIFReader::ParseError::invalidForceField);
+              //throw std::runtime_error(std::format("[cif reader]: atom type {} not recognized\n", value2));
             }
 
             if (index1.has_value())
@@ -297,12 +411,12 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
         std::map<std::string, std::string>::iterator atom_charge = dictionary.find(std::string("_atom_site_charge"));
         if (atom_charge != dictionary.end())
         {
-          double c = scanDouble(atom_charge->second);
+          double q = scanDouble(atom_charge->second);
           bool succes = true;
           // charge = atom_charge->second.split('(').at(0).toDouble(&succes);
           if (succes)
           {
-            atom.charge = c;
+            atom.charge = q;
           }
         }
 
@@ -379,19 +493,21 @@ void CIFReader::parseLoop([[maybe_unused]] std::string& string, const ForceField
       }
     }
   } while (value1);
+
+  return std::expected<void, CIFReader::ParseError>();
 }
 
 std::optional<std::string> CIFReader::parseValue()
 {
-  if (_scanner.isAtEnd())
+  if (scanner.isAtEnd())
   {
     return std::nullopt;
   }
 
-  std::string::const_iterator previousScanLocation = _scanner.scanLocation();
+  std::string::const_iterator previousScanLocation = scanner.scanLocation();
 
   std::string tempString;
-  while (_scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString) &&
+  while (scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString) &&
          tempString.starts_with(std::string("#")))
   {
     skipComment();
@@ -402,7 +518,7 @@ std::optional<std::string> CIFReader::parseValue()
 
   if ((keyword.starts_with(std::string("_")) || keyword.starts_with(std::string("loop_"))))
   {
-    _scanner.setScanLocation(previousScanLocation);
+    scanner.setScanLocation(previousScanLocation);
 
     return std::nullopt;
   }
@@ -415,7 +531,7 @@ std::optional<std::string> CIFReader::parseValue()
 std::size_t CIFReader::scanInt()
 {
   std::string tempString;
-  if (_scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString))
+  if (scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString))
   {
     std::replace_if(tempString.begin(), tempString.end(), [](char c) { return !std::isalnum(c); }, ' ');
 
@@ -432,7 +548,7 @@ std::size_t CIFReader::scanInt()
 double CIFReader::scanDouble()
 {
   std::string tempString;
-  if (_scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString))
+  if (scanner.scanUpToCharacters(CharacterSet::whitespaceAndNewlineCharacterSet(), tempString))
   {
     // std::replace_if(tempString.begin(), tempString.end(), [](char c) {return !std::isalnum(c); }, ' ');
 
@@ -462,10 +578,56 @@ double CIFReader::scanDouble(std::string tempString)
 std::optional<std::string> CIFReader::scanString()
 {
   std::string tempString;
-  if (_scanner.scanUpToCharacters(CharacterSet::newlineCharacterSet(), tempString))
+  if (scanner.scanUpToCharacters(CharacterSet::newlineCharacterSet(), tempString))
   {
     return tempString;
   }
 
   return std::nullopt;
 }
+
+std::vector<Atom> CIFReader::expandDefinedAtomsToUnitCell(const SimulationBox &simulation_box, std::size_t spaceGroupHallNumber, const std::vector<Atom> &definedAtoms)
+{
+  SKSpaceGroup spaceGroup = SKSpaceGroup(spaceGroupHallNumber);
+
+  // expand the fractional atoms based on the space-group
+  std::vector<Atom> fractional_expanded_atoms{};
+  fractional_expanded_atoms.reserve(definedAtoms.size() * 256);
+
+  for (Atom atomCopy : definedAtoms)
+  {
+    std::vector<double3> listOfPositions = spaceGroup.listOfSymmetricPositions(atomCopy.position);
+    for (const double3& pos : listOfPositions)
+    {
+      atomCopy.position = pos.fract();
+      fractional_expanded_atoms.push_back(atomCopy);
+    }
+  }
+
+  // eliminate duplicates
+  std::vector<Atom> fractionalUnitCellAtoms{};
+  for (std::size_t i = 0; i < fractional_expanded_atoms.size(); ++i)
+  {
+    bool overLap = false;
+    double3 cartesian_position_A = simulation_box.cell * fractional_expanded_atoms[i].position;
+    for (std::size_t j = i + 1; j < fractional_expanded_atoms.size(); ++j)
+    {
+      double3 cartesian_position_B = simulation_box.cell * fractional_expanded_atoms[j].position;
+      double3 dr = cartesian_position_A - cartesian_position_B;
+      dr = simulation_box.applyPeriodicBoundaryConditions(dr);
+      double rr = double3::dot(dr, dr);
+      if (rr < 0.1 * 0.1)
+      {
+        overLap = true;
+        break;
+      }
+    }
+    if (!overLap)
+    {
+      fractionalUnitCellAtoms.push_back(fractional_expanded_atoms[i]);
+    }
+  }
+
+  return fractionalUnitCellAtoms;
+}
+

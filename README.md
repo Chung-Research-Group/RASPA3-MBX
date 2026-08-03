@@ -8,7 +8,7 @@
 
 <h4 align="center">This software is a general purpose classical simulation package.</h4>
 
-<p align="center">It has been developed at the University of Amsterdam (Amsterdam, The Netherlands) during 2022/2024 in active collaboration with Eindhoven University of Technology (Eindhoven, Netherlands), Delft University of Technology (Delft, The Netherlands), and Northwestern University (Evanston, USA).</p>
+<p align="center">It has been developed at the University of Amsterdam (Amsterdam, The Netherlands) during 2022/2026 in active collaboration with Eindhoven University of Technology (Eindhoven, Netherlands), Delft University of Technology (Delft, The Netherlands), and Northwestern University (Evanston, USA).</p>
 
 <p align="center">
   <a href="https://github.com/iRASPA/raspa3/releases">
@@ -80,18 +80,31 @@ cd examples/basic/1_mc_methane_in_box
 
 # Experimental
 - flexible molecules (CBMC)
+- flexible molecules (MD)
+- mixed flexible/rigid molecule
+- flexible (fused-)rings
 - partial insertion move
+- identity change
+- Gibbs identity change
+- Gibbs CFCMC/CBMC
+- Gibbs conventional CFCMC
+- Gibbs conventional CFCMC/CBMC
+- reaction ensemble
+- Reaction MC CBMC
+- Reaction MC conventional CFCMC
+- Reaction MC conventional CFCMC/CBMC
+- Reaction MC CFCMC
+- Reaction MC CFCMC/CBMC
+- Translation / rotation smart MC
+- partial molar energies/volumes
+- polarization
+- Baker/MFO-optimization
+- flexible frameworks
+- elastic constants
+- phonon dispersion curves
 
 # Todo-list
-- flexible molecules (MD)
-- zeo++-type calculations
-- flexible frameworks
-- reaction ensemble
-- identity change
-- polarization
+- ASE interface
 - cell-lists for rigid frameworks
-- partial molar volumes
-- partial molar enthalpies/volumes
-- optimization
-- elastic constants
+- zeo++-type calculations
 - HDF5 property writing

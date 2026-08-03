@@ -1,24 +1,10 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <complex>
-#include <cstddef>
-#include <ranges>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
 import std;
-#endif
 
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -34,12 +20,12 @@ import mc_moves_probabilities;
 
 TEST(MC, translation)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Framework f = TestFactories::makeMFI_Si(forceField, int3(2, 2, 2));
-  Component methane = TestFactories::makeMethane(forceField, 0);
-  Component co2 = TestFactories::makeCO2(forceField, 1, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework f = Framework::makeMFI(forceField, int3(2, 2, 2));
+  Component methane = Component::makeMethane(forceField, 0);
+  Component co2 = Component::makeCO2(forceField, 1, true);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {methane, co2}, {}, {5, 3}, 5);
 
   [[maybe_unused]] std::span<Atom> atomData = system.spanOfMoleculeAtoms();
 }

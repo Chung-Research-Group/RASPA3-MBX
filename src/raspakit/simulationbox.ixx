@@ -1,30 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <istream>
-#include <map>
-#include <numbers>
-#include <ostream>
-#include <sstream>
-#include <string>
-#include <type_traits>
-#endif
-
 export module simulationbox;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 
@@ -166,11 +144,6 @@ export struct SimulationBox
         s.z = dr.z - static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(dr.z * inverseCell.cz +
                                                                                       ((dr.z >= 0.0) ? 0.5 : -0.5))) *
                          cell.cz;
-        /*
-        s.x = dr.x - cell.ax * std::rint(dr.x * inverseCell.ax);
-        s.y = dr.y - cell.by * std::rint(dr.y * inverseCell.by);
-        s.z = dr.z - cell.cz * std::rint(dr.z * inverseCell.cz);
-        */
         return s;
       }
       default:
@@ -185,6 +158,25 @@ export struct SimulationBox
         return r;
       }
     }
+  }
+
+  ALWAYS_INLINE inline double3 mapToBox(const double3& dr) const
+  {
+    double3 s = inverseCell * dr;
+    s.x -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.x + ((s.x >= 0.0) ? 0.5 : -0.5)));
+    s.y -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.y + ((s.y >= 0.0) ? 0.5 : -0.5)));
+    s.z -= static_cast<double>(static_cast<std::make_signed_t<std::size_t>>(s.z + ((s.z >= 0.0) ? 0.5 : -0.5)));
+
+    s.x -= std::rint(s.x);
+    s.y -= std::rint(s.y);
+    s.z -= std::rint(s.z);
+    if (s.x < 0.0) s.x += 1.0;
+    if (s.y < 0.0) s.y += 1.0;
+    if (s.z < 0.0) s.z += 1.0;
+
+    // compute value in variable first to avoid microsoft compiler bug
+    double3 r = cell * s;
+    return r;
   }
 
   /**
@@ -361,6 +353,39 @@ export struct SimulationBox
     v.lengthA = scale * lengthA;
     v.lengthB = scale * lengthB;
     v.lengthC = scale * lengthC;
+    v.angleAlpha = angleAlpha;
+    v.angleBeta = angleBeta;
+    v.angleGamma = angleGamma;
+
+    double temp = (std::cos(v.angleAlpha) - std::cos(v.angleGamma) * std::cos(v.angleBeta)) / std::sin(v.angleGamma);
+    double3 v1 = double3(v.lengthA, 0.0, 0.0);
+    double3 v2 = double3(v.lengthB * std::cos(v.angleGamma), v.lengthB * std::sin(v.angleGamma), 0.0);
+    double3 v3 = double3(v.lengthC * std::cos(v.angleBeta), v.lengthC * temp,
+                         v.lengthC * std::sqrt(1.0 - std::cos(v.angleBeta) * std::cos(v.angleBeta) - temp * temp));
+    v.cell = double3x3(v1, v2, v3);
+    v.inverseCell = v.cell.inverse();
+    v.volume = v.cell.determinant();
+    v.type = type;
+
+    return v;
+  }
+
+  /**
+   * \brief Returns a new SimulationBox scaled by factors along each lattice vector length.
+   *
+   * Creates a new SimulationBox with lengths multiplied by the given factors along a, b, and c,
+   * keeping the angles fixed, and recalculates the cell matrix, inverse cell matrix, and volume.
+   *
+   * \param scale Scaling factors for lengths a, b, and c.
+   * \return A new scaled SimulationBox.
+   */
+  SimulationBox scaled(double3 scale) const
+  {
+    SimulationBox v;
+
+    v.lengthA = scale.x * lengthA;
+    v.lengthB = scale.y * lengthB;
+    v.lengthC = scale.z * lengthC;
     v.angleAlpha = angleAlpha;
     v.angleBeta = angleBeta;
     v.angleGamma = angleGamma;

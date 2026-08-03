@@ -1,45 +1,14 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <atomic>
-#include <cmath>
-#include <cstddef>
-#include <deque>
-#include <future>
-#include <iostream>
-#include <limits>
-#include <numbers>
-#include <optional>
-#include <semaphore>
-#include <span>
-#include <thread>
-#include <utility>
-#include <vector>
-#endif
-
 module interactions_framework_molecule_grid;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import double3;
 import double4;
 import double3x3;
 import double3x3x3;
 import energy_status;
-import potential_energy_vdw;
-import potential_energy_coulomb;
-import potential_gradient_vdw;
-import potential_gradient_coulomb;
-import potential_hessian_vdw;
-import potential_hessian_coulomb;
 import potential_tricubic_derivative_lj;
 import potential_tricubic_derivative_real_ewald;
 import potential_triquintic_derivative_lj;
@@ -48,15 +17,11 @@ import potential_electrostatics;
 import simulationbox;
 import forcefield;
 import atom;
-import energy_factor;
 import energy_status_inter;
 import running_energy;
 import units;
 import threadpool;
 // import threading;
-import energy_factor;
-import gradient_factor;
-import hessian_factor;
 import tricubic_derivative_factor;
 import triquintic_derivative_factor;
 import framework;

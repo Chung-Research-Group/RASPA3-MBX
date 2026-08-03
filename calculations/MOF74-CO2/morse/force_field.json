@@ -1,0 +1,231 @@
+{
+    "PseudoAtoms" : [
+        {
+            "name" : "Fe",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "Fe",
+            "print_as" : "Fe",
+            "mass" : 55.845,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "Co",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "Co",
+            "print_as" : "Co",
+            "mass" : 58.933,
+            "source": "UFF"
+        },
+        {
+            "name" : "Cu",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "Cu",
+            "print_as" : "Cu",
+            "mass" : 63.546,
+            "source": "UFF"
+        },
+        {
+            "name" : "Mn",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "Mn",
+            "print_as" : "Mn",
+            "mass" : 54.938,
+            "source": "UFF"
+        },
+        {
+            "name" : "Zn",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "Zn",
+            "print_as" : "Zn",
+            "mass" : 65.39,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "Mg",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "Mg",
+            "print_as" : "Mg",
+            "mass" : 24.305,
+            "source": "UFF"
+        },
+        {
+            "name" : "H",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "H",
+            "print_as" : "H",
+            "mass" : 1.008,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "C",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "C",
+            "print_as" : "C",
+            "mass" : 12.011,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "N",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "N",
+            "print_as" : "N",
+            "mass" : 14.007,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "O",
+            "framework" : true,
+            "print_to_output" : true,
+            "element" : "O",
+            "print_as" : "O",
+            "mass" : 15.999,
+            "source": "DREIDING"
+        },
+        {
+            "name" : "Cco2",
+            "framework" : false,
+            "print_to_output" : true,
+            "element" : "C",
+            "print_as" : "C",
+            "mass" : 12.0,
+            "charge" :  0.70,
+            "source": "TraPPE"
+        },
+        {
+            "name" : "Oco2",
+            "framework" : false,
+            "print_to_output" : true,
+            "element" : "O",
+            "print_as" : "O",
+            "mass" : 15.9949,
+            "charge" :  -0.35,
+            "source": "TraPPE"
+        },
+        {
+            "name" : "Hw",
+            "framework" : false,
+            "print_to_output" : true,
+            "element" : "H",
+            "print_as" : "H",
+            "mass" : 1.008,
+            "charge" :  0.336,
+            "source": "rigid SPC-FQ model: J. Chem. Phys., 101, 6141-6156 (1994)."
+        },
+        {
+            "name" : "Ow",
+            "framework" : false,
+            "print_to_output" : true,
+            "element" : "O",
+            "print_as" : "O",
+            "mass" : 15.9949,
+            "charge" :  -0.672,
+            "source": "rigid SPC-FQ model: J. Chem. Phys., 101, 6141-6156 (1994)."
+        }
+    ],
+    "SelfInteractions" : [
+        {
+            "name" : "Fe",
+            "type" : "lennard-jones",    
+            "parameters" : [27.68, 4.04],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "Co",
+            "type" : "lennard-jones",    
+            "parameters" : [7.04, 2.56],
+            "source": "UFF"
+        },
+        {
+            "name" : "Cu",
+            "type" : "lennard-jones",    
+            "parameters" : [2.52, 3.11],
+            "source": "UFF"
+        },
+        {
+            "name" : "Mn",
+            "type" : "lennard-jones",    
+            "parameters" : [6.54, 2.64],
+            "source": "UFF"
+        },
+        {
+            "name" : "Zn",
+            "type" : "lennard-jones",    
+            "parameters" : [27.68, 4.04],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "H",
+            "type" : "lennard-jones",    
+            "parameters" : [7.65, 2.85],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "C",
+            "type" : "lennard-jones",    
+            "parameters" : [47.86, 3.47],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "N",
+            "type" : "lennard-jones",    
+            "parameters" : [38.95, 3.26],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "O",
+            "type" : "lennard-jones",    
+            "parameters" : [48.16, 3.03],
+            "source": "DREIDING"
+        },
+        {
+            "name" : "Cco2",
+            "type" : "lennard-jones",    
+            "parameters" : [27.0, 2.800],
+            "source": "TraPPE"
+        },
+        {
+            "name" : "Oco2",
+            "type" : "lennard-jones",    
+            "parameters" : [79.0, 3.050],
+            "source": "TraPPE"
+        },
+        {
+            "name" : "Hw",
+            "type" : "lennard-jones",    
+            "parameters" : [0.000, 0.000],
+            "source": "rigid SPC-FQ model: J. Chem. Phys., 101, 6141-6156 (1994)."
+        },
+        {
+            "name" : "Ow",
+            "type" : "lennard-jones",    
+            "parameters" : [135.0, 2.665],
+            "source": "rigid SPC-FQ model: J. Chem. Phys., 101, 6141-6156 (1994)."
+        }
+    ],
+    "BinaryInteractions":[
+        {
+            "names" : ["Mg","Cco2"],
+            "type" : "morse",    
+            "parameters" : [19.7068, 1.3677, 4.5000],
+            "source": "Fit"
+        },
+        {
+            "names" : ["Mg","Oco2"],
+            "type" : "morse",    
+            "parameters" : [515.8614, 2.0940, 2.5807],
+            "source": "Fit"
+        }
+    ],
+    "MixingRule" : "Lorentz-Berthelot",
+    "TruncationMethod" : "truncated",
+    "TailCorrections" : true
+}

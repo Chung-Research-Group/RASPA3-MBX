@@ -1,20 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cstddef>
-#include <string>
-#include <vector>
-#endif
-
 export module skseitzintegermatrix;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import skrotationmatrix;
 import int3;
@@ -33,6 +21,7 @@ export struct SKSeitzIntegerMatrix
   SKSeitzIntegerMatrix(SKRotationMatrix rotation, int3 translation);
   SKSeitzIntegerMatrix(char xvalue, char yvalue, char zvalue);
   static std::vector<SKSeitzIntegerMatrix> SeitzMatrices(std::string encoding);
+  static std::vector<SKSeitzIntegerMatrix> SeitzMatricesFromGenerators(std::string encoding);
 
   int3 normalizedTranslation() const { return int3(translation.x % 24, translation.y % 24, translation.z % 24); }
 

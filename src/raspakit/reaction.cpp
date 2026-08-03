@@ -1,32 +1,12 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <format>
-#include <fstream>
-#include <map>
-#include <ostream>
-#include <print>
-#include <source_location>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 module reaction;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import stringutils;
+import mc_moves_move_types;
 
 std::string Reaction::printStatus() const
 {
@@ -62,6 +42,15 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Reacti
   archive << r.reactantStoichiometry;
   archive << r.productStoichiometry;
   archive << r.lambda;
+  archive << r.lambdaProductSide;
+  archive << r.currentLambda;
+  archive << r.maximumLambdaChange;
+  archive << r.maximumLambdaChangeProducts;
+  archive << r.lambdaSwitchPoint;
+  archive << static_cast<std::uint64_t>(r.reactionMove);
+  archive << r.fractionalSideIsReactants;
+  archive << r.reactantFractionalMoleculeIds;
+  archive << r.productFractionalMoleculeIds;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -85,6 +74,17 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, Reaction &r)
   archive >> r.reactantStoichiometry;
   archive >> r.productStoichiometry;
   archive >> r.lambda;
+  archive >> r.lambdaProductSide;
+  archive >> r.currentLambda;
+  archive >> r.maximumLambdaChange;
+  archive >> r.maximumLambdaChangeProducts;
+  archive >> r.lambdaSwitchPoint;
+  std::uint64_t reactionMove;
+  archive >> reactionMove;
+  r.reactionMove = static_cast<Move::Types>(reactionMove);
+  archive >> r.fractionalSideIsReactants;
+  archive >> r.reactantFractionalMoleculeIds;
+  archive >> r.productFractionalMoleculeIds;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

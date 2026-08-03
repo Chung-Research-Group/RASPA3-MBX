@@ -27,6 +27,7 @@ _deps
 
 # raspa test-executables
 test_*
+!tests/test_support.hpp
 restart_data.bin
 examples/*/*/run
 **/run
@@ -205,7 +206,11 @@ manual/raspa-manual.pdf
 
 # Built files
 build/
+build-*/
 dist/
 *.egg-info/
 .installed.cfg
 *.egg
+
+# Machine-local CMake paths and overrides
+CMakeUserPresets.json

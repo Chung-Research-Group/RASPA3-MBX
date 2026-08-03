@@ -1,77 +1,135 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <iomanip>
-#include <iostream>
-#include <optional>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
 module mc_moves_reaction;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
-import component;
 import atom;
-import double3;
-import double3x3;
-import simd_quatd;
-import simulationbox;
-import cbmc;
-import cbmc_chain_data;
 import randomnumbers;
 import system;
-import energy_factor;
-import energy_status;
-import energy_status_inter;
 import running_energy;
-import property_lambda_probability_histogram;
-import property_widom;
-import averages;
-import interactions_framework_molecule;
+import reaction;
 import interactions_intermolecular;
 import interactions_ewald;
-import interactions_external_field;
-import mc_moves_statistics;
+import cbmc_chain_data;
 import mc_moves_move_types;
-import mc_moves_probabilities;
+import mc_moves_reaction_common;
 
-std::optional<RunningEnergy> MC_Moves::reactionMove(
-    [[maybe_unused]] RandomNumber& random, System& system,
-    [[maybe_unused]] const std::vector<std::size_t> reactantStoichiometry,
-    [[maybe_unused]] const std::vector<std::size_t> productStoichiometry)
+std::optional<RunningEnergy> MC_Moves::reactionMove_CBMC(RandomNumber& random, System& system)
 {
-  std::size_t selectedComponent = 0;
-  std::size_t selectedMolecule = 0;
+  const Move::Types move = Move::Types::ReactionCBMC;
 
-  double cutOffFrameworkVDW = system.forceField.cutOffFrameworkVDW;
-  double cutOffMoleculeVDW = system.forceField.cutOffMoleculeVDW;
-  double cutOffCoulomb = system.forceField.cutOffCoulomb;
+  if (system.reactions.list.empty())
+  {
+    return std::nullopt;
+  }
 
-  Component::GrowType growType = system.components[selectedComponent].growType;
+  system.mc_moves_statistics.addTrial(move);
 
-  [[maybe_unused]] std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();
+  std::vector<Reaction*> matchingReactions;
+  matchingReactions.reserve(system.reactions.list.size());
+  for (Reaction& candidate : system.reactions.list)
+  {
+    if (candidate.reactionMove == move)
+    {
+      matchingReactions.push_back(&candidate);
+    }
+  }
+  if (matchingReactions.empty())
+  {
+    return std::nullopt;
+  }
+  Reaction& reaction = *matchingReactions[random.uniform_integer(0uz, matchingReactions.size() - 1uz)];
 
-  std::optional<ChainGrowData> growData = CBMC::growMoleculeSwapInsertion(
-      random, system.components[selectedComponent], system.hasExternalField, system.forceField, system.simulationBox,
-      system.interpolationGrids, system.externalFieldInterpolationGrid, system.framework, system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(),
-      system.beta, growType, cutOffFrameworkVDW, cutOffMoleculeVDW, cutOffCoulomb, selectedMolecule, 1.0, false, false);
+  const bool forward = random.uniform() < 0.5;
+  const std::vector<std::size_t>& removeStoichiometry =
+      forward ? reaction.reactantStoichiometry : reaction.productStoichiometry;
+  const std::vector<std::size_t>& insertStoichiometry =
+      forward ? reaction.productStoichiometry : reaction.reactantStoichiometry;
 
-  if (!growData) return std::nullopt;
+  if (ReactionCommon::totalStoichiometry(removeStoichiometry) == 0 ||
+      ReactionCommon::totalStoichiometry(insertStoichiometry) == 0)
+  {
+    return std::nullopt;
+  }
 
-  return std::nullopt;
+  std::vector<std::pair<std::size_t, std::size_t>> selectedMolecules;
+  if (!ReactionCommon::selectRandomIntegerMolecules(random, system, removeStoichiometry, selectedMolecules))
+  {
+    return std::nullopt;
+  }
+
+  std::vector<std::pair<std::size_t, std::size_t>> fractionalMoleculeExclusions;
+  ReactionCommon::appendAllReactionFractionalMoleculeExclusions(system, fractionalMoleculeExclusions);
+
+  std::vector<std::pair<std::size_t, std::size_t>> excludeMolecules = selectedMolecules;
+  excludeMolecules.insert(excludeMolecules.end(), fractionalMoleculeExclusions.begin(),
+                          fractionalMoleculeExclusions.end());
+  std::optional<ReactionCommon::MoleculeGroupGrowData> growData =
+      ReactionCommon::growMoleculeGroupInsertion(random, system, insertStoichiometry, excludeMolecules);
+  if (!growData)
+  {
+    return std::nullopt;
+  }
+
+  // the fractional molecules are also excluded from the retrace backgrounds so that the retrace
+  // matches the growth environment of the reverse move (which excludes them as well)
+  std::optional<ReactionCommon::MoleculeGroupRetraceData> retraceData =
+      ReactionCommon::retraceMoleculeGroupDeletion(random, system, selectedMolecules, fractionalMoleculeExclusions);
+  if (!retraceData)
+  {
+    return std::nullopt;
+  }
+
+  std::vector<Atom> newAtoms;
+  for (const ChainGrowData& data : growData->molecules)
+  {
+    newAtoms.insert(newAtoms.end(), data.atoms.begin(), data.atoms.end());
+  }
+
+  std::vector<Atom> oldAtoms;
+  for (const auto& [componentId, moleculeId] : selectedMolecules)
+  {
+    std::span<Atom> molecule = system.spanOfMolecule(componentId, moleculeId);
+    oldAtoms.insert(oldAtoms.end(), molecule.begin(), molecule.end());
+  }
+
+  RunningEnergy energyFourierDifference = Interactions::energyDifferenceEwaldFourier(
+      system.eik_x, system.eik_y, system.eik_z, system.eik_xy, system.storedEik, system.trialEik, system.forceField,
+      system.simulationBox, newAtoms, oldAtoms, system.netCharge);
+
+  RunningEnergy tailEnergyDifference = Interactions::computeInterMolecularTailEnergyDifferenceReaction(
+      system.forceField, system.simulationBox, system.totalNumberOfPseudoAtoms, reaction.reactantStoichiometry,
+      reaction.productStoichiometry, system.components, forward);
+
+  const ReactionCommon::ReactionMoveKind moveKind =
+      forward ? ReactionCommon::ReactionMoveKind::ForwardInsert
+              : ReactionCommon::ReactionMoveKind::BackwardDelete;
+  const double equilibriumTerm = ReactionCommon::computeReactionEquilibriumLogTerm(system, reaction, moveKind);
+
+  const double correctionFactorEwald = std::exp(-system.beta * energyFourierDifference.potentialEnergy());
+  // grow and retrace referenced to the ideal-gas Rosenbluth weights, so that the full ideal-gas
+  // partition functions q_i can be used in the equilibrium term (Rosch and Maginn, eqs. 18-24)
+  const double idealGasInsert = ReactionCommon::idealGasRosenbluthWeightProduct(system, insertStoichiometry);
+  const double idealGasRemove = ReactionCommon::idealGasRosenbluthWeightProduct(system, removeStoichiometry);
+  const double rosenbluthNew = (growData->RosenbluthWeight / idealGasInsert) *
+                               std::exp(-system.beta * tailEnergyDifference.potentialEnergy());
+  const double rosenbluthOld = retraceData->RosenbluthWeight / idealGasRemove;
+
+  const double acceptanceProbability = correctionFactorEwald * (rosenbluthNew / rosenbluthOld) * std::exp(equilibriumTerm);
+
+  if (random.uniform() >= acceptanceProbability)
+  {
+    return std::nullopt;
+  }
+
+  system.mc_moves_statistics.addConstructed(move);
+  system.mc_moves_statistics.addAccepted(move);
+
+  Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
+
+  ReactionCommon::deleteSelectedMolecules(system, selectedMolecules);
+  ReactionCommon::insertGrownMolecules(system, growData->molecules, insertStoichiometry);
+
+  return (growData->energies - retraceData->energies) + energyFourierDifference + tailEnergyDifference;
 }

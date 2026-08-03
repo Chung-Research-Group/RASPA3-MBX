@@ -1,0 +1,58 @@
+{
+  "version": 2,
+  "configurePresets": [
+    {
+      "name": "mbx-local",
+      "displayName": "Local RASPA3-MBX build",
+      "inherits": "linux_conda",
+      "binaryDir": "${sourceDir}/build-mbx",
+      "environment": {
+        "CONDA_PREFIX": "/path/to/conda/env"
+      },
+      "cacheVariables": {
+        "BUILD_MBX": true,
+        "MBX_INCLUDE_DIR": "/path/to/MBX/include",
+        "MBX_CONFIG_INCLUDE_DIR": "/path/to/MBX/include",
+        "MBX_LIBRARY": "/path/to/MBX/lib/libmbx.a",
+        "FFTW_INCLUDE_DIR": "/path/to/conda/env/include",
+        "FFTW_LIBRARY": "/path/to/conda/env/lib/libfftw3.so",
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp -DNDEBUG -stdlib=libstdc++ -fexperimental-library -g -O3 -ffast-math",
+        "OpenMP_C_FLAGS": "-fopenmp",
+        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenMP_C_LIB_NAMES": "omp",
+        "OpenMP_CXX_LIB_NAMES": "omp",
+        "OpenMP_omp_LIBRARY": "/path/to/conda/env/lib/libomp.so",
+        "RASPA_USE_SYSTEM_HDF5": true,
+        "RASPA_USE_SYSTEM_GTEST": true,
+        "BUILD_APP": true,
+        "BUILD_CLI": true,
+        "BUILD_PYTHON": false,
+        "BUILD_TESTING": true,
+        "BUILD_TESTING_MATHKIT": false,
+        "BUILD_TESTING_FOUNDATIONKIT": false,
+        "BUILD_TESTING_SYMMETRYKIT": false,
+        "BUILD_TESTING_RASPAKIT": false,
+        "BUILD_TESTING_RASPA3": false,
+        "BUILD_TESTING_MBX": true,
+        "BUILD_DOXYGEN": false,
+        "BUILD_BENCHMARKS": false,
+        "CMAKE_INTERPROCEDURAL_OPTIMIZATION": false
+      }
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "mbx-local",
+      "configurePreset": "mbx-local"
+    }
+  ],
+  "testPresets": [
+    {
+      "name": "mbx-local",
+      "configurePreset": "mbx-local",
+      "output": {
+        "outputOnFailure": true
+      }
+    }
+  ]
+}

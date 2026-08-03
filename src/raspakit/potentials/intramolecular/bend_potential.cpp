@@ -1,36 +1,13 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <fstream>
-#include <map>
-#include <numbers>
-#include <optional>
-#include <print>
-#include <source_location>
-#include <tuple>
-#include <utility>
-#endif
-
 module bend_potential;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import randomnumbers;
 import double3;
-import gradient_factor;
+import units;
 
 BendPotential::BendPotential(std::array<std::size_t, 3> identifiers, BendType type,
                              std::vector<double> vector_parameters)
@@ -88,13 +65,12 @@ BendPotential::BendPotential(std::array<std::size_t, 3> identifiers, BendType ty
       parameters[3] *= Units::KelvinToEnergy;
       break;
     case BendType::HarmonicCosine:
-      // p_0*(1+cos(p_1*theta-p_2))
+      // (1/2)*p_0*(cos(theta)-cos(p_1))^2
       // ===============================================
       // p_0/k_B [K]
-      // p_1     [-]
-      // p_2     [degrees]
+      // p_1     [degrees]
       parameters[0] *= Units::KelvinToEnergy;
-      parameters[2] *= Units::DegreesToRadians;
+      parameters[1] = std::cos(parameters[1] * Units::DegreesToRadians);
       break;
     case BendType::Cosine:
       // p_0*(1+cos(p_1*theta-p_2))
@@ -180,7 +156,8 @@ std::string BendPotential::print() const
       // p_0/k_B [K]
       // p_1     [degrees]
       return std::format("{} - {} - {} : HARMONIC_COSINE p_0/k_B={:g} [K], p_1={:g} [degrees]\n", identifiers[0],
-                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin, parameters[1]);
+                         identifiers[1], identifiers[2], parameters[0] * Units::EnergyToKelvin,
+                         std::acos(parameters[1]) * Units::RadiansToDegrees);
     case BendType::Cosine:
       // p_0*(1+cos(p_1*theta-p_2))
       // ===============================================
@@ -293,7 +270,7 @@ double BendPotential::generateBendAngle(RandomNumber &random, double beta) const
       {
         theta = std::numbers::pi * random.uniform();
         sin_theta = std::sin(theta);
-        energy = 0.5 * parameters[0] * std::pow(std::cos(theta) - std::cos(parameters[1]), 2);
+        energy = 0.5 * parameters[0] * std::pow(std::cos(theta) - parameters[1], 2);
       } while (random.uniform() > (sin_theta * sin_theta) * std::exp(-beta * energy));
       return theta;
     case BendType::Cosine:
@@ -347,36 +324,26 @@ double BendPotential::calculateEnergy(const double3 &posA, const double3 &posB, 
   double cos_theta, theta;
   double temp, temp2;
 
-  // For four atoms, compute the in-plane angles
+  // For four atoms, compute the in-plane angle: project B onto the A-C-D plane
   if (posD.has_value())
   {
     double3 dr_ad = posA - posD.value();
-    double r_ad = std::sqrt(double3::dot(dr_ad, dr_ad));
-    dr_ad /= r_ad;
-
     double3 dr_bd = posB - posD.value();
-    double r_bd = std::sqrt(double3::dot(dr_bd, dr_bd));
-    dr_bd /= r_bd;
-
     double3 dr_cd = posC - posD.value();
-    double r_cd = std::sqrt(double3::dot(dr_cd, dr_cd));
-    dr_cd /= r_cd;
 
-    double3 t = double3::cross(r_ad, r_cd);
+    double3 t = double3::cross(dr_ad, dr_cd);
     double rt2 = double3::dot(t, t);
-    double delta = -double3::dot(t, r_bd) / rt2;
+    double delta = -double3::dot(t, dr_bd) / rt2;
 
     double3 ip = posB + delta * t;
 
     double3 ap = posA - ip;
     double rap2 = double3::dot(ap, ap);
-    ap /= rap2;
 
     double3 cp = posC - ip;
     double rcp2 = double3::dot(cp, cp);
-    cp /= rcp2;
 
-    cos_theta = double3::dot(ap, cp);
+    cos_theta = double3::dot(ap, cp) / std::sqrt(rap2 * rcp2);
     cos_theta = std::clamp(cos_theta, -1.0, 1.0);
     theta = std::acos(cos_theta);
   }
@@ -518,7 +485,7 @@ std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEn
       // p_0/k_B [K/rad^2]
       // p_1     [degrees]
       U = 0.5 * parameters[0] * (theta - parameters[1]) * (theta - parameters[1]);
-      DF = 0.0;
+      DF = parameters[0] * (theta - parameters[1]) * DTDX;
       break;
     case BendType::Quartic:
       // (1/2)p_0*(theta-p_1)^2+(1/3)*p_2*(theta-p_1)^3+(1/4)*p_2*(theta-p_1)^4
@@ -531,7 +498,7 @@ std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEn
       temp2 = temp * temp;
       U = 0.5 * parameters[0] * temp2 + (1.0 / 3.0) * parameters[2] * temp * temp2 +
           0.25 * parameters[3] * temp2 * temp2;
-      DF = 0.0;
+      DF = (parameters[0] * temp + parameters[2] * temp2 + parameters[3] * temp * temp2) * DTDX;
       break;
     case BendType::CFF_Quartic:
       // p_0*(theta-p_1)^2+p_2*(theta-p_1)^3+p_3*(theta-p_1)^4
@@ -543,7 +510,7 @@ std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEn
       temp = theta - parameters[1];
       temp2 = temp * temp;
       U = parameters[0] * temp2 + parameters[2] * temp * temp2 + parameters[3] * temp2 * temp2;
-      DF = 0.0;
+      DF = (2.0 * parameters[0] * temp + 3.0 * parameters[2] * temp2 + 4.0 * parameters[3] * temp * temp2) * DTDX;
       break;
     case BendType::HarmonicCosine:
       // (1/2)*p_0*(cos(theta)-cos(p_1))^2
@@ -553,7 +520,7 @@ std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEn
       temp = cos_theta - parameters[1];
       temp2 = temp * temp;
       U = 0.5 * parameters[0] * temp2;
-      DF = 0.0;
+      DF = parameters[0] * temp;
       break;
     case BendType::Cosine:
       // p_0*(1+cos(p_1*theta-p_2))
@@ -563,17 +530,18 @@ std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEn
       // p_2     [degrees]
       temp = parameters[1] * theta - parameters[2];
       U = parameters[0] * (1.0 + std::cos(temp));
-      DF = 0.0;
+      DF = -parameters[0] * parameters[1] * std::sin(temp) * DTDX;
       break;
     case BendType::Tafipolsky:
       // 0.5*p_0*(1+cos(theta))*(1+cos(2*theta))
       // ===============================================
       // p_0/k_B [K]
       U = 0.5 * parameters[0] * (1.0 + std::cos(theta)) * (1.0 + std::cos(2.0 * theta));
-      DF = 0.0;
+      DF = parameters[0] * cos_theta * (2.0 + 3.0 * cos_theta);
       break;
     case BendType::MM3:
     case BendType::MM3_inplane:
+    {
       // p_0*(theta-p_1)^2(1-0.014*(theta-p_1)+5.6e-5*(theta-p_1)^2-7e-7*(theta-p_1)^3+2.2e-8(theta-p_1)^4)
       // =================================================================================================
       // p_0/k_B [mdyne A/rad^2]
@@ -582,8 +550,11 @@ std::tuple<double, std::array<double3, 3>, double3x3> BendPotential::potentialEn
       temp2 = temp * temp;
       U = parameters[0] * temp2 *
           (1.0 - 0.014 * temp + 5.6e-5 * temp2 - 7.0e-7 * temp * temp2 + 2.2e-8 * temp2 * temp2);
-      DF = 0.0;
+      DF = parameters[0] * Units::RadiansToDegrees *
+           (2.0 - (3.0 * 0.014 - (4.0 * 5.6e-5 - (5.0 * 7.0e-7 - 6.0 * 2.2e-8 * temp) * temp) * temp) * temp) *
+           temp * DTDX;
       break;
+    }
     default:
       std::unreachable();
   }

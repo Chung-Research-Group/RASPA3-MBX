@@ -1,0 +1,39 @@
+{
+    "SimulationType" : "MonteCarlo",
+    "NumberOfCycles" : 20000,
+    "NumberOfInitializationCycles" : 10000,
+    "PrintEvery" : 10,
+    
+    "ForceField" : ".",
+
+    "Systems" : [
+        {
+            "Type" : "Framework",
+            "Name" : "Mg_MOF74_pacman",
+            "NumberOfUnitCells" : [2, 2, 5],
+            "ExternalTemperature" : 298.0,
+            "ExternalPressure" : 1e6,
+            "UseChargesFrom": "CIF_File",
+            "ChargeMethod" : "Ewald",
+            "OutputPDBMovie" : true,
+            "SampleMovieEvery" : 1000,
+	        "ComputeDensityGrid" : true,
+	        "WriteDensityGridEvery" : 10,
+            "UseMBX" : true,
+            "MBXSettingsFile" : "mbx.json"
+        }
+    ],
+    "Components" : [
+        {
+            "Name" : "co2",
+            "MoleculeDefinition" : ".",
+            "FugacityCoefficient" : 1.0,
+            "TranslationProbability" : 1.0,
+            "RotationProbability" : 1.0,
+            "ReinsertionProbability" : 1.0,
+            "SwapProbability" : 4.0,
+            "SwapConventionalProbability" : 0.0,
+            "CreateNumberofmolecules" : 0
+        }
+    ]
+}

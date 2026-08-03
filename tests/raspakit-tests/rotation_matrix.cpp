@@ -1,25 +1,11 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <complex>
-#include <cstddef>
-#include <numbers>
-#include <print>
-#include <span>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
 import std;
-#endif
 
 import int3;
 import double3;
 import double3x3;
 import simd_quatd;
-import factory;
 import units;
 import atom;
 import pseudo_atom;
@@ -29,7 +15,6 @@ import framework;
 import component;
 import system;
 import simulationbox;
-import energy_factor;
 import running_energy;
 import interactions_intermolecular;
 import interactions_framework_molecule;
@@ -37,11 +22,11 @@ import interactions_ewald;
 
 TEST(rotation_matrix_reconstruction, Test_2_CO2_in_ITQ_29_2x2x2)
 {
-  ForceField forceField = TestFactories::makeDefaultFF(12.0, true, false, true);
-  Framework f = TestFactories::makeITQ29(forceField, int3(2, 2, 2));
-  Component c = TestFactories::makeCO2(forceField, 0, true);
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Framework f = Framework::makeITQ29(forceField, int3(2, 2, 2));
+  Component c = Component::makeCO2(forceField, 0, true);
 
-  System system = System(0, forceField, std::nullopt, 300.0, 1e4, 1.0, {f}, {c}, {}, {40}, 5);
+  System system = System(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {f}, {c}, {}, {40}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
 
@@ -101,7 +86,7 @@ TEST(rotation_matrix_reconstruction, Test_2_Water_in_ITQ_29_2x2x2)
   const double kvecz = forceField.numberOfWaveVectors.z * 2.0 * std::numbers::pi / box.cell.cz;
   forceField.reciprocalCutOffSquared = std::max({kvecx * kvecx, kvecy * kvecy, kvecz * kvecz}) * 1.00001;
 
-  Component c = Component(0, forceField, "H2O", 304.1282, 7377300.0, 0.22394,
+  Component c = Component(forceField, "H2O", 304.1282, 7377300.0, 0.22394,
                           {// double3 position, double charge, double lambda, uint32_t moleculeId, uint16_t type,
                            // uint8_t componentId, uint8_t groupId
                            Atom(double3(0.00000, -0.06461, 0.00000), -0.84760, 1.0, 0, 0, 0, false, false),
@@ -109,7 +94,7 @@ TEST(rotation_matrix_reconstruction, Test_2_Water_in_ITQ_29_2x2x2)
                            Atom(double3(-0.81649, 0.51275, 0.00000), 0.42380, 1.0, 0, 1, 0, false, false)},
                           {}, {}, 5, 21);
 
-  System system = System(0, forceField, box, 300.0, 1e4, 1.0, {}, {c}, {}, {400}, 5);
+  System system = System(forceField, box, false, 300.0, 1e4, 1.0, {}, {c}, {}, {400}, 5);
 
   std::span<Atom> atomData = system.spanOfMoleculeAtoms();
 

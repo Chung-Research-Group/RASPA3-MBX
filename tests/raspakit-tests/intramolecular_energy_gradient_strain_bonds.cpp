@@ -1,26 +1,13 @@
-#ifdef USE_LEGACY_HEADERS
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <complex>
-#include <cstddef>
-#include <print>
-#include <span>
-#include <tuple>
-#include <vector>
-#endif
-
-#ifdef USE_STD_IMPORT
-#include <gtest/gtest.h>
 import std;
-#endif
 
 import int3;
 import double3;
 import double3x3;
-import factory;
 import units;
 import atom;
+import atom_dynamics;
 import pseudo_atom;
 import vdwparameters;
 import forcefield;
@@ -28,7 +15,6 @@ import framework;
 import component;
 import system;
 import simulationbox;
-import energy_factor;
 import energy_status;
 import running_energy;
 import interactions_intermolecular;
@@ -60,21 +46,22 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
   intraMolecularPotentials.bonds = {BondPotential({0, 1}, BondType::Harmonic, {96500.0, 1.54})};
 
   Component c = Component(
-      0, forceField, "ethane", 305.33, 4871800.0, 0.0993,
+      forceField, "ethane", 305.33, 4871800.0, 0.0993,
       {Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false), Atom({0.0, 0.0, 0.0}, 0.0, 1.0, 0, 1, 0, false, false)},
       connectivityTable, intraMolecularPotentials, 5, 21);
 
-  System system = System(0, forceField, SimulationBox(25.0, 25.0, 25.0), 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
+  System system = System(forceField, SimulationBox(25.0, 25.0, 25.0), false, 300.0, 1e4, 1.0, {}, {c}, {}, {20}, 5);
 
   std::span<Atom> moleculeAtomPositions = system.spanOfMoleculeAtoms();
+  std::span<AtomDynamics> moleculeDynamics = system.spanOfMoleculeDynamics();
 
-  for (Atom& atom : moleculeAtomPositions)
+  for (AtomDynamics& dyn : moleculeDynamics)
   {
-    atom.gradient = double3(0.0, 0.0, 0.0);
+    dyn.gradient = double3(0.0, 0.0, 0.0);
   }
 
   std::pair<double, double3x3> pressureInfo = Interactions::computeIntraMolecularBondStrainDerivative(
-      system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions);
+      system.components[0].intraMolecularPotentials, system.moleculeData, moleculeAtomPositions, moleculeDynamics);
 
   double3 gradient{};
   for (size_t i = 0; i < moleculeAtomPositions.size(); ++i)
@@ -117,9 +104,9 @@ TEST(MC_intramolecular_strain_tensor, Test_20_ethane_25x25x25_harmonic_bond_pote
     gradient.y = (y2.bond - y1.bond) / delta;
     gradient.z = (z2.bond - z1.bond) / delta;
 
-    EXPECT_NEAR(moleculeAtomPositions[i].gradient.x, gradient.x, tolerance);
-    EXPECT_NEAR(moleculeAtomPositions[i].gradient.y, gradient.y, tolerance);
-    EXPECT_NEAR(moleculeAtomPositions[i].gradient.z, gradient.z, tolerance);
+    EXPECT_NEAR(moleculeDynamics[i].gradient.x, gradient.x, tolerance);
+    EXPECT_NEAR(moleculeDynamics[i].gradient.y, gradient.y, tolerance);
+    EXPECT_NEAR(moleculeDynamics[i].gradient.z, gradient.z, tolerance);
   }
 
   std::vector<std::pair<double3x3, double>> strains{

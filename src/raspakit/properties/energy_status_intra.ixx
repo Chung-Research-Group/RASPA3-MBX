@@ -1,28 +1,12 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <print>
-#include <sstream>
-#include <string>
-#endif
-
 export module energy_status_intra;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import stringutils;
-import energy_factor;
+import energy_dudlambda;
 
 export struct EnergyIntra
 {
@@ -63,9 +47,9 @@ export struct EnergyIntra
 
   bool operator==(EnergyIntra const&) const = default;
 
-  inline Potentials::EnergyFactor total() const
+  inline EnergyDuDlambda total() const
   {
-    return Potentials::EnergyFactor(bond + ureyBradley + bend + inversionBend + outOfPlaneBend + torsion +
+    return EnergyDuDlambda(bond + ureyBradley + bend + inversionBend + outOfPlaneBend + torsion +
                                         improperTorsion + bondBond + bondBend + bondTorsion + bendBend + bendTorsion +
                                         vanDerWaals + coulomb,
                                     0.0);

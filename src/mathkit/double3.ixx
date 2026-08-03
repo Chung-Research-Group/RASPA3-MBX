@@ -1,27 +1,8 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <format>
-#include <fstream>
-#include <ostream>
-#include <string>
-#include <string_view>
-#include <utility>
-#endif
-
 export module double3;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import int3;
 import bool3;
@@ -262,6 +243,16 @@ export union double3
   std::string to_string();
   friend void to_json(nlohmann::json&, const double3&);
   friend void from_json(const nlohmann::json&, double3&);
+
+  inline std::string repr() const
+  {
+    std::ostringstream stream;
+
+    std::print(stream, "[{}, {}, {}]", x, y, z);
+
+    return stream.str();
+  }
+
 };
 
 export inline double3 operator*(const double3& a, const double3& b) { return double3(a.x * b.x, a.y * b.y, a.z * b.z); }

@@ -1,33 +1,22 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cmath>
-#include <cstddef>
-#include <fstream>
-#include <functional>
-#include <iostream>
-#include <map>
-#include <numeric>
-#include <ostream>
-#include <sstream>
-#include <string>
-#include <vector>
-#endif
-
 export module running_energy;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import scaling;
 import json;
+
+/**
+ * \brief Maximum number of simultaneously tracked thermodynamic-integration lambdas.
+ *
+ * Each fractional molecule that participates in thermodynamic integration is tagged with a
+ * group id (Atom::groupId, 1-based; 0 means untracked). The dU/dlambda contributions are
+ * accumulated separately per group so that up to this many independent CFCMC lambdas can be
+ * followed at the same time.
+ */
+export inline constexpr std::size_t maximumNumberOfDUDlambdaGroups = 4;
 
 /**
  * \brief Accumulates energy components during simulation.
@@ -69,15 +58,14 @@ export struct RunningEnergy
         intraVDW(0.0),
         intraCoul(0.0),
         tail(0.0),
-        frameworkMoleculeTail(0.0),
-        moleculeMoleculeTail(0.0),
         polarization(0.0),
-        dudlambdaVDW(0.0),
-        dudlambdaCharge(0.0),
-        dudlambdaEwald(0.0),
+        dudlambdaVDW{},
+        dudlambdaCharge{},
+        dudlambdaEwald{},
         translationalKineticEnergy(0.0),
         rotationalKineticEnergy(0.0),
         NoseHooverEnergy(0.0),
+        thermobarostatEnergy(0.0),
         mbxEnergy(0.0)
   {
   }
@@ -183,10 +171,7 @@ export struct RunningEnergy
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
            frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
            ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
-           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + polarization +
-           tail +
-          //  frameworkMoleculeTail + moleculeMoleculeTail +
-           mbxEnergy;
+           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + tail + polarization + mbxEnergy;
   }
 
   /**
@@ -202,6 +187,11 @@ export struct RunningEnergy
     return frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion;
   }
 
+  inline double VanDerWaalsEnergy() const
+  {
+    return frameworkMoleculeVDW + moleculeMoleculeVDW;
+  }
+
   /**
    * \brief Computes the total kinetic energy.
    *
@@ -210,6 +200,10 @@ export struct RunningEnergy
    * \return The total kinetic energy.
    */
   inline double kineticEnergy() const { return translationalKineticEnergy + rotationalKineticEnergy; }
+  inline double translationalPartKineticEnergy() const { return translationalKineticEnergy; }
+  inline double rotationalPartKineticEnergy() const { return rotationalKineticEnergy; }
+  inline double thermostatEnergy() const { return NoseHooverEnergy; }
+  inline double extendedThermobarostatEnergy() const { return thermobarostatEnergy; }
 
   /**
    * \brief Computes the total Ewald Fourier energy.
@@ -234,23 +228,79 @@ export struct RunningEnergy
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
            frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
            ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
-           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + tail + polarization +
-           translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy;
+           bondTorsion + bendBend + bendTorsion + intraVDW + intraCoul + tail + polarization + mbxEnergy +
+           translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy + thermobarostatEnergy;
   }
 
   /**
-   * \brief Computes the derivative of the potential energy with respect to lambda.
+   * \brief Computes the derivative of the potential energy with respect to lambda for a TI group.
    *
-   * Calculates the derivative of the potential energy with respect to the scaling parameter lambda, considering both
-   * van der Waals and Coulombic interactions.
+   * Calculates the derivative of the potential energy with respect to the scaling parameter lambda of the
+   * thermodynamic-integration group, considering both van der Waals and Coulombic interactions.
    *
-   * \param lambda The scaling parameter.
+   * \param lambda The scaling parameter of the group.
+   * \param group The 1-based thermodynamic-integration group id (0 means untracked and returns zero).
    * \return The derivative of the potential energy with respect to lambda.
    */
-  inline double dudlambda(double lambda) const
+  inline double dudlambda(double lambda, std::size_t group = 1) const
   {
-    return Scaling::scalingVDWDerivative(lambda) * dudlambdaVDW +
-           Scaling::scalingCoulombDerivative(lambda) * (dudlambdaCharge + dudlambdaEwald);
+    if (group == 0 || group > maximumNumberOfDUDlambdaGroups) return 0.0;
+    return Scaling::scalingVDWDerivative(lambda) * dudlambdaVDW[group - 1] +
+           Scaling::scalingCoulombDerivative(lambda) * (dudlambdaCharge[group - 1] + dudlambdaEwald[group - 1]);
+  }
+
+  /**
+   * \brief Accumulates a pair van der Waals dU/dlambda contribution into the per-group accumulators.
+   *
+   * The potential functions return the symmetric derivative factor X with dU/d(scalingA) = scalingB * X
+   * and dU/d(scalingB) = scalingA * X. Each side is routed into the accumulator of the group its atom
+   * belongs to (group id 0 means the atom is not tracked).
+   */
+  inline void addDudlambdaVDW(std::uint8_t groupIdA, std::uint8_t groupIdB, double scalingA, double scalingB,
+                              double factor)
+  {
+    if (groupIdA != 0) dudlambdaVDW[groupIdA - 1] += scalingB * factor;
+    if (groupIdB != 0) dudlambdaVDW[groupIdB - 1] += scalingA * factor;
+  }
+
+  /// Accumulates a pair real-space Coulomb dU/dlambda contribution (see addDudlambdaVDW).
+  inline void addDudlambdaCharge(std::uint8_t groupIdA, std::uint8_t groupIdB, double scalingA, double scalingB,
+                                 double factor)
+  {
+    if (groupIdA != 0) dudlambdaCharge[groupIdA - 1] += scalingB * factor;
+    if (groupIdB != 0) dudlambdaCharge[groupIdB - 1] += scalingA * factor;
+  }
+
+  /// Accumulates a pair Ewald dU/dlambda contribution (see addDudlambdaVDW).
+  inline void addDudlambdaEwald(std::uint8_t groupIdA, std::uint8_t groupIdB, double scalingA, double scalingB,
+                                double factor)
+  {
+    if (groupIdA != 0) dudlambdaEwald[groupIdA - 1] += scalingB * factor;
+    if (groupIdB != 0) dudlambdaEwald[groupIdB - 1] += scalingA * factor;
+  }
+
+  /// Total van der Waals dU/dlambda summed over all groups (diagnostics only).
+  inline double totalDudlambdaVDW() const
+  {
+    double sum = 0.0;
+    for (double value : dudlambdaVDW) sum += value;
+    return sum;
+  }
+
+  /// Total real-space Coulomb dU/dlambda summed over all groups (diagnostics only).
+  inline double totalDudlambdaCharge() const
+  {
+    double sum = 0.0;
+    for (double value : dudlambdaCharge) sum += value;
+    return sum;
+  }
+
+  /// Total Ewald dU/dlambda summed over all groups (diagnostics only).
+  inline double totalDudlambdaEwald() const
+  {
+    double sum = 0.0;
+    for (double value : dudlambdaEwald) sum += value;
+    return sum;
   }
 
   /**
@@ -274,15 +324,14 @@ export struct RunningEnergy
     intraVDW = 0.0;
     intraCoul = 0.0;
     tail = 0.0;
-    frameworkMoleculeTail = 0.0;
-    moleculeMoleculeTail = 0.0;
     polarization = 0.0;
-    dudlambdaVDW = 0.0;
-    dudlambdaCharge = 0.0;
-    dudlambdaEwald = 0.0;
+    dudlambdaVDW.fill(0.0);
+    dudlambdaCharge.fill(0.0);
+    dudlambdaEwald.fill(0.0);
     translationalKineticEnergy = 0.0;
     rotationalKineticEnergy = 0.0;
     NoseHooverEnergy = 0.0;
+    thermobarostatEnergy = 0.0;
     mbxEnergy = 0.0;
   }
 
@@ -312,15 +361,17 @@ export struct RunningEnergy
     intraVDW += b.intraVDW;
     intraCoul += b.intraCoul;
     tail += b.tail;
-    frameworkMoleculeTail += b.frameworkMoleculeTail;
-    moleculeMoleculeTail += b.moleculeMoleculeTail;
     polarization += b.polarization;
-    dudlambdaVDW += b.dudlambdaVDW;
-    dudlambdaCharge += b.dudlambdaCharge;
-    dudlambdaEwald += b.dudlambdaEwald;
+    for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
+    {
+      dudlambdaVDW[i] += b.dudlambdaVDW[i];
+      dudlambdaCharge[i] += b.dudlambdaCharge[i];
+      dudlambdaEwald[i] += b.dudlambdaEwald[i];
+    }
     translationalKineticEnergy += b.translationalKineticEnergy;
     rotationalKineticEnergy += b.rotationalKineticEnergy;
     NoseHooverEnergy += b.NoseHooverEnergy;
+    thermobarostatEnergy += b.thermobarostatEnergy;
     mbxEnergy += b.mbxEnergy;
 
     return *this;
@@ -352,15 +403,17 @@ export struct RunningEnergy
     intraVDW -= b.intraVDW;
     intraCoul -= b.intraCoul;
     tail -= b.tail;
-    frameworkMoleculeTail -= b.frameworkMoleculeTail;
-    moleculeMoleculeTail -= b.moleculeMoleculeTail;
     polarization -= b.polarization;
-    dudlambdaVDW -= b.dudlambdaVDW;
-    dudlambdaCharge -= b.dudlambdaCharge;
-    dudlambdaEwald -= b.dudlambdaEwald;
+    for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
+    {
+      dudlambdaVDW[i] -= b.dudlambdaVDW[i];
+      dudlambdaCharge[i] -= b.dudlambdaCharge[i];
+      dudlambdaEwald[i] -= b.dudlambdaEwald[i];
+    }
     translationalKineticEnergy -= b.translationalKineticEnergy;
     rotationalKineticEnergy -= b.rotationalKineticEnergy;
     NoseHooverEnergy -= b.NoseHooverEnergy;
+    thermobarostatEnergy -= b.thermobarostatEnergy;
     mbxEnergy -= b.mbxEnergy;
 
     return *this;
@@ -393,21 +446,66 @@ export struct RunningEnergy
     v.intraVDW = -intraVDW;
     v.intraCoul = -intraCoul;
     v.tail = -tail;
-    v.frameworkMoleculeTail = -frameworkMoleculeTail;
-    v.moleculeMoleculeTail = -moleculeMoleculeTail;
     v.polarization = -polarization;
-    v.dudlambdaVDW = -dudlambdaVDW;
-    v.dudlambdaCharge = -dudlambdaCharge;
-    v.dudlambdaEwald = -dudlambdaEwald;
+    for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
+    {
+      v.dudlambdaVDW[i] = -dudlambdaVDW[i];
+      v.dudlambdaCharge[i] = -dudlambdaCharge[i];
+      v.dudlambdaEwald[i] = -dudlambdaEwald[i];
+    }
     v.translationalKineticEnergy = -translationalKineticEnergy;
     v.rotationalKineticEnergy = -rotationalKineticEnergy;
     v.NoseHooverEnergy = -NoseHooverEnergy;
+    v.thermobarostatEnergy = -thermobarostatEnergy;
     v.mbxEnergy = -mbxEnergy;
 
     return v;
   }
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  inline RunningEnergy& operator*=(const double& b)
+  {
+    externalFieldVDW *= b;
+    frameworkMoleculeVDW *= b;
+    moleculeMoleculeVDW *= b;
+    externalFieldCharge *= b;
+    frameworkMoleculeCharge *= b;
+    moleculeMoleculeCharge *= b;
+    ewald_fourier *= b;
+    ewald_self *= b;
+    ewald_exclusion *= b;
+    bond *= b;
+    ureyBradley *= b;
+    bend *= b;
+    inversionBend *= b;
+    outOfPlaneBend *= b;
+    torsion *= b;
+    improperTorsion *= b;
+    bondBond *= b;
+    bondBend *= b;
+    bondTorsion *= b;
+    bendBend *= b;
+    bendTorsion *= b;
+    intraVDW *= b;
+    intraCoul *= b;
+    tail *= b;
+    polarization *= b;
+    for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
+    {
+      dudlambdaVDW[i] *= b;
+      dudlambdaCharge[i] *= b;
+      dudlambdaEwald[i] *= b;
+    }
+    translationalKineticEnergy *= b;
+    rotationalKineticEnergy *= b;
+    NoseHooverEnergy *= b;
+    thermobarostatEnergy *= b;
+    mbxEnergy *= b;
+
+    return *this;
+  }
+
+
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
   double externalFieldVDW;         ///< Energy from van der Waals interactions with external field.
   double frameworkMoleculeVDW;     ///< Energy from van der Waals interactions between framework and molecules.
@@ -433,16 +531,25 @@ export struct RunningEnergy
   double intraVDW;                    ///< Intramolecular van der Waals energy.
   double intraCoul;                   ///< Intramolecular Coulomb energy.
   double tail;                        ///< Tail correction energy for van der Waals interactions.
-  double frameworkMoleculeTail;       ///< Tail correction energy for frameworkMolecule Interaction
-  double moleculeMoleculeTail;        ///< Tail correction energy for moleculeMolecule Interaction
   double polarization;                ///< Energy contribution from polarization effects.
-  double dudlambdaVDW;                ///< Derivative of van der Waals energy with respect to lambda.
-  double dudlambdaCharge;             ///< Derivative of Coulomb energy with respect to lambda (real space).
-  double dudlambdaEwald;              ///< Derivative of Coulomb energy with respect to lambda (Ewald sum).
+  std::array<double, maximumNumberOfDUDlambdaGroups>
+      dudlambdaVDW;  ///< Per-group derivative of van der Waals energy with respect to lambda.
+  std::array<double, maximumNumberOfDUDlambdaGroups>
+      dudlambdaCharge;  ///< Per-group derivative of Coulomb energy with respect to lambda (real space).
+  std::array<double, maximumNumberOfDUDlambdaGroups>
+      dudlambdaEwald;  ///< Per-group derivative of Coulomb energy with respect to lambda (Ewald sum).
   double translationalKineticEnergy;  ///< Translational kinetic energy.
   double rotationalKineticEnergy;     ///< Rotational kinetic energy.
   double NoseHooverEnergy;            ///< Energy associated with Nose-Hoover thermostat/barostat.
-  double mbxEnergy;                   ///< Energy calculated from MBX.
+  double thermobarostatEnergy;        ///< Pressure-volume, cell kinetic, and barostat-chain energy.
+  double mbxEnergy;                   ///< Energy calculated by MBX.
+
+  /**
+   * \brief Returns a string representation of the RunningEnergy object.
+   *
+   * \return A string describing the RunningEnergy object.
+   */
+  std::string repr() const;
 
   friend Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const RunningEnergy& c);
   friend Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, RunningEnergy& c);
@@ -475,15 +582,17 @@ export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnerg
   m.intraVDW = a.intraVDW + b.intraVDW;
   m.intraCoul = a.intraCoul + b.intraCoul;
   m.tail = a.tail + b.tail;
-  m.frameworkMoleculeTail = a.frameworkMoleculeTail + b.frameworkMoleculeTail;
-  m.moleculeMoleculeTail = a.moleculeMoleculeTail + b.moleculeMoleculeTail;
   m.polarization = a.polarization + b.polarization;
-  m.dudlambdaVDW = a.dudlambdaVDW + b.dudlambdaVDW;
-  m.dudlambdaCharge = a.dudlambdaCharge + b.dudlambdaCharge;
-  m.dudlambdaEwald = a.dudlambdaEwald + b.dudlambdaEwald;
+  for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
+  {
+    m.dudlambdaVDW[i] = a.dudlambdaVDW[i] + b.dudlambdaVDW[i];
+    m.dudlambdaCharge[i] = a.dudlambdaCharge[i] + b.dudlambdaCharge[i];
+    m.dudlambdaEwald[i] = a.dudlambdaEwald[i] + b.dudlambdaEwald[i];
+  }
   m.translationalKineticEnergy = a.translationalKineticEnergy + b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a.rotationalKineticEnergy + b.rotationalKineticEnergy;
   m.NoseHooverEnergy = a.NoseHooverEnergy + b.NoseHooverEnergy;
+  m.thermobarostatEnergy = a.thermobarostatEnergy + b.thermobarostatEnergy;
   m.mbxEnergy = a.mbxEnergy + b.mbxEnergy;
 
   return m;
@@ -516,17 +625,18 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
   m.intraVDW = a.intraVDW - b.intraVDW;
   m.intraCoul = a.intraCoul - b.intraCoul;
   m.tail = a.tail - b.tail;
-  m.frameworkMoleculeTail = a.frameworkMoleculeTail - b.frameworkMoleculeTail;
-  m.moleculeMoleculeTail = a.moleculeMoleculeTail - b.moleculeMoleculeTail;
   m.polarization = a.polarization - b.polarization;
-  m.dudlambdaVDW = a.dudlambdaVDW - b.dudlambdaVDW;
-  m.dudlambdaCharge = a.dudlambdaCharge - b.dudlambdaCharge;
-  m.dudlambdaEwald = a.dudlambdaEwald - b.dudlambdaEwald;
+  for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
+  {
+    m.dudlambdaVDW[i] = a.dudlambdaVDW[i] - b.dudlambdaVDW[i];
+    m.dudlambdaCharge[i] = a.dudlambdaCharge[i] - b.dudlambdaCharge[i];
+    m.dudlambdaEwald[i] = a.dudlambdaEwald[i] - b.dudlambdaEwald[i];
+  }
   m.translationalKineticEnergy = a.translationalKineticEnergy - b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a.rotationalKineticEnergy - b.rotationalKineticEnergy;
   m.NoseHooverEnergy = a.NoseHooverEnergy - b.NoseHooverEnergy;
+  m.thermobarostatEnergy = a.thermobarostatEnergy - b.thermobarostatEnergy;
   m.mbxEnergy = a.mbxEnergy - b.mbxEnergy;
-
   return m;
 }
 
@@ -557,15 +667,17 @@ export inline RunningEnergy operator*(double a, const RunningEnergy b)
   m.intraVDW = a * b.intraVDW;
   m.intraCoul = a * b.intraCoul;
   m.tail = a * b.tail;
-  m.frameworkMoleculeTail = a * b.frameworkMoleculeTail;
-  m.moleculeMoleculeTail = a * b.moleculeMoleculeTail;
   m.polarization = a * b.polarization;
-  m.dudlambdaVDW = a * b.dudlambdaVDW;
-  m.dudlambdaCharge = a * b.dudlambdaCharge;
-  m.dudlambdaEwald = a * b.dudlambdaEwald;
+  for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
+  {
+    m.dudlambdaVDW[i] = a * b.dudlambdaVDW[i];
+    m.dudlambdaCharge[i] = a * b.dudlambdaCharge[i];
+    m.dudlambdaEwald[i] = a * b.dudlambdaEwald[i];
+  }
   m.translationalKineticEnergy = a * b.translationalKineticEnergy;
   m.rotationalKineticEnergy = a * b.rotationalKineticEnergy;
   m.NoseHooverEnergy = a * b.NoseHooverEnergy;
+  m.thermobarostatEnergy = a * b.thermobarostatEnergy;
   m.mbxEnergy = a * b.mbxEnergy;
 
   return m;
@@ -598,15 +710,17 @@ export inline RunningEnergy operator*(const RunningEnergy a, double b)
   m.intraVDW = b * a.intraVDW;
   m.intraCoul = b * a.intraCoul;
   m.tail = b * a.tail;
-  m.frameworkMoleculeTail = b * a.frameworkMoleculeTail;
-  m.moleculeMoleculeTail = b * a.moleculeMoleculeTail;
   m.polarization = b * a.polarization;
-  m.dudlambdaVDW = b * a.dudlambdaVDW;
-  m.dudlambdaCharge = b * a.dudlambdaCharge;
-  m.dudlambdaEwald = b * a.dudlambdaEwald;
+  for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
+  {
+    m.dudlambdaVDW[i] = b * a.dudlambdaVDW[i];
+    m.dudlambdaCharge[i] = b * a.dudlambdaCharge[i];
+    m.dudlambdaEwald[i] = b * a.dudlambdaEwald[i];
+  }
   m.translationalKineticEnergy = b * a.translationalKineticEnergy;
   m.rotationalKineticEnergy = b * a.rotationalKineticEnergy;
   m.NoseHooverEnergy = b * a.NoseHooverEnergy;
+  m.thermobarostatEnergy = b * a.thermobarostatEnergy;
   m.mbxEnergy = b * a.mbxEnergy;
 
   return m;

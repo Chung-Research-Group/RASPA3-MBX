@@ -7,7 +7,7 @@ Restart-files are automatically written (and updated every 5000 cycles). Conside
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 25000,
+  "NumberOfProductionCycles" : 25000,
   "NumberOfInitializationCycles" : 10000,
   "PrintEvery" : 1000,
 
@@ -37,7 +37,7 @@ Restart-files are automatically written (and updated every 5000 cycles). Conside
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
-      "GibbsSwapProbability" : 1.0,
+      "GibbsSwapCBMCProbability" : 1.0,
       "CreateNumberOfMolecules" : [256, 256]
     }
   ]
@@ -93,7 +93,6 @@ CO<sub>2</sub> molecules are usually modeled as `rigid` and implemented using qu
   "CriticalTemperature": 304.1282,
   "CriticalPressure": 7377300.0,
   "AcentricFactor": 0.22394,
-  "Type": "rigid",
   "pseudoAtoms": [
     ["O_co2", [0.0, 0.0, 1.149]],
     ["C_co2", [0.0, 0.0, 0.0]],
@@ -112,7 +111,7 @@ positions and energies.
 ```json
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfCycles" : 25000,
+  "NumberOfProductionCycles" : 25000,
   "NumberOfInitializationCycles" : 1000,
   "PrintEvery" : 1000,
 
@@ -144,7 +143,7 @@ positions and energies.
       "TranslationProbability" : 0.5,
       "RotationProbability" : 0.5,
       "ReinsertionProbability" : 0.5,
-      "GibbsSwapProbability" : 1.0,
+      "GibbsSwapCBMCProbability" : 1.0,
       "CreateNumberOfMolecules" : [0, 0]
     }
   ]

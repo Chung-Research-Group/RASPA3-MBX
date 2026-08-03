@@ -1,27 +1,5 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <cstddef>
-#include <fstream>
-#include <iostream>
-#include <limits>
-#include <optional>
-#include <print>
-#include <string>
-#include <vector>
-#include <chrono>
-#include <thread>
-#pragma push_macro("__SSE3__")
-#undef __SSE3__
-#include <random>
-#pragma pop_macro("__SSE3__")
-#endif
-
 #define CL_TARGET_OPENCL_VERSION 120
 #define CL_SILENCE_DEPRECATION
 #ifdef __APPLE__
@@ -34,9 +12,7 @@ module;
 
 module mc_opencl_pore_size_distribution;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import units;
 import double2;
@@ -113,7 +89,7 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
 {
   RandomNumber random{std::nullopt};
   cl_int err;
-  std::chrono::system_clock::time_point time_begin, time_end;
+  std::chrono::steady_clock::time_point time_begin, time_end;
 
   std::size_t number_of_iterations = numberOfIterations.value_or(10000);
   std::size_t number_of_inner_steps = numberOfInnerSteps.value_or(10000);
@@ -132,7 +108,7 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
   std::vector<cl_float> sigma(numberOfAtoms);
 
 
-  time_begin = std::chrono::system_clock::now();
+  time_begin = std::chrono::steady_clock::now();
 
   for (size_t i = 0; i < numberOfAtoms; i++)
   {
@@ -291,7 +267,7 @@ void MC_OpenCL_PoreSizeDistribution::run(const ForceField &forceField,
   clReleaseMemObject(inputSigma);
   clReleaseMemObject(framework_positions_mem);
 
-  time_end = std::chrono::system_clock::now();
+  time_end = std::chrono::steady_clock::now();
 
   std::chrono::duration<double> timing = time_end - time_begin;
 

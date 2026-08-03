@@ -1,49 +1,26 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <algorithm>
-#include <array>
-#include <cmath>
-#include <complex>
-#include <cstddef>
-#include <exception>
-#include <filesystem>
-#include <format>
-#include <fstream>
-#include <iostream>
-#include <numbers>
-#include <print>
-#include <source_location>
-#include <span>
-#include <sstream>
-#include <string>
-#include <tuple>
-#include <vector>
-#endif
-
 module property_rdf;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import archive;
 import double3;
 import atom;
+import atom_dynamics;
 import simulationbox;
 import forcefield;
 import averages;
 
-void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox, std::span<Atom> frameworkAtoms,
+void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationBox,
+                                                std::span<const Atom> frameworkAtoms,
+                                                std::span<const AtomDynamics> frameworkDynamics,
                                                 [[maybe_unused]] const std::vector<Molecule> &molecules,
-                                                std::span<Atom> moleculeAtoms, std::size_t currentCycle,
-                                                std::size_t block)
+                                                std::span<const Atom> moleculeAtoms,
+                                                std::span<const AtomDynamics> moleculeDynamics,
+                                                std::size_t currentCycle, std::size_t block)
 {
-  double3 dr, posA, posB, f;
+  double3 dr, posA, posB;
   double3 gradientA, gradientB;
   double rr, r;
 
@@ -51,166 +28,70 @@ void PropertyRadialDistributionFunction::sample(const SimulationBox &simulationB
 
   if (moleculeAtoms.empty()) return;
 
-  for (std::span<Atom>::iterator it1 = frameworkAtoms.begin(); it1 != frameworkAtoms.end(); ++it1)
+  // Site forces must already be present in frameworkDynamics / moleculeDynamics (MD integrator, or
+  // System::sampleForceBasedRDFWithFullGradients for MC). This sampler does not evaluate forces.
+
+  auto accumulatePair = [&](std::size_t typeA, std::size_t typeB, const double3 &gradA, const double3 &gradB,
+                            const double3 &separation)
   {
-    posA = it1->position;
-    gradientA = it1->gradient;
-    std::size_t typeA = static_cast<std::size_t>(it1->type);
-    for (std::span<Atom>::iterator it2 = moleculeAtoms.begin(); it2 != moleculeAtoms.end(); ++it2)
+    pairCount[channel(typeA, typeB)]++;
+    pairCount[channel(typeB, typeA)]++;
+
+    dr = simulationBox.applyPeriodicBoundaryConditions(separation);
+    rr = double3::dot(dr, dr);
+    r = std::sqrt(rr);
+    if (!(r < range) || r < 1.0e-12) return;
+
+    // Borgis estimator: (∇U_A - ∇U_B)·(r_A - r_B) / r^3 accumulated for all bins with r_bin < r.
+    const double value = double3::dot(gradA - gradB, dr) / (rr * r);
+    for (std::size_t i = 0; i < numberOfBins; ++i)
     {
-      posB = it2->position;
-      gradientB = it2->gradient;
-      std::size_t typeB = static_cast<std::size_t>(it2->type);
-
-      pairCount[typeB + typeA * numberOfPseudoAtoms]++;
-      pairCount[typeA + typeB * numberOfPseudoAtoms]++;
-
-      dr = posA - posB;
-      dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-      rr = double3::dot(dr, dr);
-      r = std::sqrt(rr);
-
-      double value = double3::dot(gradientA - gradientB, dr) / (rr * r);
-
-      std::size_t bin = static_cast<std::size_t>(r / deltaR);
-      for (std::size_t i = 0; i < bin; ++i)
+      if ((static_cast<double>(i) + 0.5) * deltaR < r)
       {
-        std::size_t index = typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
-        sumProperty[index][bin] += value;
-        index = typeA + typeB * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
-        sumProperty[index][bin] += value;
+        histogram(block, channel(typeA, typeB), i) += value;
+        histogram(block, channel(typeB, typeA), i) += value;
       }
+    }
+  };
+
+  for (std::size_t ia = 0; ia < frameworkAtoms.size(); ++ia)
+  {
+    posA = frameworkAtoms[ia].position;
+      gradientA = ia < frameworkDynamics.size() ? frameworkDynamics[ia].gradient : double3();
+    std::size_t typeA = static_cast<std::size_t>(frameworkAtoms[ia].type);
+    for (std::size_t ib = 0; ib < moleculeAtoms.size(); ++ib)
+    {
+      posB = moleculeAtoms[ib].position;
+      gradientB = moleculeDynamics[ib].gradient;
+      std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
+      accumulatePair(typeA, typeB, gradientA, gradientB, posA - posB);
     }
   }
 
-  for (std::span<Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
+  for (std::size_t ia = 0; ia + 1 < moleculeAtoms.size(); ++ia)
   {
-    posA = it1->position;
-    gradientA = it1->gradient;
-    std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
-    std::size_t compA = static_cast<std::size_t>(it1->componentId);
-    std::size_t typeA = static_cast<std::size_t>(it1->type);
+    posA = moleculeAtoms[ia].position;
+    gradientA = moleculeDynamics[ia].gradient;
+    std::size_t molA = static_cast<std::size_t>(moleculeAtoms[ia].moleculeId);
+    std::size_t compA = static_cast<std::size_t>(moleculeAtoms[ia].componentId);
+    std::size_t typeA = static_cast<std::size_t>(moleculeAtoms[ia].type);
 
-    for (std::span<Atom>::iterator it2 = it1 + 1; it2 != moleculeAtoms.end(); ++it2)
+    for (std::size_t ib = ia + 1; ib < moleculeAtoms.size(); ++ib)
     {
-      std::size_t molB = static_cast<std::size_t>(it2->moleculeId);
-      std::size_t compB = static_cast<std::size_t>(it2->componentId);
-      gradientB = it2->gradient;
+      std::size_t molB = static_cast<std::size_t>(moleculeAtoms[ib].moleculeId);
+      std::size_t compB = static_cast<std::size_t>(moleculeAtoms[ib].componentId);
 
       // skip interactions within the same molecule
-      if (!((compA == compB) && (molA == molB)))
-      {
-        posB = it2->position;
-        std::size_t typeB = static_cast<std::size_t>(it2->type);
+      if ((compA == compB) && (molA == molB)) continue;
 
-        pairCount[typeB + typeA * numberOfPseudoAtoms]++;
-        pairCount[typeA + typeB * numberOfPseudoAtoms]++;
-
-        dr = posA - posB;
-        dr = simulationBox.applyPeriodicBoundaryConditions(dr);
-        rr = double3::dot(dr, dr);
-        r = std::sqrt(rr);
-
-        if (r < range)
-        {
-          double value = double3::dot(gradientA - gradientB, dr) / (rr * r);
-
-          for (std::size_t i = 0; i < numberOfBins; ++i)
-          {
-            if ((static_cast<double>(i) + 0.5) * deltaR < r)
-            {
-              std::size_t index =
-                  typeB + typeA * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
-              sumProperty[index][i] += value;
-              index = typeA + typeB * numberOfPseudoAtoms + block * numberOfPseudoAtoms * numberOfPseudoAtoms;
-              sumProperty[index][i] += value;
-            }
-          }
-        }
-      }
+      posB = moleculeAtoms[ib].position;
+      gradientB = moleculeDynamics[ib].gradient;
+      std::size_t typeB = static_cast<std::size_t>(moleculeAtoms[ib].type);
+      accumulatePair(typeA, typeB, gradientA, gradientB, posA - posB);
     }
   }
 
-  /*
-  for (std::span<const Atom>::iterator it1 = moleculeAtoms.begin(); it1 != moleculeAtoms.end() - 1; ++it1)
-  {
-    posA = it1->position;
-    gradientA = it1->gradient;
-    std::size_t molA = static_cast<std::size_t>(it1->moleculeId);
-    std::size_t compA = static_cast<std::size_t>(it1->componentId);
-    std::size_t typeA = static_cast<std::size_t>(it1->type);
-
-    (atom.position.x - com.x) * atom.gradient.x
-  }
-  */
-
-  totalNumberOfCounts += 2;
-  numberOfCounts[block] += 2;
-}
-
-std::vector<double> PropertyRadialDistributionFunction::averagedProbabilityHistogram(std::size_t blockIndex,
-                                                                                     std::size_t atomTypeA,
-                                                                                     std::size_t atomTypeB) const
-{
-  std::size_t index_pseudo_atoms = atomTypeB + atomTypeA * numberOfPseudoAtoms;
-
-  std::vector<double> averagedData(numberOfBins);
-  std::transform(sumProperty[index_pseudo_atoms + blockIndex * numberOfPseudoAtoms * numberOfPseudoAtoms].begin(),
-                 sumProperty[index_pseudo_atoms + blockIndex * numberOfPseudoAtoms * numberOfPseudoAtoms].end(),
-                 averagedData.begin(),
-                 [&](const double &sample) { return sample / static_cast<double>(numberOfCounts[blockIndex]); });
-  return averagedData;
-}
-
-std::vector<double> PropertyRadialDistributionFunction::averagedProbabilityHistogram(std::size_t atomTypeA,
-                                                                                     std::size_t atomTypeB) const
-{
-  std::size_t index_pseudo_atoms = atomTypeB + atomTypeA * numberOfPseudoAtoms;
-
-  std::vector<double> summedBlocks(numberOfBins);
-  for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-  {
-    std::transform(summedBlocks.begin(), summedBlocks.end(),
-                   sumProperty[index_pseudo_atoms + blockIndex * numberOfPseudoAtoms * numberOfPseudoAtoms].begin(),
-                   summedBlocks.begin(), [](const double &a, const double &b) { return a + b; });
-  }
-  std::vector<double> average(numberOfBins);
-  std::transform(summedBlocks.begin(), summedBlocks.end(), average.begin(),
-                 [&](const double &sample) { return sample / static_cast<double>(totalNumberOfCounts); });
-
-  return average;
-}
-
-std::pair<std::vector<double>, std::vector<double>> PropertyRadialDistributionFunction::averageProbabilityHistogram(
-    std::size_t atomTypeA, std::size_t atomTypeB) const
-{
-  std::size_t degreesOfFreedom = numberOfBlocks - 1;
-  double intermediateStandardNormalDeviate = standardNormalDeviates[degreesOfFreedom][chosenConfidenceLevel];
-  std::vector<double> average = averagedProbabilityHistogram(atomTypeA, atomTypeB);
-
-  std::vector<double> sumOfSquares(numberOfBins);
-  for (std::size_t blockIndex = 0; blockIndex != numberOfBlocks; ++blockIndex)
-  {
-    std::vector<double> blockAverage = averagedProbabilityHistogram(blockIndex, atomTypeA, atomTypeB);
-    for (std::size_t binIndex = 0; binIndex != numberOfBins; ++binIndex)
-    {
-      double value = blockAverage[binIndex] - average[binIndex];
-      sumOfSquares[binIndex] += value * value;
-    }
-  }
-  std::vector<double> standardDeviation(numberOfBins);
-  std::transform(sumOfSquares.cbegin(), sumOfSquares.cend(), standardDeviation.begin(), [&](const double &sumofsquares)
-                 { return std::sqrt(sumofsquares / static_cast<double>(degreesOfFreedom)); });
-
-  std::vector<double> standardError(numberOfBins);
-  std::transform(standardDeviation.cbegin(), standardDeviation.cend(), standardError.begin(),
-                 [&](const double &sigma) { return sigma / std::sqrt(static_cast<double>(numberOfBlocks)); });
-
-  std::vector<double> confidenceIntervalError(numberOfBins);
-  std::transform(standardError.cbegin(), standardError.cend(), confidenceIntervalError.begin(),
-                 [&](const double &error) { return intermediateStandardNormalDeviate * error; });
-
-  return std::make_pair(average, confidenceIntervalError);
+  histogram.addCount(block, 2.0);
 }
 
 void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceField, std::size_t systemId,
@@ -226,24 +107,23 @@ void PropertyRadialDistributionFunction::writeOutput(const ForceField &forceFiel
   {
     for (std::size_t atomTypeB = atomTypeA; atomTypeB < numberOfPseudoAtoms; ++atomTypeB)
     {
-      if (pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms] > 0)
+      if (pairCount[channel(atomTypeB, atomTypeA)] > 0)
       {
         std::ofstream stream_rdf_output(std::format("rdf/rdf_{}_{}.s{}.txt", forceField.pseudoAtoms[atomTypeA].name,
                                                     forceField.pseudoAtoms[atomTypeB].name, systemId));
 
-        stream_rdf_output << std::format("# rdf, number of counts: {}\n", totalNumberOfCounts);
+        stream_rdf_output << std::format("# rdf, number of counts: {}\n", histogram.totalNumberOfCounts);
         stream_rdf_output << "# column 1: distance []\n";
         stream_rdf_output << "# column 2: normalize rdf []\n";
         stream_rdf_output << "# column 3: error normalize rdf []\n";
 
-        auto [average, error] = averageProbabilityHistogram(atomTypeA, atomTypeB);
+        auto [average, error] = result(atomTypeA, atomTypeB);
 
         // n_pairs is the number of unique pairs of atoms where one atom is from each of two sets
         // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3085256/
         [[maybe_unused]] double avg_n_pairs =
-            static_cast<double>(pairCount[atomTypeB + atomTypeA * numberOfPseudoAtoms] +
-                                pairCount[atomTypeA + atomTypeB * numberOfPseudoAtoms]) /
-            static_cast<double>(totalNumberOfCounts);
+            static_cast<double>(pairCount[channel(atomTypeA, atomTypeB)] + pairCount[channel(atomTypeB, atomTypeA)]) /
+            histogram.totalNumberOfCounts;
         double normalization = 1.0 / std::abs(average[0]);
 
         for (std::size_t bin = 0; bin != numberOfBins; ++bin)
@@ -260,17 +140,13 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
 {
   archive << rdf.versionNumber;
 
-  archive << rdf.numberOfBlocks;
   archive << rdf.numberOfPseudoAtoms;
-  archive << rdf.numberOfPseudoAtomsSymmetricMatrix;
   archive << rdf.numberOfBins;
   archive << rdf.range;
   archive << rdf.deltaR;
   archive << rdf.sampleEvery;
   archive << rdf.writeEvery;
-  archive << rdf.sumProperty;
-  archive << rdf.totalNumberOfCounts;
-  archive << rdf.numberOfCounts;
+  archive << rdf.histogram;
   archive << rdf.pairCount;
 
 #if DEBUG_ARCHIVE
@@ -292,17 +168,13 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyRadi
                     location.line(), location.file_name()));
   }
 
-  archive >> rdf.numberOfBlocks;
   archive >> rdf.numberOfPseudoAtoms;
-  archive >> rdf.numberOfPseudoAtomsSymmetricMatrix;
   archive >> rdf.numberOfBins;
   archive >> rdf.range;
   archive >> rdf.deltaR;
   archive >> rdf.sampleEvery;
   archive >> rdf.writeEvery;
-  archive >> rdf.sumProperty;
-  archive >> rdf.totalNumberOfCounts;
-  archive >> rdf.numberOfCounts;
+  archive >> rdf.histogram;
   archive >> rdf.pairCount;
 
 #if DEBUG_ARCHIVE

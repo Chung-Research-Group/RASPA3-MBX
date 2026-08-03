@@ -1,24 +1,12 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <optional>
-#include <span>
-#include <string>
-#include <vector>
-#endif
-
 export module lammps_io;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import component;
 import atom;
+import atom_dynamics;
 import simulationbox;
 import forcefield;
 import framework;
@@ -44,8 +32,8 @@ void ReadLAMMPSDataFile();
  * \param framework meta info on the framework.
  */
 std::string WriteLAMMPSDataFile(std::span<const Component> components, std::span<const Atom> atomData,
-                                std::span<const Molecule> moleculeData, const SimulationBox simulationBox,
-                                const ForceField forceField,
+                                std::span<const AtomDynamics> atomDynamics, std::span<const Molecule> moleculeData,
+                                const SimulationBox simulationBox, const ForceField forceField,
                                 std::vector<std::size_t> numberOfIntegerMoleculesPerComponent,
                                 std::optional<Framework> framework);
 }  // namespace IO

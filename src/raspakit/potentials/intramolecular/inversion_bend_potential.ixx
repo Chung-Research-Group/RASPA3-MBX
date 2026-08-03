@@ -1,33 +1,14 @@
 module;
 
-#ifdef USE_PRECOMPILED_HEADERS
-#include "pch.h"
-#endif
-
-#ifdef USE_LEGACY_HEADERS
-#include <array>
-#include <cmath>
-#include <cstddef>
-#include <cstring>
-#include <fstream>
-#include <map>
-#include <print>
-#include <string>
-#include <tuple>
-#include <type_traits>
-#include <vector>
-#endif
-
 export module inversion_bend_potential;
 
-#ifdef USE_STD_IMPORT
 import std;
-#endif
 
 import stringutils;
 import archive;
 import randomnumbers;
 import double3;
+import double3x3;
 import units;
 
 /**
@@ -123,6 +104,11 @@ export struct InversionBendPotential
       {"MM3", InversionBendType::MM3}};
 
   double calculateEnergy(const double3 &posA, const double3 &posB, const double3 &posc, const double3 &posD) const;
+
+  std::tuple<double, std::array<double3, 4>, double3x3> potentialEnergyGradientStrain(const double3 &posA,
+                                                                                        const double3 &posB,
+                                                                                        const double3 &posC,
+                                                                                        const double3 &posD) const;
 
   friend Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const InversionBendPotential &b);
   friend Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, InversionBendPotential &b);
