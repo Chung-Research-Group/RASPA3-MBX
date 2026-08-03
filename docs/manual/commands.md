@@ -151,6 +151,15 @@ reported separately at the end of the simulation.
     deduced from the Monte Carlo moves that are switched on. A hybrid MC/MD
     scheme can be obtained by enabling the hybrid `MD`-move.
 
+-   `"SimulationType" : "EnergyEvaluation"`\
+    Loads the systems (including any per-system `"RestartFileName"` coordinate
+    snapshots), computes the potential energy exactly once, writes
+    `output/energy_evaluation.json`, prints the decomposition, and exits without
+    attempting a Monte Carlo move. This is the supported way to compare a fixed
+    configuration between force fields or between classical and MBX energy
+    models. Binary driver checkpoints are intentionally not accepted in this
+    mode.
+
 -   `"SimulationType" : "MolecularDynamics"`\
     Runs the Molecular Dynamics engine. The ensemble must be specified
     explicitly through the `"Ensemble"` key.
@@ -592,12 +601,30 @@ reported separately at the end of the simulation.
     How often (in cycles) the binary crash-recovery file is written. Default:
     `5000`.
 
+-   `"WriteRestartEvery" : integer`\
+    How often regular Monte Carlo and thermodynamic-integration runs overwrite
+    their lightweight coordinate restart JSON files. The count uses completed
+    cycles within each simulation stage. Default: `5000`.
+    `0` disables periodic writes; the drivers' existing initial and final
+    snapshot writes are still performed.
+
 -   `"RestartFileName" : string` *(per system)*\
-    Reads the atomic positions of each component, and the simulation box, from a
-    JSON restart file for that system. Any molecules requested with
+    Reads the atomic positions of each component from a JSON restart file for
+    that system. For a `"Box"` system, a stored `"SimulationBox"` also overrides
+    the input box. A `"Framework"` cell remains defined by its CIF and unit-cell
+    replication; `"EnergyEvaluation"` rejects a framework restart containing a
+    `"SimulationBox"`, because the lightweight JSON does not contain the
+    corresponding framework coordinates. Relative paths are resolved from the
+    directory containing `simulation.json`, and `.json` may be omitted. Any molecules requested with
     `"CreateNumberOfMolecules"` are created *in addition* to, and after, the
     positions read from this file. This is convenient for loading a fixed set of
     positions (for example cations) and then creating adsorbates on top of them.
+    When `"EnergyEvaluation"` uses a `"RestartFileName"`, every
+    `"CreateNumberOfMolecules"` value must be `0`, because generated molecules
+    would change the snapshot being compared. The restart must contain exactly
+    one coordinate-array key for every configured component (an empty array is
+    required for zero molecules), and CFCMC/fixed-lambda fractional state is
+    rejected because that state is not represented in coordinate JSON.
 
 ### Printing options <a name="printing-options"></a>
 
@@ -821,6 +848,31 @@ reported separately at the end of the simulation.
     otherwise the file is looked up under:
 
         ${RASPA_DIR}/simulations/share/raspa3/forcefield/string/force_field.json
+
+-   `"UseMBX" : boolean`\
+    Selects the MBX guest-energy model for this system. The current MBX
+    integration supports regular Monte Carlo and one-shot
+    `"EnergyEvaluation"`. Default: `false`.
+
+-   `"MBXSettingsFile" : string`\
+    Path to the MBX JSON settings file. It is required when `"UseMBX"` is
+    `true`; relative paths are resolved from the directory containing
+    `simulation.json`.
+
+-   `"PrintEnergyTerms" : boolean`\
+    In regular Monte Carlo (and for the same classical move subset in serial
+    transition-matrix Monte Carlo), writes accepted-move rows to
+    `output/energy_terms.s<system-id>.csv` for translation, rotation,
+    conventional/CBMC insertion and deletion, CBMC reinsertion, and isotropic
+    or anisotropic volume changes. This covers every currently supported MBX
+    state-changing move; some newer classical-only random, smart, partial,
+    identity, group/Gibbs, and reaction moves do not yet emit rows. Fresh runs
+    truncate the file and binary-resumed runs append without duplicating the
+    header. Because CSV rows are flushed independently of binary checkpoints,
+    an abrupt-crash resume can repeat the rows newer than the restored
+    checkpoint. Default: `true` for compatibility with RASPA3-MBX.
+    `"WriteEnergyLog"` is retained as a legacy alias; specifying both keys with
+    different values is an error.
 
 ### System `MC`-moves <a name="system-mc-moves"></a>
 

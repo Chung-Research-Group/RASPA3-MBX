@@ -86,7 +86,8 @@ export struct InputReader
     ParallelThermodynamicIntegration = 6,  ///< Multithreaded TI: one replica per lambda-bin + lambda-exchange.
     HyperParallelTempering = 7,  ///< Multithreaded replica-exchange over a temperature x pressure grid.
     ReweightedHistogram = 8,  ///< Replica grid + multiple-histogram reweighting (continuous isotherm surface).
-    ParallelTMMC = 9  ///< Multithreaded transition-matrix Monte Carlo: windowed macrostate walkers.
+    ParallelTMMC = 9,  ///< Multithreaded transition-matrix Monte Carlo: windowed macrostate walkers.
+    EnergyEvaluation = 10  ///< One-shot, non-mutating potential-energy evaluation.
   };
 
   /**
@@ -152,6 +153,8 @@ export struct InputReader
   std::size_t numberOfInitializationCycles{0};     ///< Number of initialization cycles.
   std::size_t numberOfEquilibrationCycles{0};   ///< Number of equilibration cycles.
   std::size_t printEvery{5000};                 ///< Interval for printing simulation progress.
+  /// Interval for writing coordinate restart JSON files (0 disables periodic writes).
+  std::size_t writeRestartEvery{5000};
   std::size_t writeBinaryRestartEvery{5000};    ///< Interval for writing binary restart files.
   std::size_t rescaleWangLandauEvery{5000};     ///< Interval for rescaling in Wang-Landau sampling.
   std::size_t optimizeMCMovesEvery{5000};       ///< Interval for optimizing Monte Carlo moves.

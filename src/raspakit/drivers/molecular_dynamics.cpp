@@ -525,6 +525,7 @@ MolecularDynamics::MolecularDynamics(InputReader& reader) noexcept
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
       printEvery(reader.printEvery),
+      writeRestartEvery(reader.writeRestartEvery),
       writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
       rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
@@ -544,7 +545,7 @@ MolecularDynamics::MolecularDynamics(const SimulationSchedule& schedule, const s
       numberOfInitializationCycles(schedule.numberOfInitializationCycles),
       numberOfEquilibrationCycles(schedule.numberOfEquilibrationCycles),
       printEvery(schedule.printEvery),
-      writeRestartEvery(5000),
+      writeRestartEvery(schedule.writeRestartEvery),
       writeBinaryRestartEvery(schedule.writeBinaryRestartEvery),
       rescaleWangLandauEvery(schedule.rescaleWangLandauEvery),
       optimizeMCMovesEvery(schedule.optimizeMCMovesEvery),
@@ -614,10 +615,10 @@ void MolecularDynamics::createOutputFiles()
   }
 }
 
-void MolecularDynamics::checkpointIfDue(std::size_t currentCycle)
+void MolecularDynamics::checkpointIfDue(std::size_t cycle)
 {
   // periodic binary restart file
-  if (currentCycle % writeBinaryRestartEvery == 0uz && outputToFiles)
+  if (cycle % writeBinaryRestartEvery == 0uz && outputToFiles)
   {
     writeBinaryRestartFile(*this);
   }

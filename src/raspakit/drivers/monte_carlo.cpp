@@ -56,7 +56,7 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
       printEvery(reader.printEvery),
-      writeRestartEvery(5000),
+      writeRestartEvery(reader.writeRestartEvery),
       writeBinaryRestartEvery(reader.writeBinaryRestartEvery),
       rescaleWangLandauEvery(reader.rescaleWangLandauEvery),
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
@@ -66,7 +66,7 @@ MonteCarlo::MonteCarlo(InputReader& reader) noexcept
 {
 }
 
-MonteCarlo::MonteCarlo(const SimulationSchedule &schedule, const std::vector<System> &systems,
+MonteCarlo::MonteCarlo(const SimulationSchedule& schedule, const std::vector<System>& systems,
                        std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles)
     : outputToFiles(outputToFiles),
       random(RandomNumber(randomSeed)),
@@ -75,7 +75,7 @@ MonteCarlo::MonteCarlo(const SimulationSchedule &schedule, const std::vector<Sys
       numberOfInitializationCycles(schedule.numberOfInitializationCycles),
       numberOfEquilibrationCycles(schedule.numberOfEquilibrationCycles),
       printEvery(schedule.printEvery),
-      writeRestartEvery(5000),
+      writeRestartEvery(schedule.writeRestartEvery),
       writeBinaryRestartEvery(schedule.writeBinaryRestartEvery),
       rescaleWangLandauEvery(schedule.rescaleWangLandauEvery),
       optimizeMCMovesEvery(schedule.optimizeMCMovesEvery),
@@ -164,8 +164,7 @@ void MonteCarlo::setup()
           component.mc_moves_probabilities.getProbability(Move::Types::RotationSmartMC) > 0.0 ||
           component.mc_moves_probabilities.getProbability(Move::Types::TranslationRotationSmartMC) > 0.0;
     }
-    if (usesGradientMove &&
-        system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
+    if (usesGradientMove && system.forceField.interpolationScheme == ForceField::InterpolationScheme::Polynomial)
     {
       system.forceField.interpolationScheme = ForceField::InterpolationScheme::Tricubic;
     }
@@ -186,6 +185,7 @@ void MonteCarlo::tearDown()
   if (outputToFiles)
   {
     output();
+    for (const System& system : systems) system.flushEnergyTermsLog();
   }
 }
 
@@ -193,8 +193,8 @@ void MonteCarlo::createOutputFiles()
 {
   // on a binary-restart resume append to the existing output files instead of truncating them,
   // so each log continues where the interrupted run left off
-  const std::ios::openmode mode =
-      (simulationStage != SimulationStage::Uninitialized) ? std::ios::app : std::ios::out;
+  const bool append = simulationStage != SimulationStage::Uninitialized;
+  const std::ios::openmode mode = append ? std::ios::app : std::ios::out;
 
   std::filesystem::create_directories("output");
   for (std::size_t system_id{0}; System& system : systems)
@@ -202,18 +202,18 @@ void MonteCarlo::createOutputFiles()
     std::string fileNameString =
         std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system_id);
     streams.emplace_back(fileNameString, mode);
-    fileNameString =
-        std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
+    fileNameString = std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
     outputJsonFileNames.emplace_back(fileNameString);
+    system.configureEnergyTermsLog(std::format("output/energy_terms.s{}.csv", system_id), append);
 
     ++system_id;
   }
 }
 
-void MonteCarlo::checkpointIfDue(std::size_t currentCycle)
+void MonteCarlo::checkpointIfDue(std::size_t cycle)
 {
   // periodic binary restart file
-  if (currentCycle % writeBinaryRestartEvery == 0uz && outputToFiles)
+  if (cycle % writeBinaryRestartEvery == 0uz && outputToFiles)
   {
     writeBinaryRestartFile(*this);
   }
@@ -224,6 +224,7 @@ void MonteCarlo::checkpointIfDue(std::size_t currentCycle)
     writeBinaryRestartFile(*this);
     // std::exit skips stack unwinding: flush the text output streams explicitly
     for (std::ofstream& outputStream : streams) std::flush(outputStream);
+    for (const System& system : systems) system.flushEnergyTermsLog();
     GracefulShutdown::exitAfterCheckpoint();
   }
 }
@@ -258,8 +259,7 @@ void MonteCarlo::writeOutputHeader()
       outputJsons[system_id]["initialization"]["units"] = Units::jsonStatus();
       outputJsons[system_id]["initialization"]["initialConditions"] = system.jsonSystemStatus();
       outputJsons[system_id]["initialization"]["forceField"] = system.forceField.jsonForceFieldStatus();
-      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] =
-          system.forceField.jsonPseudoAtomStatus();
+      outputJsons[system_id]["initialization"]["forceField"]["pseudoAtoms"] = system.forceField.jsonPseudoAtomStatus();
       outputJsons[system_id]["initialization"]["components"] = system.jsonComponentStatus();
       outputJsons[system_id]["initialization"]["reactions"] = system.reactions.jsonStatus();
 
@@ -474,7 +474,7 @@ void MonteCarlo::preInitialize(std::function<void()> call_back_function, std::si
       ++system_id;
     }
 
-    if (currentCycle % writeRestartEvery == 0uz)
+    if (writeRestartEvery != 0uz && (currentCycle + 1uz) % writeRestartEvery == 0uz)
     {
       // write restart
       if (outputToFiles)
@@ -511,7 +511,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
 
     if (outputToFiles)
     {
-      if(system_id >= streams.size())
+      if (system_id >= streams.size())
       {
         throw std::runtime_error("Output not opened, did you forgot to call 'setup'?\n");
       }
@@ -557,7 +557,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
 
     if (currentCycle % callBackEvery == 0uz)
     {
-      if(call_back_function)
+      if (call_back_function)
       {
         call_back_function();
       }
@@ -575,11 +575,11 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      if (system.propertyNumberOfMoleculesEvolution.has_value())
       {
         system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
       }
-      if(system.propertyVolumeEvolution.has_value())
+      if (system.propertyVolumeEvolution.has_value())
       {
         system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
       }
@@ -587,7 +587,7 @@ void MonteCarlo::initialize(std::function<void()> call_back_function, std::size_
       ++system_id;
     }
 
-    if (currentCycle % writeRestartEvery == 0uz)
+    if (writeRestartEvery != 0uz && (currentCycle + 1uz) % writeRestartEvery == 0uz)
     {
       // write restart
       if (outputToFiles)
@@ -672,7 +672,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
 
     if (currentCycle % callBackEvery == 0uz)
     {
-      if(call_back_function)
+      if (call_back_function)
       {
         call_back_function();
       }
@@ -735,11 +735,11 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      if (system.propertyNumberOfMoleculesEvolution.has_value())
       {
         system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
       }
-      if(system.propertyVolumeEvolution.has_value())
+      if (system.propertyVolumeEvolution.has_value())
       {
         system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
       }
@@ -749,7 +749,7 @@ void MonteCarlo::equilibrate(std::function<void()> call_back_function, std::size
 
     checkpointIfDue(currentCycle);
 
-    if (currentCycle % writeRestartEvery == 0uz)
+    if (writeRestartEvery != 0uz && (currentCycle + 1uz) % writeRestartEvery == 0uz)
     {
       // write restart
       if (outputToFiles)
@@ -929,8 +929,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
                            system.fractionalPseudoAtomCountsPerGroup))
                           .potentialEnergy();
           double fdExcess = -(eP - eM) / (boxP.volume - boxM.volume);
-          std::print(std::cerr,
-                     "[RASPA_PRESSURE_FD] cycle={} analytic={:.8e} FD={:.8e} delta={:.8e} relative={:.4e}\n",
+          std::print(std::cerr, "[RASPA_PRESSURE_FD] cycle={} analytic={:.8e} FD={:.8e} delta={:.8e} relative={:.4e}\n",
                      currentCycle, analyticExcess, fdExcess, analyticExcess - fdExcess,
                      std::abs(analyticExcess - fdExcess) / std::max(1.0, std::abs(fdExcess)));
         }
@@ -960,7 +959,7 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
 
     if (currentCycle % callBackEvery == 0uz)
     {
-      if(call_back_function)
+      if (call_back_function)
       {
         call_back_function();
       }
@@ -971,20 +970,18 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       if (system.propertyConventionalRadialDistributionFunction.has_value())
       {
         system.propertyConventionalRadialDistributionFunction->writeOutput(
-            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
-            currentCycle);
+            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms, currentCycle);
       }
 
       if (system.propertyRadialDistributionFunction.has_value())
       {
-        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system_id,
-                                                               system.simulationBox.volume,
-                                                               system.totalNumberOfPseudoAtoms, currentCycle);
+        system.propertyRadialDistributionFunction->writeOutput(
+            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms, currentCycle);
       }
       if (system.propertyDensityGrid.has_value())
       {
-        system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField,
-                                                system.framework, system.components, currentCycle);
+        system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField, system.framework,
+                                                system.components, currentCycle);
       }
       if (system.averageEnergyHistogram.has_value())
       {
@@ -1004,11 +1001,11 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
 
     for (std::size_t system_id{0}; System& system : systems)
     {
-      if(system.propertyNumberOfMoleculesEvolution.has_value())
+      if (system.propertyNumberOfMoleculesEvolution.has_value())
       {
         system.propertyNumberOfMoleculesEvolution->writeOutput(system_id, absoluteCurrentCycle);
       }
-      if(system.propertyVolumeEvolution.has_value())
+      if (system.propertyVolumeEvolution.has_value())
       {
         system.propertyVolumeEvolution->writeOutput(system_id, absoluteCurrentCycle);
       }
@@ -1016,10 +1013,9 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       ++system_id;
     }
 
-
     checkpointIfDue(currentCycle);
 
-    if (currentCycle % writeRestartEvery == 0uz)
+    if (writeRestartEvery != 0uz && (currentCycle + 1uz) % writeRestartEvery == 0uz)
     {
       // write restart
       if (outputToFiles)
@@ -1085,20 +1081,18 @@ void MonteCarlo::production(std::function<void()> call_back_function, std::size_
       if (system.propertyConventionalRadialDistributionFunction.has_value())
       {
         system.propertyConventionalRadialDistributionFunction->writeOutput(
-            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms,
-            currentCycle);
+            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms, currentCycle);
       }
 
       if (system.propertyRadialDistributionFunction.has_value())
       {
-        system.propertyRadialDistributionFunction->writeOutput(system.forceField, system_id,
-                                                               system.simulationBox.volume,
-                                                               system.totalNumberOfPseudoAtoms, currentCycle);
+        system.propertyRadialDistributionFunction->writeOutput(
+            system.forceField, system_id, system.simulationBox.volume, system.totalNumberOfPseudoAtoms, currentCycle);
       }
       if (system.propertyDensityGrid.has_value())
       {
-        system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField,
-                                                system.framework, system.components, currentCycle);
+        system.propertyDensityGrid->writeOutput(system_id, system.simulationBox, system.forceField, system.framework,
+                                                system.components, currentCycle);
       }
       if (system.averageEnergyHistogram.has_value())
       {
@@ -1159,8 +1153,7 @@ void MonteCarlo::output()
 
     for (std::size_t componentId{0}; const Component& component : system.components)
     {
-      std::print(stream, "{}",
-                 component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
+      std::print(stream, "{}", component.mc_moves_cputime.writeMCMoveCPUTimeStatistics(componentId, component.name));
 
       ++componentId;
     }
@@ -1216,8 +1209,7 @@ void MonteCarlo::output()
     outputJsons[system_id]["output"]["cpuTimings"]["summedSystemsAndComponents"] =
         total.jsonOverallMCMoveCPUTimeStatistics(totalProductionSimulationTime);
     outputJsons[system_id]["output"]["cpuTimings"]["gridCreation"] = totalGridCreationTime.count();
-    outputJsons[system_id]["output"]["cpuTimings"]["preInitialization"] =
-        totalPreInitializationSimulationTime.count();
+    outputJsons[system_id]["output"]["cpuTimings"]["preInitialization"] = totalPreInitializationSimulationTime.count();
     outputJsons[system_id]["output"]["cpuTimings"]["initialization"] = totalInitializationSimulationTime.count();
     outputJsons[system_id]["output"]["cpuTimings"]["equilibration"] = totalEquilibrationSimulationTime.count();
     outputJsons[system_id]["output"]["cpuTimings"]["production"] = totalProductionSimulationTime.count();
@@ -1282,6 +1274,8 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const MonteC
   archive << mc.totalProductionSimulationTime;
   archive << mc.totalSimulationTime;
 
+  archive << mc.writeRestartEvery;
+
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
 
   return archive;
@@ -1327,12 +1321,19 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarlo& 
   archive >> mc.totalProductionSimulationTime;
   archive >> mc.totalSimulationTime;
 
+  // Version 1 checkpoints predate configurable coordinate-restart intervals. Keep the
+  // value supplied by simulation.json (or the 5000-cycle member default) for those files.
+  if (versionNumber >= 2)
+  {
+    archive >> mc.writeRestartEvery;
+  }
+
   std::uint64_t magicNumber;
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
   {
-    throw std::runtime_error(std::format("MonteCarlo: Invalid magic number {} at the end of the restart data\n",
-                                         magicNumber));
+    throw std::runtime_error(
+        std::format("MonteCarlo: Invalid magic number {} at the end of the restart data\n", magicNumber));
   }
   return archive;
 }

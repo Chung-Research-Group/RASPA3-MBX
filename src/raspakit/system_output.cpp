@@ -109,7 +109,8 @@ std::string System::writeNumberOfPseudoAtoms() const
   return stream.str();
 }
 
-std::string System::writePreInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const
+std::string System::writePreInitializationStatusReport(std::size_t currentCycle,
+                                                       std::size_t numberOfProductionCycles) const
 {
   std::ostringstream stream;
 
@@ -146,7 +147,8 @@ std::string System::writePreInitializationStatusReport(std::size_t currentCycle,
   return stream.str();
 }
 
-std::string System::writeInitializationStatusReport(std::size_t currentCycle, std::size_t numberOfProductionCycles) const
+std::string System::writeInitializationStatusReport(std::size_t currentCycle,
+                                                    std::size_t numberOfProductionCycles) const
 {
   std::ostringstream stream;
 
@@ -170,13 +172,13 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
 
     if (histogram.computeDUdlambda)
     {
-      std::print(stream, "component {:3d} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n",
-                 componentId, c.name, lambda, currentDUdlambda(lambda, histogram.dUdlambdaGroupId), occupancy, averageOccupancy);
+      std::print(stream, "component {:3d} ({}) lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", componentId,
+                 c.name, lambda, currentDUdlambda(lambda, histogram.dUdlambdaGroupId), occupancy, averageOccupancy);
     }
     else
     {
-      std::print(stream, "component {:3d} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name,
-                 lambda, occupancy, averageOccupancy);
+      std::print(stream, "component {:3d} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name, lambda,
+                 occupancy, averageOccupancy);
     }
     std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
     ++componentId;
@@ -200,8 +202,7 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
-                 lambda, reactionDUdlambda(reaction),
-                 static_cast<double>(hasReactionFractionalMolecules()),
+                 lambda, reactionDUdlambda(reaction), static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
     }
     std::print(stream, "\n");
@@ -225,7 +226,8 @@ std::string System::writeInitializationStatusReport(std::size_t currentCycle, st
   return stream.str();
 }
 
-std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, std::size_t numberOfProductionCycles) const
+std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle,
+                                                     std::size_t numberOfProductionCycles) const
 {
   std::ostringstream stream;
 
@@ -279,8 +281,7 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
-                 lambda, reactionDUdlambda(reaction),
-                 static_cast<double>(hasReactionFractionalMolecules()),
+                 lambda, reactionDUdlambda(reaction), static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
     }
     std::print(stream, "\n");
@@ -304,7 +305,8 @@ std::string System::writeEquilibrationStatusReportMC(std::size_t currentCycle, s
   return stream.str();
 }
 
-std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, std::size_t numberOfProductionCycles) const
+std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle,
+                                                     std::size_t numberOfProductionCycles) const
 {
   std::ostringstream stream;
 
@@ -405,8 +407,7 @@ std::string System::writeEquilibrationStatusReportMD(std::size_t currentCycle, s
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
-                 lambda, reactionDUdlambda(reaction),
-                 static_cast<double>(hasReactionFractionalMolecules()),
+                 lambda, reactionDUdlambda(reaction), static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
     }
     std::print(stream, "\n");
@@ -482,8 +483,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);
       const double averageOccupancy = histogram.occupancy();
       std::print(stream, "reaction {:3d} lambda: {: g} dUdlambda: {: g} occupancy: {: g} ({:3f})\n", reaction.id,
-                 lambda, reactionDUdlambda(reaction),
-                 static_cast<double>(hasReactionFractionalMolecules()),
+                 lambda, reactionDUdlambda(reaction), static_cast<double>(hasReactionFractionalMolecules()),
                  averageOccupancy);
     }
     std::print(stream, "\n");
@@ -495,8 +495,8 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
   for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
-               loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules,
-                                    loadingData.first, loadingData.second, frameworkMass(),
+               loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules, loadingData.first,
+                                    loadingData.second, frameworkMass(),
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
     ++componentId;
   }
@@ -512,7 +512,8 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
       case Units::System::RASPA:
       {
         double3x3 pressureTensor = 1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressureTensor;
-        double3x3 pressureTensorError = 1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressureTensor;
+        double3x3 pressureTensorError =
+            1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressureTensor;
         std::print(stream, "Average pressure tensor: \n");
         std::print(stream, "-------------------------------------------------------------------------------\n");
         std::print(stream, "{: .4e} {: .4e} {: .4e} +/- {:.4e} {:.4e} {:.4e} [bar]\n", pressureTensor.ax,
@@ -531,7 +532,7 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
                    1e-5 * Units::PressureConversionFactor * average_pressure.first.excessPressure,
                    1e-5 * Units::PressureConversionFactor * average_pressure.second.excessPressure);
         std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n",
-                   1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressure, 
+                   1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressure,
                    1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressure);
       }
       break;
@@ -552,10 +553,9 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
                    pressureTensorError.cz, Units::unitOfPressureString);
         std::print(stream, "Ideal-gas pressure:  {: .6e} +/ {:.6e} [{}]\n", average_pressure.first.idealGasPressure,
                    average_pressure.second.idealGasPressure, Units::unitOfPressureString);
-        std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [{}]\n", average_pressure.first.excessPressure, 
-                   average_pressure.second.excessPressure,
-                   Units::unitOfPressureString);
-        std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [{}]\n\n", average_pressure.first.totalPressure, 
+        std::print(stream, "Excess pressure:     {: .6e} +/ {:.6e} [{}]\n", average_pressure.first.excessPressure,
+                   average_pressure.second.excessPressure, Units::unitOfPressureString);
+        std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [{}]\n\n", average_pressure.first.totalPressure,
                    average_pressure.second.totalPressure, Units::unitOfPressureString);
       }
       break;
@@ -765,8 +765,8 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
     }
     else
     {
-      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name,
-                 lambda, occupancy, averageOccupancy);
+      std::print(stream, "component {} ({}) lambda: {: g} occupancy: {: g} ({:3f})\n", componentId, c.name, lambda,
+                 occupancy, averageOccupancy);
     }
     std::print(stream, "    net charge: {:12.8f} [e]\n", netChargePerComponent[componentId]);
     ++componentId;
@@ -779,8 +779,8 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
   for (std::size_t componentId{0}; const Component& c : components)
   {
     std::print(stream, "{}",
-               loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules,
-                                    loadingData.first, loadingData.second, frameworkMass(),
+               loadings.printStatus(componentId, c.name, c.totalMass, c.amountOfExcessMolecules, loadingData.first,
+                                    loadingData.second, frameworkMass(),
                                     framework.transform([](const Framework& f) { return f.numberOfUnitCells; })));
     ++componentId;
   }
@@ -807,7 +807,7 @@ std::string System::writeProductionStatusReportMD(std::size_t currentCycle, std:
              1e-5 * Units::PressureConversionFactor * average_pressure.first.excessPressure,
              1e-5 * Units::PressureConversionFactor * average_pressure.second.excessPressure);
   std::print(stream, "Pressure:            {: .6e} +/ {:.6e} [bar]\n\n",
-             1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressure, 
+             1e-5 * Units::PressureConversionFactor * average_pressure.first.totalPressure,
              1e-5 * Units::PressureConversionFactor * average_pressure.second.totalPressure);
 
   return stream.str();
@@ -824,8 +824,7 @@ std::string System::writeSystemStatus() const
   std::print(stream, "Beta:                 {} [-]\n", beta);
   std::print(stream, "Pressure:             {} [{}]\n", pressure * Units::PressureConversionFactor,
              Units::unitOfPressureString);
-  const CellMinimizationLayout cellLayout =
-      makeCellMinimizationLayout(cellMinimizationType, monoclinicAngleType);
+  const CellMinimizationLayout cellLayout = makeCellMinimizationLayout(cellMinimizationType, monoclinicAngleType);
   std::print(stream, "Cell minimization:    {}", cellLayout.name());
   if (cellLayout.isCompatibilityAlias())
   {
@@ -869,10 +868,14 @@ nlohmann::json System::jsonSystemStatus() const
   system["cellMinimizationType"] = cellMinimizationTypeName(cellMinimizationType);
   system["monoclinicAngleType"] = monoclinicAngleTypeName(monoclinicAngleType);
   system["useMBX"] = useMBX;
+  system["printEnergyTerms"] = writeEnergyLog;
+  if (writeEnergyLog && !energyTermsLogSink.filePath.empty())
+  {
+    system["energyTermsLogFile"] = energyTermsLogSink.filePath;
+  }
   if (useMBX)
   {
     system["mbxSettingsFile"] = mbxSettingsFilePath;
-    system["writeEnergyLog"] = writeEnergyLog;
     system["mbxEnergy [K]"] = runningEnergies.mbxEnergy * Units::EnergyToKelvin;
   }
 
@@ -957,8 +960,8 @@ std::string System::writeMCMoveStatistics() const
 
     if (component.hasFractionalMolecule)
     {
-      double imposedChemicalPotential = std::log(beta * component.fugacityCoefficient.value_or(1.0) * 
-                                                 component.molFraction * pressure) / beta;
+      double imposedChemicalPotential =
+          std::log(beta * component.fugacityCoefficient.value_or(1.0) * component.molFraction * pressure) / beta;
       double imposedFugacity = component.fugacityCoefficient.value_or(1.0) * component.molFraction * pressure;
 
       std::print(stream, "{}",
@@ -1002,10 +1005,8 @@ std::string System::writeMCMoveStatistics() const
 
         std::print(stream, "reaction {} lambda statistics (product side, occupancy {:.6f}):\n", reaction.id,
                    reaction.lambdaProductSide.occupancy());
-        std::print(stream, "{}",
-                   reaction.lambdaProductSide.writeAveragesStatistics(beta, std::nullopt, std::nullopt));
-        std::print(stream, "{}",
-                   reaction.lambdaProductSide.writeDUdLambdaStatistics(beta, std::nullopt, std::nullopt));
+        std::print(stream, "{}", reaction.lambdaProductSide.writeAveragesStatistics(beta, std::nullopt, std::nullopt));
+        std::print(stream, "{}", reaction.lambdaProductSide.writeDUdLambdaStatistics(beta, std::nullopt, std::nullopt));
         continue;
       }
       const PropertyLambdaProbabilityHistogram& histogram = activeReactionLambdaHistogram(reaction);

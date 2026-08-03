@@ -12,13 +12,14 @@ update and the maintenance policy for later updates.
 | Original MBX branch | `E_print` at `186f3b8cc6c4bbc28cbdbc5954ddd05b63357c4f` |
 | Upstream release on which the fork was named | v3.0.21 at `729be4b40ca6b011488fd83d2a3d94eb15e41a66` |
 | True Git merge base | `6b8b25f2c944bbea751fcb63eb79668040c87042` |
-| Imported upstream | `dd814dda512ce6f6a60e44ee0f789b9b69d396ce` (`3.1.0`) |
+| Imported upstream | `a8a70ca7` (`feat: structurekit`, current `upstream/main` on 2026-08-03) |
+| Latest upstream merge commit | `afab6925` |
 | Integration working tree | `/home/carbon/calculation/YuC/RASPA3-MBX` |
-| Integration branch | `update/upstream-dd814dda` |
+| Integration branch | local `main` (tested promotion candidate; not yet pushed) |
 
 The merge base is 23 upstream commits newer than the v3.0.21 release tag.
-From that true base, the fork contains 57 commits and upstream contains 247
-commits. Current upstream is 270 commits beyond the v3.0.21 release. Using the
+From that true base, the fork contains 57 commits and upstream contains 248
+commits. Current upstream is 271 commits beyond the v3.0.21 release. Using the
 true merge base is important: comparing two directory snapshots alone makes
 upstream refactors look like local MBX changes and leads to the wrong conflict
 choices.
@@ -39,14 +40,16 @@ The integration copy has two remotes:
 |---|---|
 | Build system | Keep the current upstream CMake target layout and C++ module architecture. Make MBX optional through `BUILD_MBX`; discover its headers, generated configuration header, library, and FFTW through cache variables rather than hard-coded Carbon/Oxygen paths. Add optional installed HDF5 and GoogleTest paths for offline/reproducible builds. |
 | System state | Add `useMBX`, the canonical MBX settings path, `writeEnergyLog`, the precomputed bare-framework permanent energy, and logger state to the current upstream `System`. Preserve all new upstream thermobarostat, group, flexible-framework, interpolation, and property state. |
-| Input reader | Parse and validate `UseMBX`, `MBXSettingsFile`, and `WriteEnergyLog`. Resolve a relative MBX settings file against the simulation input directory, verify it is a nonempty regular file, and fail clearly if the executable was built without MBX. |
+| Input reader | Parse and validate `UseMBX`, `MBXSettingsFile`, canonical `PrintEnergyTerms` (with `WriteEnergyLog` as a legacy alias), `WriteRestartEvery`, and `EnergyEvaluation`. Resolve relative settings and coordinate snapshots against the simulation input directory, validate restart coordinates, and fail clearly if the executable was built without MBX. |
 | MBX adapter | Port `interactions_mbx` to the new module interfaces. Use stack ownership/RAII and spans, validate component/atom layouts, keep atom tags within MBX's integer range, and avoid the old raw-allocation and `noexcept` failure modes. |
 | Total-energy contract | Prevent classical RASPA guest VDW, guest charge, Ewald, polarization, and intramolecular terms from being added on top of MBX. Retain external-field energy and classical framework–guest VDW plus its framework-tail correction. |
 | Running energy | Start from current upstream `RunningEnergy`, including thermobarostat energy and per-group `dU/dlambda` arrays, and add one `mbxEnergy` field to totals, arithmetic, clearing, text, JSON, and archives. Do not restore the fork's obsolete split-tail fields. |
 | Energy statistics | Add MBX-aware `EnergyStatus` arithmetic, block statistics, text output, and archives. An MBX total is external field + framework–guest VDW + framework tail + MBX. Classical component decompositions remain available for the pressure estimator but do not enter the MBX total. |
 | MC moves | Forward-port MBX acceptance and bookkeeping to translation, rotation, conventional insertion/deletion, CBMC insertion/deletion, CBMC reinsertion, Widom, and isotropic framework-free volume changes. Preserve current upstream TMMC updates, dual cutoffs, Ewald trial caches, polarization caches, CBMC Rosenbluth handling, and timing. |
 | Drift correction | Recompute the old and proposed full MBX energy for an MBX move. Use their physical difference in acceptance and the exact accepted MBX total in diagnostic output. This incorporates the important stale-bookkeeping fix from fork commit `e48115b0`. |
-| Accepted-energy log | Replace scattered `std::cerr` fragments with one `System::writeAcceptedEnergyLog` path. Emit a header lazily and write only after an accepted state-changing move. `WriteEnergyLog` defaults to `true` to preserve the existing fork's behavior and can be disabled explicitly. Widom does not emit an “accepted” row because it does not mutate the system. |
+| Accepted-energy log | Replace scattered `std::cerr` fragments with one persistent `System::writeAcceptedEnergyLog` path. Write per-system CSV files under `output/`, and write only after accepted moves connected to that hook. The supported MBX move surface is fully covered; several newer classical-only move implementations are not yet connected. `PrintEnergyTerms` defaults to `true` to preserve the existing fork's behavior and can be disabled explicitly. Widom does not emit an “accepted” row because it does not mutate the system. |
+| Restart cadence | Replace the hard-coded 5000-cycle coordinate-snapshot interval with top-level `WriteRestartEvery`; `0` disables periodic writes. Count completed cycles, preserve the value in version-2 Monte Carlo binary archives, and retain version-1 read compatibility. |
+| One-shot energy | Add `SimulationType: EnergyEvaluation` to evaluate an input configuration or coordinate restart once, without MC moves. Emit a human-readable decomposition and `output/energy_evaluation.json`, including all seven raw MBX terms when enabled. |
 | CPU timing | Add a dedicated `Move::Timing::MBX` entry without renumbering existing timing values. Bump the CPU-time archive version because the serialized timing row size changes. |
 | Output | Include MBX in current MC/MD/repr/JSON energy output, print the MBX settings/status in the normal system report, and expose the MBX settings and current MBX energy in system JSON. |
 | Swap bookkeeping | Fix current-upstream conventional insertion bookkeeping in pre-initialization and equilibration: an accepted insertion must be added to `runningEnergies`, as production already does. |
@@ -89,7 +92,9 @@ column order is preserved.
 
 ## Supported MBX execution surface
 
-MBX currently supports the regular single-system `MonteCarlo` driver only.
+MBX trajectory generation currently supports the regular single-system
+`MonteCarlo` driver only. The non-mutating `EnergyEvaluation` analysis mode is
+also supported.
 The input reader rejects unported combinations instead of allowing a classical
 move to corrupt an MBX trajectory.
 
@@ -111,6 +116,7 @@ move to corrupt an MBX trajectory.
 | CFCMC, pair/group swap, Gibbs, reactions | Rejected |
 | Transition-matrix and parallel-replica drivers | Rejected |
 | Molecular dynamics, minimization, thermodynamic integration | Rejected; MBX gradients are not forward-ported |
+| One-shot `EnergyEvaluation` | Supported for JSON coordinate snapshots; no moves or MBX gradients are used |
 | Classical RASPA polarization together with MBX | Rejected; MBX supplies the retained induced term |
 | Force-based RDF sampling | Rejected; it invokes the classical full-gradient path and would overwrite MBX running energy |
 
@@ -132,13 +138,48 @@ An MBX system uses the following current input fields:
 {
   "UseMBX": true,
   "MBXSettingsFile": "mbx.json",
-  "WriteEnergyLog": true
+  "PrintEnergyTerms": true
 }
 ```
 
-`MBXSettingsFile` may be relative to `simulation.json`. `WriteEnergyLog` is
+`MBXSettingsFile` may be relative to `simulation.json`. `PrintEnergyTerms` is
 optional and defaults to `true` for compatibility with the fork. Set it to
-`false` for normal production output without accepted-move CSV rows on stderr.
+`false` for production without accepted-move energy rows. The legacy
+`WriteEnergyLog` alias remains accepted; conflicting values are rejected.
+Regular Monte Carlo writes `output/energy_terms.s0.csv` (one file per system),
+truncating on a fresh run and appending on binary resume without a duplicate
+header. The CSV and binary checkpoint are separate streams: after an abrupt
+crash, rows written after the last binary checkpoint can be replayed and
+duplicated in the appended tail. Treat the CSV as diagnostic output and split
+or deduplicate that final segment when resuming a checkpoint.
+
+Coordinate restart cadence is controlled separately:
+
+```json
+{
+  "WriteRestartEvery": 5000
+}
+```
+
+For regular Monte Carlo and thermodynamic integration, `0` disables periodic
+coordinate JSON writes, but the drivers' existing initial and final snapshot
+writes remain. This is distinct from `WriteBinaryRestartEvery`, which controls
+full crash-recovery checkpoints.
+
+For a fixed snapshot comparison use:
+
+```json
+{
+  "SimulationType": "EnergyEvaluation",
+  "Systems": [{"RestartFileName": "output/restart_298_100000.s0.json"}],
+  "Components": [{"Name": "co2", "CreateNumberOfMolecules": 0}]
+}
+```
+
+The abbreviated fragment above must be combined with the normal force-field,
+system, and component definitions. The result is written to
+`output/energy_evaluation.json`; no accepted-move CSV or new restart snapshot is
+created.
 
 Machine-specific paths live in ignored `CMakeUserPresets.json`, not in the
 shared `CMakePresets.json`. A portable template is provided as
@@ -163,22 +204,34 @@ The integration was validated in the prepared Carbon environment as follows:
 
 | Check | Result |
 |---|---|
-| Complete MBX-enabled build | Passed: 1,326 compile/link steps, including `libraspakit_base.a` and `unit_tests_mbx` |
-| Complete MBX-disabled build | Passed: 1,316 compile/link steps with no MBX headers or library in the target |
+| Current MBX-enabled build | Passed after the StructureKit merge, including `libraspakit_base.a`, `app/raspa3`, and `unit_tests_mbx` |
+| Complete MBX-disabled build | Passed from the current sources in a separate configuration, with no MBX headers or library in the target |
 | User-facing executables | `app/raspa3` and `cli/raspa3-cli` linked successfully and both passed help/startup checks |
-| MBX numerical tests | 5/5 passed: absolute energy, selected-molecule reinsertion, two rigid replacements, non-first-component replacement/deletion, and component-versus-total accepted-log loading |
+| Focused MBX/diagnostic tests | 12/12 passed: four MBX energy/bookkeeping tests, four accepted-energy-log tests, one restart-cadence/archive test, and three fixed-snapshot evaluation tests |
+| Broader current-source test suite | 532/535 enabled tests passed, with 6 additional tests disabled (541 registered); the three failures are in unchanged hybrid-MC, second-order Taylor-shifted Lennard-Jones, and exact-sphere-pruning paths described below |
 | Native Morse tests | 7/7 relevant tests passed: reference energy, shifted cutoff, fractional-lambda finiteness, lambda derivative, spatial derivatives, bonded Morse, and Urey-Bradley Morse |
 | Two-CO2 MBX application smoke test | Passed through the real input reader and `raspa3` executable with initialization and 20 production MC steps |
 | Retained MOF-74 Morse input | Passed with one CO2, MBX enabled, the two Mg-CO2 Morse pairs active, and 20 translation/rotation MC steps; the reported incremental-versus-recomputed MBX drift was zero at output precision |
+| Accepted-energy file smoke test | A fresh two-cycle Monte Carlo run configured with `WriteRestartEvery: 1` wrote one-header `output/energy_terms.s0.csv` and produced no energy rows on standard error |
+| Classical snapshot evaluation | The MBX-disabled executable loaded a relative two-molecule coordinate restart, evaluated it once without moves, and created only `output/energy_evaluation.json` |
+| MBX + Morse snapshot evaluation | A nonzero one-CO2 MOF-74 snapshot produced the classical Morse framework term, retained MBX total, and all seven raw MBX terms without changing the snapshot |
 | Merge hygiene | No unresolved paths or conflict markers; the original source repository remains unchanged |
 
 The native RASPAKit test executable itself also builds after restoring the
-missing upstream test-support header. One extra, non-Morse upstream test,
-`vdw_potentials.second_order_taylor_shifted_spatial_derivatives_match_finite_difference`,
-misses its finite-difference tolerance at `r = 5` by about `1.75e-4` beyond the
-allowed error. The relevant Morse-bearing tests all pass; this tolerance issue
-is independent of the MBX integration and should be handled upstream rather
-than hidden by loosening it in the fork.
+missing upstream test-support header. Three broader tests in files unchanged by
+this diagnostic feature set fail reproducibly:
+
+- `hybrid_mc.flexible_framework_only_does_not_throw_and_restores_on_reject`
+  expects its deterministic proposal to be rejected, but it is accepted;
+- `vdw_potentials.second_order_taylor_shifted_spatial_derivatives_match_finite_difference`
+  misses its finite-difference tolerance at `r = 5` by about `1.75e-4` beyond
+  the allowed error; and
+- `exact_sphere_sweep.pruning_keeps_one_of_a_pair_of_equals_and_the_order_of_the_rest`
+  retains three circles where the test expects two.
+
+The relevant Morse-bearing tests and all focused MBX/new-control tests pass.
+These three failures should be investigated separately instead of being hidden
+by changing tolerances or expectations during the MBX synchronization.
 
 The accepted-probability formulas for CBMC insertion/deletion, reinsertion,
 and Widom were also checked algebraically. Their MBX correction is evaluated
@@ -262,15 +315,45 @@ validation or implementations for Morse in interpolation/OpenCL routes.
 
 ## Restart compatibility
 
-`System`, `RunningEnergy`, `EnergyStatus`, and MC timing archive versions are
-bumped where their layout changed. Current upstream version-1 objects can be
-read with MBX state defaulted off. Old RASPA3.0.21-MBX restart files are not a
-safe interchange format: that fork reused archive version 1 for a different
-layout and its `RunningEnergy` writer and reader were themselves inconsistent.
-Start a fresh run for the updated executable rather than resuming an old MBX
-binary checkpoint.
+`System`, `RunningEnergy`, `EnergyStatus`, MC timing, and Monte Carlo driver
+archive versions are bumped where their layouts changed. Monte Carlo archive
+version 2 stores `WriteRestartEvery`; version-1 checkpoints retain the input or
+default 5000-cycle value when read. Current upstream version-1 `System` objects
+can be read with MBX state defaulted off. Old RASPA3.0.21-MBX restart files are
+not a safe interchange format: that fork reused archive version 1 for a
+different layout and its `RunningEnergy` writer and reader were themselves
+inconsistent. Start a fresh run for the updated executable rather than
+resuming an old MBX binary checkpoint.
 
 ## Long-term branch and update plan
+
+### One canonical repository
+
+Use `/home/carbon/calculation/YuC/RASPA3-MBX` as the sole active checkout. It
+contains the original MBX/Morse history plus the current upstream history, and
+the old `/home/carbon/software/MBX_latest/RASPA3.0.21-MBX` checkout has no
+tracked working-tree changes that need to be merged in place. Updating the old
+folder would retain its obsolete multi-gigabyte build tree and would make the
+repository ancestry harder to audit.
+
+The regression matrix is complete and the tested integration branch is now
+named local `main`. It has deliberately not been pushed. The remaining safe
+one-time promotion sequence is:
+
+1. Create a Git bundle of the old repository and preserve any deliberately
+   untracked research files before removing anything.
+2. Review the remote diff, then push local `main` to the Chung Research Group
+   fork and make it the default branch. The old `E_print` and `development` tips
+   may remain as archival remote branches until the first tagged release.
+3. Only after cloning the promoted remote into a temporary directory and
+   rerunning a smoke test should the old checkout be archived or deleted.
+
+No source merge back into the old folder is needed. Future updates happen in
+this one checkout by fetching and merging `upstream/main`; build directories
+are disposable artifacts, not repository versions. Remote pushes, default
+branch changes, and removal of the old checkout remain explicit user actions.
+
+### Upstream synchronization workflow
 
 Keep the fork as a thin set of reviewable layers instead of one long-lived
 mixed feature branch:

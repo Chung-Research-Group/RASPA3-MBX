@@ -33,6 +33,7 @@ ThermodynamicIntegration::ThermodynamicIntegration(InputReader& reader) noexcept
       numberOfInitializationCycles(reader.numberOfInitializationCycles),
       numberOfEquilibrationCycles(reader.numberOfEquilibrationCycles),
       printEvery(reader.printEvery),
+      writeRestartEvery(reader.writeRestartEvery),
       optimizeMCMovesEvery(reader.optimizeMCMovesEvery),
       systems(std::move(reader.systems)),
       outputJsons(systems.size()),
@@ -216,7 +217,7 @@ void ThermodynamicIntegration::initialize()
       }
     }
 
-    if (currentCycle % writeRestartEvery == 0uz)
+    if (writeRestartEvery != 0uz && (currentCycle + 1uz) % writeRestartEvery == 0uz)
     {
       for (std::size_t system_id{0}; System& system : systems)
       {
@@ -273,7 +274,7 @@ void ThermodynamicIntegration::equilibrate()
       }
     }
 
-    if (currentCycle % writeRestartEvery == 0uz)
+    if (writeRestartEvery != 0uz && (currentCycle + 1uz) % writeRestartEvery == 0uz)
     {
       for (std::size_t system_id{0}; System& system : systems)
       {
@@ -359,7 +360,7 @@ void ThermodynamicIntegration::production()
       }
     }
 
-    if (currentCycle % writeRestartEvery == 0uz)
+    if (writeRestartEvery != 0uz && (currentCycle + 1uz) % writeRestartEvery == 0uz)
     {
       for (std::size_t system_id{0}; System& system : systems)
       {

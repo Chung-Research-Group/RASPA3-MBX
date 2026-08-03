@@ -3,13 +3,18 @@
 
 ## Writing restart-files
 
-Restart-files are automatically written (and updated every 5000 cycles). Consider for example the following Gibbs-ensemble simulation
+Regular Monte Carlo and thermodynamic-integration coordinate restart files are
+automatically written and, by default, updated every 5000 completed cycles in
+each stage. Set the top-level `"WriteRestartEvery"` value to choose another
+interval; `0` disables periodic writes, while the drivers' existing initial and
+final snapshots are still written. Consider the following Gibbs-ensemble simulation:
 ```json
 {
   "SimulationType" : "MonteCarlo",
   "NumberOfProductionCycles" : 25000,
   "NumberOfInitializationCycles" : 10000,
   "PrintEvery" : 1000,
+  "WriteRestartEvery" : 2000,
 
   "Systems" :
   [
@@ -54,14 +59,11 @@ output/restart_240_0.s1.json
 
 ## Using restart-files
 
-To use these restart-files to start from the saved (and hopefully equilibrated) postions, 
-first copy these files to the working directory (the location of the `simulation.json`).
-```
-cp output\restart_240_0.s0.json .
-cp output\restart_240_0.s1.json .
-```
-This is because the restart-files in the output-directory are overwritten every run.
-Next change the `simulation.json` to use the restart-files
+To start from the saved (and hopefully equilibrated) positions, point each
+system's `"RestartFileName"` at the corresponding file. Relative paths are
+resolved from the directory containing `simulation.json`, so the files do not
+need to be copied out of `output/`. Because a new run can overwrite those
+paths, copy them to a separately named snapshot if they must be preserved.
 
 The contents of the restart files look like
 ```
@@ -123,7 +125,7 @@ positions and energies.
       "ExternalTemperature" : 240.0,
       "ChargeMethod" : "Ewald",
       "GibbsVolumeMoveProbability" : 0.01,
-      "RestartFileName" : "restart_240_0.s0"
+      "RestartFileName" : "output/restart_240_0.s0.json"
     },
     {
       "Type" : "Box",
@@ -131,7 +133,7 @@ positions and energies.
       "ExternalTemperature" : 240.0,
       "ChargeMethod" : "Ewald",
       "GibbsVolumeMoveProbability" : 0.01,
-      "RestartFileName" : "restart_240_0.s1"
+      "RestartFileName" : "output/restart_240_0.s1.json"
     }
   ],
 
@@ -154,8 +156,63 @@ This is the main point of using restart-file. But if you use the files to run at
 a different temperature) you would still need a significant amount of initialization cycles.
 
 The number of `CreateNumberOfMolecules` should be put to zero, since the molecules are read from the restart-files.
-However, you still have the freedom to create additional molecules on top of what was read from the restart-files.
-This might be usefull to construct very high density systems.
+For a normal simulation, additional molecules may still be created on top of
+the loaded coordinates. This can be useful for constructing high-density
+systems. For a one-shot energy comparison, additional random molecules would
+change the snapshot and are therefore rejected, as described below.
+
+----------------------------------------------------------------------------------
+
+## Evaluating the energy of a coordinate snapshot
+
+Use `"SimulationType" : "EnergyEvaluation"` to load a coordinate restart,
+evaluate it once, and exit without changing atomic positions or attempting a
+Monte Carlo move:
+
+```json
+{
+  "SimulationType" : "EnergyEvaluation",
+  "ForceField" : ".",
+  "Systems" : [
+    {
+      "Type" : "Framework",
+      "Name" : "Mg_MOF74_pacman",
+      "NumberOfUnitCells" : [2, 2, 5],
+      "ExternalTemperature" : 298.0,
+      "ChargeMethod" : "Ewald",
+      "RestartFileName" : "snapshots/co2_state.json",
+      "UseMBX" : true,
+      "MBXSettingsFile" : "mbx.json"
+    }
+  ],
+  "Components" : [
+    {
+      "Name" : "co2",
+      "MoleculeDefinition" : ".",
+      "CreateNumberOfMolecules" : 0
+    }
+  ]
+}
+```
+
+The human-readable decomposition is printed to standard output. The stable,
+machine-readable result is written to `output/energy_evaluation.json` and
+contains the simulation box, molecule counts, the full RASPA energy
+decomposition in kelvin, and—when MBX is enabled—the seven raw MBX terms in
+kcal/mol. The MBX 1B term is reported but explicitly excluded from the retained
+RASPA3-MBX total.
+
+This mode reads the lightweight JSON coordinate format, not a binary driver
+checkpoint. The JSON format stores whole guest-molecule atom positions and, for
+a `"Box"` system, its simulation box. A `"Framework"` system obtains its cell
+from the matching CIF/unit-cell definition; a framework restart that also
+declares `"SimulationBox"` is rejected because no matching framework coordinates
+are stored. Component keys must match the configured names one-to-one, including
+empty arrays for zero-molecule components. The format does not store velocities,
+random-number state, statistics, fractional-molecule state, or flexible-framework
+coordinates, so CFCMC/fixed-lambda configurations are rejected. Use a binary
+restart for exact trajectory continuation, and use `EnergyEvaluation` for a
+fixed-coordinate potential-energy comparison.
 
 ----------------------------------------------------------------------------------
 
@@ -170,18 +227,20 @@ During the simulation a file named `restart_data.bin` is written out.
 The option to continue from this file is
 ```json
 {
-  "RestartFromBinaryFile" : "true"
+  "RestartFromBinaryFile" : true
 }
 ```
 Note not everything can be recovered, like written pdb-movies.
 The setting
 ```json
 {
-  "WriteBinaryRestartEvery" : "5000"
+  "WriteBinaryRestartEvery" : 5000
 }
 ```
 controls how often the file is written out. The default is every 5000 cycles.
 
-NOTE: the format of the binary-restart files will keep changing until version RASPA 3.1. 
-That means that you probably cannot use restart-files from a different version.
-After the release of RASPA 3.1 we will start the process of making them backwards-compatible.
+Binary restart files are version- and layout-sensitive. Use the same RASPA3-MBX
+build (ideally the same commit) to resume them; compatibility with another
+RASPA release or fork is not guaranteed. Coordinate JSON is more portable for
+whole-molecule positions, but it does not preserve the complete simulation
+state described above.

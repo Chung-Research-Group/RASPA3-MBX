@@ -107,12 +107,12 @@ export struct MonteCarloTransitionMatrix
   /**
    * \brief Creates output files for writing simulation data.
    */
-  void createOutputFiles();
+  void createOutputFiles(bool append = false);
 
   /**
    * \brief Writes the periodic binary restart file and services a pending shutdown signal.
    */
-  void checkpointIfDue(std::size_t currentCycle);
+  void checkpointIfDue(std::size_t cycle);
 
 
   /**

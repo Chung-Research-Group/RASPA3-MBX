@@ -128,14 +128,13 @@ InputReader::InputReader(const std::string inputFile)
   std::error_code pathError;
   if (!std::filesystem::is_regular_file(inputFile, pathError))
   {
-    throw std::runtime_error(
-        std::format("[Input reader]: File '{}' not found or not a regular file{}\n", inputFile,
-                    pathError ? std::format(" ({})", pathError.message()) : std::string{}));
+    throw std::runtime_error(std::format("[Input reader]: File '{}' not found or not a regular file{}\n", inputFile,
+                                         pathError ? std::format(" ({})", pathError.message()) : std::string{}));
   }
 
   const std::filesystem::path canonicalInput = std::filesystem::canonical(inputFile, pathError);
-  inputDirectory = pathError ? std::filesystem::absolute(inputFile).lexically_normal().parent_path()
-                             : canonicalInput.parent_path();
+  inputDirectory =
+      pathError ? std::filesystem::absolute(inputFile).lexically_normal().parent_path() : canonicalInput.parent_path();
 
   std::ifstream input(inputFile);
   if (!input)
@@ -211,6 +210,11 @@ InputReader::InputReader(const std::string inputFile)
       simulationType = SimulationType::ParallelTMMC;
       parseMolecularSimulations(parsed_data);
     }
+    else if (caseInSensStringCompare(simulationTypeString, "EnergyEvaluation"))
+    {
+      simulationType = SimulationType::EnergyEvaluation;
+      parseMolecularSimulations(parsed_data);
+    }
     else
     {
       throw std::runtime_error(
@@ -235,8 +239,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     if (!parsed_data["NumberOfBlocks"].is_number_unsigned())
       throw std::runtime_error("[Input reader]: NumberOfBlocks must be an integer of at least three");
     jsonNumberOfBlocks = parsed_data["NumberOfBlocks"].get<std::size_t>();
-    if (jsonNumberOfBlocks < 3)
-      throw std::runtime_error("[Input reader]: NumberOfBlocks must be at least three");
+    if (jsonNumberOfBlocks < 3) throw std::runtime_error("[Input reader]: NumberOfBlocks must be at least three");
   }
   numberOfBlocks = jsonNumberOfBlocks;
 
@@ -325,13 +328,21 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     tmmcUpdateEvery = std::max(1uz, parsed_data["TMMCUpdateEvery"].get<std::size_t>());
   }
 
-  if (parsed_data.contains("RestartFromBinaryFile") && parsed_data["RestartFromBinaryFile"].is_boolean())
+  if (parsed_data.contains("RestartFromBinaryFile"))
   {
+    if (!parsed_data["RestartFromBinaryFile"].is_boolean())
+    {
+      throw std::runtime_error("[Input reader]: RestartFromBinaryFile must be a boolean");
+    }
     restartFromBinary = parsed_data["RestartFromBinaryFile"].get<bool>();
   }
 
-  if (parsed_data.contains("BinaryRestartFileName") && parsed_data["BinaryRestartFileName"].is_string())
+  if (parsed_data.contains("BinaryRestartFileName"))
   {
+    if (!parsed_data["BinaryRestartFileName"].is_string())
+    {
+      throw std::runtime_error("[Input reader]: BinaryRestartFileName must be a string");
+    }
     restartFromBinaryFileName = parsed_data["BinaryRestartFileName"].get<std::string>();
   }
 
@@ -368,6 +379,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     printEvery = parsed_data["PrintEvery"].get<std::size_t>();
   }
   minimizationOptions.printEvery = printEvery;
+
+  if (parsed_data.contains("WriteRestartEvery"))
+  {
+    if (!parsed_data["WriteRestartEvery"].is_number_unsigned())
+    {
+      throw std::runtime_error("[Input reader]: WriteRestartEvery must be a non-negative unsigned integer");
+    }
+    writeRestartEvery = parsed_data["WriteRestartEvery"].get<std::size_t>();
+  }
 
   if (parsed_data.contains("MaximumNumberOfMinimizationSteps"))
   {
@@ -450,8 +470,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   parseMinimizationNumber("NormalModeMovieAmplitude", minimizationOptions.normalModeMovieAmplitude);
 
   if (minimizationOptions.normalModeMovies &&
-      (minimizationOptions.normalModeMoviePeriods == 0 ||
-       minimizationOptions.normalModeMoviePointsPerPeriod == 0 || minimizationOptions.normalModeMovieAmplitude <= 0.0))
+      (minimizationOptions.normalModeMoviePeriods == 0 || minimizationOptions.normalModeMoviePointsPerPeriod == 0 ||
+       minimizationOptions.normalModeMovieAmplitude <= 0.0))
   {
     throw std::runtime_error(
         "[Input reader]: NormalModeMoviePeriods and NormalModeMoviePointsPerPeriod must be positive and "
@@ -1089,8 +1109,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       if (item.contains("GroupComponents") && item["GroupComponents"].is_array())
       {
-        std::vector<std::size_t> group_component_ids =
-            item["GroupComponents"].get<std::vector<std::size_t>>();
+        std::vector<std::size_t> group_component_ids = item["GroupComponents"].get<std::vector<std::size_t>>();
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           jsonComponents[i][componentId].groupComponentIds = group_component_ids;
@@ -1264,13 +1283,18 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
 
         // fixed-lambda thermodynamic integration is incompatible with lambda-changing CFCMC moves
-        const std::array<Move::Types, 12> lambdaChangingMoves{
-            Move::Types::SwapCFCMC,         Move::Types::SwapCBCFCMC,
-            Move::Types::WidomCFCMC,        Move::Types::WidomCBCFCMC,
-            Move::Types::GibbsSwapCFCMC,    Move::Types::GibbsSwapCBCFCMC,
-            Move::Types::GibbsConventionalCFCMC, Move::Types::GibbsConventionalCBCFCMC,
-            Move::Types::PairSwapCFCMC,     Move::Types::PairSwapCBCFCMC,
-            Move::Types::GroupSwapCFCMC,    Move::Types::GroupSwapCBCFCMC};
+        const std::array<Move::Types, 12> lambdaChangingMoves{Move::Types::SwapCFCMC,
+                                                              Move::Types::SwapCBCFCMC,
+                                                              Move::Types::WidomCFCMC,
+                                                              Move::Types::WidomCBCFCMC,
+                                                              Move::Types::GibbsSwapCFCMC,
+                                                              Move::Types::GibbsSwapCBCFCMC,
+                                                              Move::Types::GibbsConventionalCFCMC,
+                                                              Move::Types::GibbsConventionalCBCFCMC,
+                                                              Move::Types::PairSwapCFCMC,
+                                                              Move::Types::PairSwapCBCFCMC,
+                                                              Move::Types::GroupSwapCFCMC,
+                                                              Move::Types::GroupSwapCBCFCMC};
         for (std::size_t i = 0; i != jsonNumberOfSystems; ++i)
         {
           for (const Move::Types move : lambdaChangingMoves)
@@ -1449,6 +1473,52 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       componentId++;
+    }
+  }
+
+  // Coordinate restart JSON stores whole-molecule positions only.  Reject every
+  // component option that would make System allocate an additional fractional
+  // molecule before EnergyEvaluation gets a chance to validate the snapshot.
+  if (simulationType == SimulationType::EnergyEvaluation)
+  {
+    const std::array fractionalComponentMoves{
+        std::pair{Move::Types::SwapCFCMC, "CFCMC_SwapProbability"},
+        std::pair{Move::Types::SwapCBCFCMC, "CFCMC_CBMC_SwapProbability"},
+        std::pair{Move::Types::WidomCFCMC, "CFCMC_WidomProbability"},
+        std::pair{Move::Types::WidomCBCFCMC, "CFCMC_CBMC_WidomProbability"},
+        std::pair{Move::Types::GibbsSwapCFCMC, "GibbsSwapCFCMCProbability"},
+        std::pair{Move::Types::GibbsSwapCBCFCMC, "GibbsSwapCBCFCMCProbability"},
+        std::pair{Move::Types::GibbsConventionalCFCMC, "GibbsConventionalCFCMCProbability"},
+        std::pair{Move::Types::GibbsConventionalCBCFCMC, "GibbsConventionalCBCFCMCProbability"},
+        std::pair{Move::Types::PairSwapCFCMC, "CFCMC_PairSwapProbability"},
+        std::pair{Move::Types::PairSwapCBCFCMC, "CFCMC_CBMC_PairSwapProbability"},
+        std::pair{Move::Types::GroupSwapCFCMC, "CFCMC_GroupSwapProbability"},
+        std::pair{Move::Types::GroupSwapCBCFCMC, "CFCMC_CBMC_GroupSwapProbability"}};
+
+    for (std::size_t systemId = 0; systemId < jsonComponents.size(); ++systemId)
+    {
+      for (std::size_t componentId = 0; componentId < jsonComponents[systemId].size(); ++componentId)
+      {
+        const Component& component = jsonComponents[systemId][componentId];
+        if (component.fixedLambdaBin.has_value())
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: system {} component '{}' EnergyEvaluation cannot use 'LambdaBinIndex'; "
+                          "coordinate restart JSON does not store fractional-molecule state",
+                          systemId, component.name));
+        }
+
+        for (const auto& [move, keyword] : fractionalComponentMoves)
+        {
+          if (component.mc_moves_probabilities.getProbability(move) > 0.0)
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: system {} component '{}' EnergyEvaluation cannot use '{}'; "
+                            "coordinate restart JSON does not store fractional-molecule state",
+                            systemId, component.name, keyword));
+          }
+        }
+      }
     }
   }
 
@@ -1643,8 +1713,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                                               value["ForceBiasTranslationAllProbability"].get<double>());
       }
 
-      if (value.contains("RotationSmartMCAllProbability") &&
-          value["RotationSmartMCAllProbability"].is_number_float())
+      if (value.contains("RotationSmartMCAllProbability") && value["RotationSmartMCAllProbability"].is_number_float())
       {
         mc_moves_probabilities.setProbability(Move::Types::RotationSmartMCAll,
                                               value["RotationSmartMCAllProbability"].get<double>());
@@ -1824,6 +1893,25 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
       }
 
+      if (simulationType == SimulationType::EnergyEvaluation)
+      {
+        const std::array fractionalReactionMoves{
+            std::pair{Move::Types::ReactionConventionalCFCMC, "ReactionConventionalCFCMCProbability"},
+            std::pair{Move::Types::ReactionConventionalCBCFCMC, "ReactionConventionalCBCFCMCProbability"},
+            std::pair{Move::Types::ReactionCFCMC, "ReactionCFCMCProbability"},
+            std::pair{Move::Types::ReactionCBCFCMC, "ReactionCBCFCMCProbability"}};
+        for (const auto& [move, keyword] : fractionalReactionMoves)
+        {
+          if (mc_moves_probabilities.getProbability(move) > 0.0)
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: system {} EnergyEvaluation cannot use '{}'; coordinate restart JSON "
+                            "does not store fractional-reaction state",
+                            systemId, keyword));
+          }
+        }
+      }
+
       if (!value.contains("Type"))
       {
         throw std::runtime_error(
@@ -1843,12 +1931,26 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         }
         useMBXCalculator = value["UseMBX"].get<bool>();
       }
-      if (value.contains("WriteEnergyLog"))
+      if (value.contains("PrintEnergyTerms") && !value["PrintEnergyTerms"].is_boolean())
       {
-        if (!value["WriteEnergyLog"].is_boolean())
-        {
-          throw std::runtime_error("[Input reader]: 'WriteEnergyLog' must be a boolean");
-        }
+        throw std::runtime_error("[Input reader]: 'PrintEnergyTerms' must be a boolean");
+      }
+      if (value.contains("WriteEnergyLog") && !value["WriteEnergyLog"].is_boolean())
+      {
+        throw std::runtime_error("[Input reader]: 'WriteEnergyLog' must be a boolean");
+      }
+      if (value.contains("PrintEnergyTerms") && value.contains("WriteEnergyLog") &&
+          value["PrintEnergyTerms"].get<bool>() != value["WriteEnergyLog"].get<bool>())
+      {
+        throw std::runtime_error(
+            "[Input reader]: 'PrintEnergyTerms' and legacy alias 'WriteEnergyLog' must not disagree");
+      }
+      if (value.contains("PrintEnergyTerms"))
+      {
+        writeEnergyLog = value["PrintEnergyTerms"].get<bool>();
+      }
+      else if (value.contains("WriteEnergyLog"))
+      {
         writeEnergyLog = value["WriteEnergyLog"].get<bool>();
       }
       if (value.contains("MBXSettingsFile") && !value["MBXSettingsFile"].is_string())
@@ -1866,8 +1968,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 #else
         if (!value.contains("MBXSettingsFile") || !value["MBXSettingsFile"].is_string())
         {
-          throw std::runtime_error(
-              "[Input reader]: 'UseMBX: true' requires 'MBXSettingsFile' with a string path");
+          throw std::runtime_error("[Input reader]: 'UseMBX: true' requires 'MBXSettingsFile' with a string path");
         }
 
         std::filesystem::path settingsPath(value["MBXSettingsFile"].get<std::string>());
@@ -1880,10 +1981,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         std::error_code settingsError;
         if (!std::filesystem::is_regular_file(settingsPath, settingsError))
         {
-          throw std::runtime_error(
-              std::format("[Input reader]: MBX settings file '{}' is not a readable regular file{}",
-                          settingsPath.string(),
-                          settingsError ? std::format(" ({})", settingsError.message()) : std::string{}));
+          throw std::runtime_error(std::format(
+              "[Input reader]: MBX settings file '{}' is not a readable regular file{}", settingsPath.string(),
+              settingsError ? std::format(" ({})", settingsError.message()) : std::string{}));
         }
         std::ifstream settings(settingsPath, std::ios::binary);
         if (!settings || settings.peek() == std::ifstream::traits_type::eof())
@@ -2039,21 +2139,38 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       }
 
       std::optional<SimulationBox> restart_simulation_box{};
-      if (value.contains("RestartFileName") && value["RestartFileName"].is_string())
+      if (value.contains("RestartFileName") && !value["RestartFileName"].is_string())
       {
-        std::string restartFileName = value["RestartFileName"].get<std::string>();
+        throw std::runtime_error(std::format("[Input reader]: system {} RestartFileName must be a string", systemId));
+      }
+      if (value.contains("RestartFileName"))
+      {
+        std::filesystem::path restartFileName = value["RestartFileName"].get<std::string>();
+        if (restartFileName.is_relative()) restartFileName = inputDirectory / restartFileName;
+        restartFileName = restartFileName.lexically_normal();
 
-        if (!std::filesystem::exists(restartFileName))
+        std::error_code restartError;
+        if (!std::filesystem::is_regular_file(restartFileName, restartError))
         {
-          restartFileName += ".json";
+          std::filesystem::path jsonRestartFileName = restartFileName;
+          jsonRestartFileName += ".json";
+          restartError.clear();
 
-          if (!std::filesystem::exists(restartFileName))
+          if (!std::filesystem::is_regular_file(jsonRestartFileName, restartError))
           {
-            throw std::runtime_error(std::format("[Input reader]: File '{}' not found\n", restartFileName));
+            throw std::runtime_error(std::format(
+                "[Input reader]: restart file '{}' not found or not a regular file{}\n", jsonRestartFileName.string(),
+                restartError ? std::format(" ({})", restartError.message()) : std::string{}));
           }
+          restartFileName = std::move(jsonRestartFileName);
         }
 
         std::ifstream input_restart_file(restartFileName);
+        if (!input_restart_file)
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: unable to open restart file '{}'", restartFileName.string()));
+        }
 
         nlohmann::basic_json<nlohmann::raspa_map> restart_data{};
 
@@ -2061,9 +2178,52 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         {
           restart_data = nlohmann::json::parse(input_restart_file);
         }
-        catch (nlohmann::json::parse_error& ex)
+        catch (const nlohmann::json::parse_error& ex)
         {
-          std::cerr << "parse error at byte " << ex.byte << std::endl;
+          throw std::runtime_error(std::format("[Input reader]: invalid JSON in restart file '{}' at byte {}: {}",
+                                               restartFileName.string(), ex.byte, ex.what()));
+        }
+        if (!restart_data.is_object())
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: restart file '{}' must contain a JSON object", restartFileName.string()));
+        }
+
+        if (simulationType == SimulationType::EnergyEvaluation)
+        {
+          std::set<std::string, InsensitiveCompare> componentNames;
+          for (const Component& component : jsonComponents[systemId])
+          {
+            if (!componentNames.insert(component.name).second)
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: system {} EnergyEvaluation cannot unambiguously read restart "
+                              "coordinates because component name '{}' occurs more than once",
+                              systemId, component.name));
+            }
+          }
+
+          for (const auto& [restartKey, unused] : restart_data.items())
+          {
+            static_cast<void>(unused);
+            if (!caseInSensStringCompare(restartKey, "SimulationBox") && !componentNames.contains(restartKey))
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: system {} restart file '{}' contains unknown component key '{}'; "
+                              "expected one of the configured component names or 'SimulationBox'",
+                              systemId, restartFileName.string(), restartKey));
+            }
+          }
+          for (const std::string& componentName : componentNames)
+          {
+            if (!restart_data.contains(componentName))
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: system {} restart file '{}' has no coordinate array for component "
+                              "'{}'; use an empty array when that component has zero molecules",
+                              systemId, restartFileName.string(), componentName));
+            }
+          }
         }
 
         for (std::size_t i = 0; i < jsonComponents[systemId].size(); ++i)
@@ -2072,8 +2232,33 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           if (restart_data.contains(component_name))
           {
             std::vector<double3> restart_positions = restart_data[component_name].get<std::vector<double3>>();
+            const std::size_t atomsPerMolecule = jsonComponents[systemId][i].atoms.size();
+            if (atomsPerMolecule == 0uz || restart_positions.size() % atomsPerMolecule != 0uz)
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: restart file '{}' contains {} coordinates for component '{}' "
+                              "with {} atoms per molecule",
+                              restartFileName.string(), restart_positions.size(), component_name, atomsPerMolecule));
+            }
+            if (std::ranges::any_of(
+                    restart_positions, [](const double3& position)
+                    { return !std::isfinite(position.x) || !std::isfinite(position.y) || !std::isfinite(position.z); }))
+            {
+              throw std::runtime_error(
+                  std::format("[Input reader]: restart file '{}' contains a non-finite coordinate for component '{}'",
+                              restartFileName.string(), component_name));
+            }
             jsonRestartFilePositions[systemId][i] = restart_positions;
           }
+        }
+
+        if (simulationType == SimulationType::EnergyEvaluation &&
+            std::ranges::any_of(jsonCreateNumberOfMolecules[systemId], [](std::size_t count) { return count != 0uz; }))
+        {
+          throw std::runtime_error(
+              std::format("[Input reader]: system {} EnergyEvaluation with RestartFileName requires every "
+                          "CreateNumberOfMolecules value to be zero; generated molecules would alter the snapshot",
+                          systemId));
         }
 
         if (restart_data.contains("SimulationBox"))
@@ -2159,6 +2344,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
           std::optional<Framework> jsonFrameworkComponents{framework};
 
+          if (simulationType == SimulationType::EnergyEvaluation && restart_simulation_box.has_value())
+          {
+            throw std::runtime_error(
+                std::format("[Input reader]: system {} EnergyEvaluation cannot apply 'SimulationBox' from a "
+                            "coordinate restart to a Framework system because the JSON snapshot does not store "
+                            "framework coordinates; omit that field and use the matching CIF/unit-cell definition",
+                            systemId));
+          }
+
           // create system
           systems[systemId] =
               System(forceFields[systemId].value(), std::nullopt, hasExternalField, T, P, heliumVoidFraction,
@@ -2204,10 +2398,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           simulationBox = restart_simulation_box.value();
         }
 
-        systems[systemId] = System(forceFields[systemId].value(), simulationBox, hasExternalField, T, P, 1.0, {},
-                                   jsonComponents[systemId], jsonRestartFilePositions[systemId],
-                                   jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities,
-                                   useMBXCalculator, mbxFilePath, writeEnergyLog);
+        systems[systemId] =
+            System(forceFields[systemId].value(), simulationBox, hasExternalField, T, P, 1.0, {},
+                   jsonComponents[systemId], jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId],
+                   jsonNumberOfBlocks, mc_moves_probabilities, useMBXCalculator, mbxFilePath, writeEnergyLog);
       }
       else
       {
@@ -2751,9 +2945,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         {
           if (!value.contains("ExternalPressure") || !value["ExternalPressure"].is_number())
             throw std::runtime_error("[Input reader]: MuVT/MuPT/MuPTPR requires a numeric ExternalPressure");
-          const bool hasSwapComponent = std::ranges::any_of(systems[systemId].components, [](const Component& component) {
-            return component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0;
-          });
+          const bool hasSwapComponent = std::ranges::any_of(
+              systems[systemId].components, [](const Component& component)
+              { return component.mc_moves_probabilities.getProbability(Move::Types::SwapCBMC) > 0.0; });
           if (!hasSwapComponent)
             throw std::runtime_error(
                 "[Input reader]: MuVT/MuPT/MuPTPR requires SwapProbability > 0 for at least one component");
@@ -2765,7 +2959,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             throw std::runtime_error("[Input reader]: NPT/NPTPR/MuPT/MuPTPR requires a numeric ExternalPressure");
           if (value.contains("ExternalPressureX") || value.contains("ExternalPressureY") ||
               value.contains("ExternalPressureZ"))
-            throw std::runtime_error("[Input reader]: NPT/NPTPR/MuPT/MuPTPR supports hydrostatic ExternalPressure only");
+            throw std::runtime_error(
+                "[Input reader]: NPT/NPTPR/MuPT/MuPTPR supports hydrostatic ExternalPressure only");
           CellMinimizationType cellType = systems[systemId].cellMinimizationType;
           if (molecularDynamicsUsesIsotropicBarostat(ensemble.value())) cellType = CellMinimizationType::Isotropic;
           if (molecularDynamicsUsesFlexibleBarostat(ensemble.value()) && cellType == CellMinimizationType::Fixed)
@@ -2855,15 +3050,16 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     const System& system = systems[systemId];
     if (!system.useMBX) continue;
 
-    if (simulationType != SimulationType::MonteCarlo)
+    if (simulationType != SimulationType::MonteCarlo && simulationType != SimulationType::EnergyEvaluation)
     {
       throw std::runtime_error(
-          std::format("[Input reader, system {}]: UseMBX currently supports only SimulationType 'MonteCarlo'; "
+          std::format("[Input reader, system {}]: UseMBX currently supports only SimulationType 'MonteCarlo' "
+                      "or 'EnergyEvaluation'; "
                       "transition-matrix, molecular-dynamics, minimization, thermodynamic-integration, and "
                       "parallel-replica drivers have not been forward-ported to MBX",
                       systemId));
     }
-    system.validateMBXMonteCarloConfiguration();
+    if (simulationType == SimulationType::MonteCarlo) system.validateMBXMonteCarloConfiguration();
   }
 
   for (std::size_t i = 0uz; i < systems.size(); ++i)
@@ -3222,6 +3418,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "ForceField",
     "NumberOfLambdaBins",
     "RestartFromBinaryFile",
+    "BinaryRestartFileName",
     "RandomSeed",
     "NumberOfProductionCycles",
     "NumberOfBlocks",
@@ -3229,6 +3426,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "NumberOfInitializationCycles",
     "NumberOfEquilibrationCycles",
     "PrintEvery",
+    "WriteRestartEvery",
     "MaximumNumberOfMinimizationSteps",
     "MaximumStepLength",
     "MaximumCellStepLength",
@@ -3308,6 +3506,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "ExternalField",
     "UseMBX",
     "MBXSettingsFile",
+    "PrintEnergyTerms",
     "WriteEnergyLog",
     "ComputeEnergyHistogram",
     "SampleEnergyHistogramEvery",

@@ -77,7 +77,7 @@ export struct MonteCarlo
   MonteCarlo(const SimulationSchedule &schedule, const std::vector<System> &systems,
              std::optional<std::size_t> randomSeed, std::size_t numberOfBlocks, bool outputToFiles);
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
   bool outputToFiles{true};
   RandomNumber random;  ///< Random number generator.
@@ -89,7 +89,7 @@ export struct MonteCarlo
   std::size_t numberOfSteps;                    ///< Total number of steps performed.
 
   std::size_t printEvery;               ///< Frequency of printing status reports.
-  std::size_t writeRestartEvery;        ///< Frequency of writing restart files.
+  std::size_t writeRestartEvery{5000};  ///< Frequency of writing restart files (0 disables periodic writes).
   std::size_t writeBinaryRestartEvery;  ///< Frequency of writing binary restart files.
   std::size_t rescaleWangLandauEvery;   ///< Frequency of rescaling Wang-Landau factors.
   std::size_t optimizeMCMovesEvery;     ///< Frequency of optimizing MC moves.
@@ -122,7 +122,7 @@ export struct MonteCarlo
   /**
    * \brief Writes the periodic binary restart file and services a pending shutdown signal.
    */
-  void checkpointIfDue(std::size_t currentCycle);
+  void checkpointIfDue(std::size_t cycle);
 
 
   /**

@@ -15,6 +15,7 @@ import parallel_tempering;
 import hyper_parallel_tempering;
 import reweighted_histogram;
 import parallel_tmmc;
+import energy_evaluation;
 //import breakthrough;
 //import breakthrough_simulation;
 //import mixture_prediction_simulation;
@@ -93,7 +94,7 @@ int main(int argc, char* argv[])
         {
           readBinaryRestartFile(mc, inputReader.restartFromBinaryFileName);
           // the resumed stage jumps past the header block, so the output streams must exist
-          mc.createOutputFiles();
+          mc.createOutputFiles(true);
         }
         mc.run();
         break;
@@ -176,6 +177,12 @@ int main(int argc, char* argv[])
           readBinaryRestartFile(parallel_tmmc, inputReader.restartFromBinaryFileName);
         }
         parallel_tmmc.run();
+        break;
+      }
+      case InputReader::SimulationType::EnergyEvaluation:
+      {
+        EnergyEvaluation energyEvaluation(inputReader);
+        energyEvaluation.run();
         break;
       }
       default:

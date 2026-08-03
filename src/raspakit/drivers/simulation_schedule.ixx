@@ -22,4 +22,6 @@ export struct SimulationSchedule
   std::size_t writeBinaryRestartEvery{5000};  ///< Frequency of writing binary restart files.
   std::size_t rescaleWangLandauEvery{5000};   ///< Frequency of rescaling Wang-Landau factors.
   std::size_t optimizeMCMovesEvery{5000};     ///< Frequency of optimizing MC moves.
+  // Kept last so existing positional aggregate initializers retain their meaning.
+  std::size_t writeRestartEvery{5000};  ///< Frequency of writing coordinate restart JSON files (0 disables).
 };

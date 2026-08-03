@@ -185,11 +185,34 @@ export struct System
   /// Validated path to the MBX JSON settings file. Empty when MBX is disabled.
   std::string mbxSettingsFilePath{};
   /// Emit one CSV row for each accepted move through writeAcceptedEnergyLog().
+  /// The canonical simulation.json key is PrintEnergyTerms; WriteEnergyLog is
+  /// retained as a backward-compatible input alias and archive field.
   bool writeEnergyLog{true};
   /// Permanent electrostatic energy of the bare framework in MBX units (kcal/mol).
   double elecPermFrameworkMBX{0.0};
-  /// Per-System lazy CSV-header state. This is deliberately not serialized.
-  mutable bool energyLogHeaderWritten{false};
+
+  /// Non-serialized accepted-energy output state. Copying a System deliberately
+  /// leaves the copy unbound so scratch/replica copies never share an open file;
+  /// moving a System transfers ownership of the stream.
+  struct EnergyTermsLogSink
+  {
+    std::unique_ptr<std::ofstream> stream{};
+    std::string filePath{};
+    bool headerWritten{false};
+
+    EnergyTermsLogSink() = default;
+    EnergyTermsLogSink(const EnergyTermsLogSink&) noexcept {}
+    EnergyTermsLogSink& operator=(const EnergyTermsLogSink&) noexcept
+    {
+      stream.reset();
+      filePath.clear();
+      headerWritten = false;
+      return *this;
+    }
+    EnergyTermsLogSink(EnergyTermsLogSink&&) noexcept = default;
+    EnergyTermsLogSink& operator=(EnergyTermsLogSink&&) noexcept = default;
+  };
+  mutable EnergyTermsLogSink energyTermsLogSink{};
 
   std::vector<std::vector<std::size_t>> numberOfPseudoAtoms;
   std::vector<std::size_t> totalNumberOfPseudoAtoms;
@@ -377,7 +400,9 @@ export struct System
    */
   void validateMBXMonteCarloConfiguration() const;
   void precomputeTotalGradients() noexcept;
-  RunningEnergy computeTotalEnergies();
+  /// Compute the absolute potential energy. With MBX, an optional seven-value span receives
+  /// [1B, 2B, 3B, 4B, dispersion, permanent electrostatics, induced electrostatics] in kcal/mol.
+  RunningEnergy computeTotalEnergies(std::span<double> mbxEnergyTerms = {});
   RunningEnergy computePolarizationEnergy() noexcept;
   RunningEnergy computeTotalGradients() noexcept;
   void computeTotalElectrostaticPotential() noexcept;
@@ -641,9 +666,11 @@ export struct System
    * [1B, 2B, 3B, 4B, dispersion, permanent electrostatics, induced electrostatics]
    * returned by the MBX interaction helpers and are supplied in kcal/mol.
    */
-  void writeAcceptedEnergyLog(std::string_view moveType, std::size_t componentId,
-                              const RunningEnergy& totalEnergy, std::span<const double> mbxTerms,
-                              double energyDifference, double acceptanceProbability) const;
+  void configureEnergyTermsLog(std::string filePath, bool append);
+  void flushEnergyTermsLog() const;
+  void writeAcceptedEnergyLog(std::string_view moveType, std::size_t componentId, const RunningEnergy& totalEnergy,
+                              std::span<const double> mbxTerms, double energyDifference,
+                              double acceptanceProbability) const;
 
   /// True when the force-based RDF is enabled and should sample on this cycle.
   [[nodiscard]] bool forceBasedRDFSampleDue(std::size_t currentCycle) const;

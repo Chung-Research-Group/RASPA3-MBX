@@ -130,7 +130,8 @@ void MonteCarloTransitionMatrix::run()
     default:
       // an unlisted stage (e.g. a newly added stage without resume dispatch) must fail loudly
       // instead of silently rerunning the simulation from the beginning
-      throw std::runtime_error("MonteCarloTransitionMatrix::run(): no resume dispatch for the checkpointed simulation stage");
+      throw std::runtime_error(
+          "MonteCarloTransitionMatrix::run(): no resume dispatch for the checkpointed simulation stage");
   }
 
 continuePreInitializationStage:
@@ -145,12 +146,11 @@ continueProductionStage:
   output();
 }
 
-void MonteCarloTransitionMatrix::createOutputFiles()
+void MonteCarloTransitionMatrix::createOutputFiles(bool append)
 {
-  // on a binary-restart resume append to the existing output files instead of truncating them,
-  // so each log continues where the interrupted run left off
-  const std::ios::openmode mode =
-      (simulationStage != SimulationStage::Uninitialized) ? std::ios::app : std::ios::out;
+  // Fresh TMMC runs create their files after setting the pre-initialization stage, so stage state alone
+  // cannot distinguish a new run from a resume. The caller must request append explicitly.
+  const std::ios::openmode mode = append ? std::ios::app : std::ios::out;
 
   std::filesystem::create_directories("output");
   for (std::size_t system_id{0}; System& system : systems)
@@ -160,15 +160,16 @@ void MonteCarloTransitionMatrix::createOutputFiles()
     streams.emplace_back(fileNameString, mode);
     fileNameString = std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
     outputJsonFileNames.emplace_back(fileNameString);
+    system.configureEnergyTermsLog(std::format("output/energy_terms.s{}.csv", system_id), append);
 
     ++system_id;
   }
 }
 
-void MonteCarloTransitionMatrix::checkpointIfDue(std::size_t currentCycle)
+void MonteCarloTransitionMatrix::checkpointIfDue(std::size_t cycle)
 {
   // periodic binary restart file
-  if (currentCycle % writeBinaryRestartEvery == 0uz)
+  if (cycle % writeBinaryRestartEvery == 0uz)
   {
     writeBinaryRestartFile(*this);
   }
@@ -179,6 +180,7 @@ void MonteCarloTransitionMatrix::checkpointIfDue(std::size_t currentCycle)
     writeBinaryRestartFile(*this);
     // std::exit skips stack unwinding: flush the text output streams explicitly
     for (std::ofstream& outputStream : streams) std::flush(outputStream);
+    for (const System& system : systems) system.flushEnergyTermsLog();
     GracefulShutdown::exitAfterCheckpoint();
   }
 }

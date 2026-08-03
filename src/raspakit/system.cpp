@@ -163,20 +163,20 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
     std::error_code error;
     if (!std::filesystem::is_regular_file(settingsPath, error))
     {
-      throw std::runtime_error(
-          std::format("[System]: MBX settings file '{}' is not a readable regular file{}", settingsPath.string(),
-                      error ? std::format(" ({})", error.message()) : std::string{}));
+      throw std::runtime_error(std::format("[System]: MBX settings file '{}' is not a readable regular file{}",
+                                           settingsPath.string(),
+                                           error ? std::format(" ({})", error.message()) : std::string{}));
     }
     std::ifstream settings(settingsPath, std::ios::binary);
     if (!settings || settings.peek() == std::ifstream::traits_type::eof())
     {
-      throw std::runtime_error(std::format("[System]: MBX settings file '{}' is unreadable or empty",
-                                           settingsPath.string()));
+      throw std::runtime_error(
+          std::format("[System]: MBX settings file '{}' is unreadable or empty", settingsPath.string()));
     }
 
     const std::filesystem::path canonicalPath = std::filesystem::canonical(settingsPath, error);
-    mbxSettingsFilePath = error ? std::filesystem::absolute(settingsPath).lexically_normal().string()
-                                : canonicalPath.string();
+    mbxSettingsFilePath =
+        error ? std::filesystem::absolute(settingsPath).lexically_normal().string() : canonicalPath.string();
 #endif
   }
   currentEnergyStatus.useMBX = useMBX;
@@ -606,9 +606,9 @@ void System::sampleProperties(std::size_t systemId, std::size_t currentBlock, st
     if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCFCMC))
     {
       const double pairLambda = component.lambdaPairSwap.lambdaValue();
-      component.lambdaPairSwap.sampleHistogram(
-          currentBlock, componentDensity, currentDUdlambda(pairLambda, component.lambdaPairSwap.dUdlambdaGroupId),
-          containsTheFractionalMolecule, w);
+      component.lambdaPairSwap.sampleHistogram(currentBlock, componentDensity,
+                                               currentDUdlambda(pairLambda, component.lambdaPairSwap.dUdlambdaGroupId),
+                                               containsTheFractionalMolecule, w);
     }
 
     if (componentDrivesPairSwapLambda(componentId, Move::Types::PairSwapCBCFCMC))
@@ -828,7 +828,7 @@ void System::precomputeTotalGradients() noexcept
       numberOfMoleculesPerComponent, framework, spanOfFrameworkDynamics());
 }
 
-RunningEnergy System::computeTotalEnergies()
+RunningEnergy System::computeTotalEnergies(std::span<double> mbxEnergyTerms)
 {
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
   std::span<Atom> moleculeAtomPositions = spanOfMoleculeAtoms();
@@ -852,13 +852,19 @@ RunningEnergy System::computeTotalEnergies()
                                              externalFieldEnergy, externalFieldInterpolationGrid);
 
     RunningEnergy result = Interactions::computeMBXEnergySystem(*this, components, simulationBox, framework,
-                                                                 frameworkAtomPositions, moleculeAtomPositions);
+                                                                frameworkAtomPositions, moleculeAtomPositions,
+                                                                mbxEnergyTerms);
     result.frameworkMoleculeVDW = frameworkMoleculeEnergy.frameworkMoleculeVDW;
     result.tail = frameworkMoleculeTailEnergy.tail;
     result.externalFieldVDW = externalFieldEnergy.externalFieldVDW;
     result.externalFieldCharge = externalFieldEnergy.externalFieldCharge;
     return result;
 #endif
+  }
+
+  if (!mbxEnergyTerms.empty())
+  {
+    throw std::invalid_argument("MBX energy subterms were requested for a system that does not use MBX");
   }
 
   if (fixedFrameworkStoredEik.empty())
@@ -965,8 +971,8 @@ RunningEnergy System::computePolarizationEnergy() noexcept
     std::size_t type = moleculeAtomPositions[i].type;
     // The polarization coupling is scaled by the atom's Coulomb scaling so that a fractional (CFCMC)
     // molecule decouples from the field as lambda decreases (matching the incremental moves).
-    double polarizability = moleculeAtomPositions[i].scalingCoulomb *
-                            forceField.pseudoAtoms[type].polarizability / Units::CoulombicConversionFactor;
+    double polarizability = moleculeAtomPositions[i].scalingCoulomb * forceField.pseudoAtoms[type].polarizability /
+                            Units::CoulombicConversionFactor;
     energy.polarization -= 0.5 * polarizability * double3::dot(moleculeElectricField[i], moleculeElectricField[i]);
   }
 
@@ -1081,10 +1087,9 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure()
       }
     }
 
-    polarizationGather = {std::span<double3>(polarizationField),
-                          std::span<std::array<double3, 9>>(polarizationFieldStrain),
-                          std::span<const double3>(polarizationComOffset),
-                          std::span<const double>(polarizationPolarizability)};
+    polarizationGather = {
+        std::span<double3>(polarizationField), std::span<std::array<double3, 9>>(polarizationFieldStrain),
+        std::span<const double3>(polarizationComOffset), std::span<const double>(polarizationPolarizability)};
     frameworkGather = &polarizationGather;
     // The inter-molecular field obeys the omit flags of the polarization model; the routine's own
     // omitInterInteractions early-out covers the remaining case.
@@ -1099,16 +1104,15 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure()
   pressureInfo.first.rotationalKineticEnergy = runningEnergies.rotationalKineticEnergy;
   pressureInfo.first.noseHooverEnergy = runningEnergies.NoseHooverEnergy;
 
-  pressureInfo = pairSum(pressureInfo,
-                         Interactions::computeInterMolecularEnergyStrainDerivative(
-                             forceField, components, simulationBox, spanOfMoleculeAtoms(), pressureDynamics,
-                             interGather));
+  pressureInfo = pairSum(
+      pressureInfo, Interactions::computeInterMolecularEnergyStrainDerivative(
+                        forceField, components, simulationBox, spanOfMoleculeAtoms(), pressureDynamics, interGather));
 
-  pressureInfo = pairSum(pressureInfo,
-                         Interactions::computeEwaldFourierEnergyStrainDerivative(
-                             eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField, simulationBox,
-                             framework, components, numberOfMoleculesPerComponent, spanOfMoleculeAtoms(),
-                             pressureDynamics, netChargeFramework, netChargePerComponent));
+  pressureInfo =
+      pairSum(pressureInfo, Interactions::computeEwaldFourierEnergyStrainDerivative(
+                                eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik, forceField,
+                                simulationBox, framework, components, numberOfMoleculesPerComponent,
+                                spanOfMoleculeAtoms(), pressureDynamics, netChargeFramework, netChargePerComponent));
 
   std::size_t molecule_index = 0;
   for (std::size_t i = 0; i < components.size(); ++i)
@@ -1161,8 +1165,8 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure()
 #ifdef BUILD_MBX
     // The pressure tensor remains the classical molecular-pressure estimate. Expose the current MBX energy
     // alongside it for reporting without erasing the classical decomposition used to construct the tensor.
-    const RunningEnergy mbx = Interactions::computeMBXEnergySystem(
-        *this, components, simulationBox, framework, spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
+    const RunningEnergy mbx = Interactions::computeMBXEnergySystem(*this, components, simulationBox, framework,
+                                                                   spanOfFrameworkAtoms(), spanOfMoleculeAtoms());
     pressureInfo.first.useMBX = true;
     pressureInfo.first.mbxEnergy = mbx.mbxEnergy;
 #else
@@ -1437,15 +1441,95 @@ std::string System::writeMBXStatus() const
   if (!useMBX) return {};
 
   const double frameworkPermanentInternal = elecPermFrameworkMBX / Units::EnergyToKCalPerMol;
+  const std::string energyTermsDestination =
+      !writeEnergyLog ? std::string{"disabled"}
+                      : (energyTermsLogSink.filePath.empty() ? std::string{"enabled"} : energyTermsLogSink.filePath);
   return std::format(
       "MBX energy model\n"
       "===============================================================================\n"
       "Settings file: {}\n"
+      "Accepted-move energy terms: {}\n"
       "Current retained MBX guest energy: {: .6e} [{}]\n"
       "Bare-framework permanent electrostatics removed from MBX: {: .6e} [{}]\n\n",
-      mbxSettingsFilePath, runningEnergies.mbxEnergy * Units::EnergyToKelvin,
+      mbxSettingsFilePath, energyTermsDestination, runningEnergies.mbxEnergy * Units::EnergyToKelvin,
       Units::displayedUnitOfEnergyString, frameworkPermanentInternal * Units::EnergyToKelvin,
       Units::displayedUnitOfEnergyString);
+}
+
+void System::configureEnergyTermsLog(std::string filePath, bool append)
+{
+  energyTermsLogSink = EnergyTermsLogSink{};
+  if (!writeEnergyLog) return;
+
+  const std::filesystem::path path = std::filesystem::path(std::move(filePath)).lexically_normal();
+  if (path.empty())
+  {
+    throw std::invalid_argument("Energy-terms log path must not be empty");
+  }
+
+  std::error_code error;
+  if (!path.parent_path().empty())
+  {
+    std::filesystem::create_directories(path.parent_path(), error);
+    if (error)
+    {
+      throw std::runtime_error(std::format("Unable to create energy-terms output directory '{}': {}",
+                                           path.parent_path().string(), error.message()));
+    }
+  }
+
+  bool existingContent = false;
+  if (append)
+  {
+    const bool exists = std::filesystem::exists(path, error);
+    if (error)
+    {
+      throw std::runtime_error(
+          std::format("Unable to inspect energy-terms log '{}': {}", path.string(), error.message()));
+    }
+    if (exists)
+    {
+      existingContent = std::filesystem::file_size(path, error) > 0;
+      if (error)
+      {
+        throw std::runtime_error(
+            std::format("Unable to inspect energy-terms log '{}': {}", path.string(), error.message()));
+      }
+    }
+  }
+
+  const std::ios::openmode mode = std::ios::out | (append ? std::ios::app : std::ios::trunc);
+  auto stream = std::make_unique<std::ofstream>(path, mode);
+  if (!*stream)
+  {
+    throw std::runtime_error(std::format("Unable to open energy-terms log '{}'", path.string()));
+  }
+
+  energyTermsLogSink.filePath = path.string();
+  energyTermsLogSink.headerWritten = existingContent;
+  energyTermsLogSink.stream = std::move(stream);
+
+  if (!energyTermsLogSink.headerWritten)
+  {
+    if (useMBX)
+    {
+      // 1B is intentionally excluded from both the retained MBX total and the historical RASPA-MBX CSV schema.
+      *energyTermsLogSink.stream
+          << "type,component,N,total,hg_VDW,hg_tail,mbx_tot,E2b,E3b,E4b,Edisp,Eelec_perm,Eelec_ind,E_diff,Pacc\n";
+    }
+    else
+    {
+      *energyTermsLogSink.stream
+          << "type,component,N,total,hg_VDW,gg_VDW,tail,hg_Charge,gg_Charge,E_ewald,E_diff,Pacc\n";
+    }
+    std::flush(*energyTermsLogSink.stream);
+    energyTermsLogSink.headerWritten = true;
+  }
+}
+
+void System::flushEnergyTermsLog() const
+{
+  if (energyTermsLogSink.stream) std::flush(*energyTermsLogSink.stream);
 }
 
 void System::writeAcceptedEnergyLog(std::string_view moveType, std::size_t componentId,
@@ -1459,8 +1543,9 @@ void System::writeAcceptedEnergyLog(std::string_view moveType, std::size_t compo
         std::format("Accepted MBX energy log requires 7 subterms, received {}", mbxTerms.size()));
   }
 
-  std::osyncstream output(std::cerr);
-  if (!energyLogHeaderWritten)
+  std::ostream& target = energyTermsLogSink.stream ? static_cast<std::ostream&>(*energyTermsLogSink.stream) : std::cerr;
+  std::osyncstream output(target);
+  if (!energyTermsLogSink.headerWritten)
   {
     if (useMBX)
     {
@@ -1472,7 +1557,7 @@ void System::writeAcceptedEnergyLog(std::string_view moveType, std::size_t compo
     {
       output << "type,component,N,total,hg_VDW,gg_VDW,tail,hg_Charge,gg_Charge,E_ewald,E_diff,Pacc\n";
     }
-    energyLogHeaderWritten = true;
+    energyTermsLogSink.headerWritten = true;
   }
 
   const bool allComponents = componentId == std::numeric_limits<std::size_t>::max();
@@ -1495,7 +1580,7 @@ void System::writeAcceptedEnergyLog(std::string_view moveType, std::size_t compo
            << ',' << totalEnergy.frameworkMoleculeCharge << ',' << totalEnergy.moleculeMoleculeCharge << ','
            << totalEnergy.ewald_fourier + totalEnergy.ewald_self + totalEnergy.ewald_exclusion << ',';
   }
-  output << energyDifference << ',' << acceptanceProbability << '\n';
+  output << energyDifference << ',' << acceptanceProbability << '\n' << std::flush_emit;
 }
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s)
@@ -1728,7 +1813,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
     s.writeEnergyLog = true;
     s.elecPermFrameworkMBX = 0.0;
   }
-  s.energyLogHeaderWritten = false;
+  s.energyTermsLogSink = System::EnergyTermsLogSink{};
 
   archive >> s.numberOfPseudoAtoms;
   archive >> s.totalNumberOfPseudoAtoms;
@@ -1844,9 +1929,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
     std::error_code error;
     if (!std::filesystem::is_regular_file(s.mbxSettingsFilePath, error))
     {
-      throw std::runtime_error(
-          std::format("[System restart]: MBX settings file '{}' is unavailable{}", s.mbxSettingsFilePath,
-                      error ? std::format(" ({})", error.message()) : std::string{}));
+      throw std::runtime_error(std::format("[System restart]: MBX settings file '{}' is unavailable{}",
+                                           s.mbxSettingsFilePath,
+                                           error ? std::format(" ({})", error.message()) : std::string{}));
     }
 #endif
   }
