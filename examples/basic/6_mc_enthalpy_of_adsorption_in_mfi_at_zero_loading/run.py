@@ -1,38 +1,21 @@
-import raspalib
+#!/usr/bin/env python3
+"""Run this input-driven example with an installed or explicitly selected RASPA3."""
 
-ff = raspalib.ForceField("force_field.json")
-ff.useCharge = False
+from __future__ import annotations
 
-mcmoves = raspalib.MCMoveProbabilities(
-    translationProbability=0.5,
-    reinsertionCBMCProbability=0.5,
-)
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
 
-methane = raspalib.Component(
-    componentId=0,
-    forceField=ff,
-    componentName="methane",
-    fileName="methane.json",
-    particleProbabilities=mcmoves,
-)
 
-mfi = raspalib.Framework(
-    frameworkId=0,
-    forceField=ff,
-    componentName="MFI_SI",
-    fileName="MFI_SI.cif",
-    numberOfUnitCells=raspalib.int3(2, 2, 2),
-)
+example_directory = Path(__file__).resolve().parent
+executable = os.environ.get("RASPA3_EXECUTABLE") or shutil.which("raspa3")
+if executable is None:
+    raise SystemExit(
+        "RASPA3 was not found. Load the raspa3-mbx module or set "
+        "RASPA3_EXECUTABLE=/path/to/raspa3."
+    )
 
-system = raspalib.System(
-    systemId=0,
-    externalTemperature=300.0,
-    forceField=ff,
-    components=[methane],
-    initialNumberOfMolecules=[1],
-    frameworkComponents=[mfi],
-)
-
-mc = raspalib.MonteCarlo(numberOfProductionCycles=5000, numberOfInitializationCycles=5000, systems=[system], outputToFiles=True)
-
-mc.run()
+subprocess.run([executable, *sys.argv[1:]], cwd=example_directory, check=True)

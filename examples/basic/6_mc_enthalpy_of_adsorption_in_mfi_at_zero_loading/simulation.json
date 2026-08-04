@@ -1,8 +1,9 @@
 {
   "SimulationType" : "MonteCarlo",
-  "NumberOfProductionCycles" : 500000,
-  "NumberOfInitializationCycles" : 50000,
-  "PrintEvery" : 5000,
+  "NumberOfProductionCycles" : 5000,
+  "NumberOfInitializationCycles" : 5000,
+  "PrintEvery" : 1000,
+  "WriteRestartEvery" : 1000,
   
   "Systems" : 
   [
@@ -12,7 +13,9 @@
       "NumberOfUnitCells" : [2, 2, 2],
       "HeliumVoidFraction" : 0.29,
       "ExternalTemperature" : 300.0,
-      "ChargeMethod" : "None"
+      "ChargeMethod" : "None",
+      "PrintEnergyTerms" : false,
+      "ComputeZeroLoadingHeatOfAdsorption" : true
     }
   ],
 
@@ -21,9 +24,8 @@
     {
       "Name" : "methane",
       "MoleculeDefinition" : "ExampleDefinitions",
-      "TranslationProbability" : 0.5,
-      "ReinsertionProbability" : 0.5,
-      "CreateNumberOfMolecules" : 1
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
     }
   ]
 }

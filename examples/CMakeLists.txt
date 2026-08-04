@@ -125,3 +125,11 @@ install(DIRECTORY external_fields DESTINATION share/raspa3/examples
         COMPONENT examples
         PATTERN "run" 
         PERMISSIONS  OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+
+install(DIRECTORY raspa3_mbx DESTINATION share/raspa3/examples
+        COMPONENT examples
+        USE_SOURCE_PERMISSIONS
+        PATTERN "output" EXCLUDE
+        PATTERN "bias_factors" EXCLUDE
+        PATTERN "restart_data.bin*" EXCLUDE
+        PATTERN "__pycache__" EXCLUDE)

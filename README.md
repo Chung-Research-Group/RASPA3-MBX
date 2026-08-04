@@ -334,6 +334,9 @@ This build must not require MBX headers or libraries.
 `raspa3` reads `simulation.json` from the current working directory. A complete
 MOF-74/CO2 example with MBX and Morse interactions is stored under
 [`calculations/MOF74-CO2/morse`](calculations/MOF74-CO2/morse).
+Short, runnable examples for energy logging, restart cadence, conventional
+Widom zero-loading Qst, and one-shot snapshot evaluation are collected under
+[`examples/raspa3_mbx`](examples/raspa3_mbx).
 
 For example:
 

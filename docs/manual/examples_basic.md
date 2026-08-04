@@ -907,6 +907,7 @@ plt.savefig('example_basic_5_msd.png')
   "NumberOfProductionCycles" : 5000,
   "NumberOfInitializationCycles" : 5000,
   "PrintEvery" : 1000,
+  "WriteRestartEvery" : 1000,
 
   "Systems" :
   [
@@ -916,7 +917,9 @@ plt.savefig('example_basic_5_msd.png')
       "NumberOfUnitCells" : [2, 2, 2],
       "HeliumVoidFraction" : 0.29,
       "ExternalTemperature" : 300.0,
-      "ChargeMethod" : "None"
+      "ChargeMethod" : "None",
+      "PrintEnergyTerms" : false,
+      "ComputeZeroLoadingHeatOfAdsorption" : true
     }
   ],
 
@@ -925,9 +928,8 @@ plt.savefig('example_basic_5_msd.png')
     {
       "Name" : "methane",
       "MoleculeDefinition" : "ExampleDefinitions",
-      "TranslationProbability" : 0.5,
-      "ReinsertionProbability" : 0.5,
-      "CreateNumberOfMolecules" : 1
+      "WidomProbability" : 1.0,
+      "CreateNumberOfMolecules" : 0
     }
   ]
 }
@@ -997,16 +999,23 @@ O        O      0.1085   -0.25      0.0611   -1.025
 ```
 
 ```
-Total energy/kʙ
+Zero-loading heat of adsorption from Widom insertion:
 -------------------------------------------------------------------------------
-    Block[  0] -1.986247e+03
-    Block[  1] -1.983422e+03
-    Block[  2] -1.985899e+03
-    Block[  3] -1.984366e+03
-    Block[  4] -1.984200e+03
+    Block[  0] ... [K]  ... [kJ/mol]
+    Block[  1] ... [K]  ... [kJ/mol]
+    Block[  2] ... [K]  ... [kJ/mol]
+    Block[  3] ... [K]  ... [kJ/mol]
+    Block[  4] ... [K]  ... [kJ/mol]
     ---------------------------------------------------------------------------
-    Average  -1.984827e+03 +/-  1.487712e+00 [K]
+    Average Qst^0: ... +/- ... [K]
+    Average Qst^0: ... +/- ... [kJ/mol]
 ```
+
+This estimator uses non-mutating conventional Widom trials. The guest loading
+must remain zero, and the current implementation requires a rigid framework,
+rigid test molecule, and fixed volume. `PrintEnergyTerms` is disabled here to
+avoid a large per-trial CSV in a long statistical run; enable it to inspect the
+separate `output/widom_energy_terms.s0.csv` diagnostic.
 
 #### Monte Carlo: Henry coefficient of methane in MFI<a name="Example_basic_7"></a>
 

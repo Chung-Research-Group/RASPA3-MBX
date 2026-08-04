@@ -1,0 +1,24 @@
+{
+  "SimulationType": "EnergyEvaluation",
+  "ForceField": "../../basic/10_mc_adorption_co2_in_mfi",
+  "Systems": [
+    {
+      "Type": "Framework",
+      "Name": "../../basic/10_mc_adorption_co2_in_mfi/MFI_SI",
+      "NumberOfUnitCells": [2, 2, 2],
+      "ExternalTemperature": 298.0,
+      "ChargeMethod": "Ewald",
+      "RestartFileName": "co2_snapshot.json",
+      "UseMBX": true,
+      "MBXSettingsFile": "../mbx.json",
+      "PrintEnergyTerms": false
+    }
+  ],
+  "Components": [
+    {
+      "Name": "co2",
+      "MoleculeDefinition": "ExampleDefinitions",
+      "CreateNumberOfMolecules": 0
+    }
+  ]
+}

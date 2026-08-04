@@ -1,3 +1,22 @@
-#! /bin/sh -f
-export RASPA_DIR="@PACKAGE_INSTALL_PREFIX@/share/raspa3"
-"@PACKAGE_INSTALL_PREFIX@/bin/raspa3"
+#!/bin/sh
+set -eu
+
+if [ -z "$(printenv RASPA_DIR 2>/dev/null)" ]; then
+  export RASPA_DIR="@PACKAGE_INSTALL_PREFIX@/share/raspa3"
+fi
+
+if [ -n "$(printenv RASPA3_EXECUTABLE 2>/dev/null)" ]; then
+  raspa3_executable=$RASPA3_EXECUTABLE
+elif command -v raspa3 >/dev/null 2>&1; then
+  raspa3_executable=$(command -v raspa3)
+else
+  raspa3_executable="@PACKAGE_INSTALL_PREFIX@/bin/raspa3"
+fi
+
+if [ ! -x "$raspa3_executable" ]; then
+  echo "RASPA3 executable not found: $raspa3_executable" >&2
+  echo "Load the raspa3-mbx module or set RASPA3_EXECUTABLE." >&2
+  exit 127
+fi
+
+exec "$raspa3_executable" "$@"
