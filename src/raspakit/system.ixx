@@ -100,9 +100,10 @@ export struct System
          std::vector<Component> components, std::vector<std::vector<double3>> initialPositions,
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities(), bool useMBXCalculator = false,
-         std::optional<std::string> mbxFilePath = std::nullopt, bool writeEnergyLog = true);
+         std::optional<std::string> mbxFilePath = std::nullopt, bool writeEnergyLog = true,
+         bool computeZeroLoadingHeatOfAdsorption = false);
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{3};
 
   double temperature{300.0};
   double pressure{1e4};
@@ -184,14 +185,16 @@ export struct System
   bool useMBX{false};
   /// Validated path to the MBX JSON settings file. Empty when MBX is disabled.
   std::string mbxSettingsFilePath{};
-  /// Emit one CSV row for each accepted move through writeAcceptedEnergyLog().
+  /// Emit accepted-move and completed Widom-trial energy CSV records.
   /// The canonical simulation.json key is PrintEnergyTerms; WriteEnergyLog is
   /// retained as a backward-compatible input alias and archive field.
   bool writeEnergyLog{true};
+  /// Accumulate Qst^0 = kBT - <W DeltaU>/<W> for conventional Widom trials.
+  bool computeZeroLoadingHeatOfAdsorption{false};
   /// Permanent electrostatic energy of the bare framework in MBX units (kcal/mol).
   double elecPermFrameworkMBX{0.0};
 
-  /// Non-serialized accepted-energy output state. Copying a System deliberately
+  /// Non-serialized energy-output state. Copying a System deliberately
   /// leaves the copy unbound so scratch/replica copies never share an open file;
   /// moving a System transfers ownership of the stream.
   struct EnergyTermsLogSink
@@ -199,6 +202,9 @@ export struct System
     std::unique_ptr<std::ofstream> stream{};
     std::string filePath{};
     bool headerWritten{false};
+    std::unique_ptr<std::ofstream> widomStream{};
+    std::string widomFilePath{};
+    bool widomHeaderWritten{false};
 
     EnergyTermsLogSink() = default;
     EnergyTermsLogSink(const EnergyTermsLogSink&) noexcept {}
@@ -207,6 +213,9 @@ export struct System
       stream.reset();
       filePath.clear();
       headerWritten = false;
+      widomStream.reset();
+      widomFilePath.clear();
+      widomHeaderWritten = false;
       return *this;
     }
     EnergyTermsLogSink(EnergyTermsLogSink&&) noexcept = default;
@@ -671,6 +680,13 @@ export struct System
   void writeAcceptedEnergyLog(std::string_view moveType, std::size_t componentId, const RunningEnergy& totalEnergy,
                               std::span<const double> mbxTerms, double energyDifference,
                               double acceptanceProbability) const;
+
+  /**
+   * Write one completed, non-mutating Widom trial to the dedicated Widom CSV.
+   * The live loading remains N; trialTotalEnergy describes only the hypothetical N+1 state.
+   */
+  void writeWidomEnergyLog(std::size_t componentId, const RunningEnergy& trialTotalEnergy,
+                           std::span<const double> mbxTerms, double insertionEnergy, double widomWeight) const;
 
   /// True when the force-based RDF is enabled and should sample on this cycle.
   [[nodiscard]] bool forceBasedRDFSampleDue(std::size_t currentCycle) const;

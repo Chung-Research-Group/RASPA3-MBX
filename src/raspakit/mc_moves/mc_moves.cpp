@@ -2349,15 +2349,26 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
     }
     case Move::Types::Widom:
     {
-      double value = MC_Moves::WidomMove(random, selectedSystem, selectedComponent);
+      if (selectedSystem.computeZeroLoadingHeatOfAdsorption && selectedSystem.numberOfMolecules() != 0)
+      {
+        throw std::runtime_error(
+            "ComputeZeroLoadingHeatOfAdsorption requires the guest loading to remain zero during Widom sampling");
+      }
+      const MC_Moves::WidomTrialResult result =
+          MC_Moves::WidomMove(random, selectedSystem, selectedComponent);
 
       std::size_t N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
       double V = selectedSystem.simulationBox.volume;
 
-      selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(currentBlock, value, N, V,
-                                                                                           selectedSystem.weight());
+      selectedSystem.components[selectedComponent].averageRosenbluthWeights.addWidomSample(
+          currentBlock, result.weight, N, V, selectedSystem.weight());
       selectedSystem.components[selectedComponent].averageGibbsRosenbluthWeights.addWidomSample(
-          currentBlock, value, N, V, selectedSystem.weight());
+          currentBlock, result.weight, N, V, selectedSystem.weight());
+      if (selectedSystem.computeZeroLoadingHeatOfAdsorption)
+      {
+        selectedSystem.components[selectedComponent].averageRosenbluthWeights.addZeroLoadingHeatSample(
+            currentBlock, result.weight, result.insertionEnergy, selectedSystem.weight());
+      }
       break;
     }
     case Move::Types::WidomCFCMC:

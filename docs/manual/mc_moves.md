@@ -2107,6 +2107,22 @@ follows from the average Rosenbluth weight; in adsorption studies this gives
 direct access to the Henry coefficient and the heat of adsorption at infinite
 dilution.
 
+For a zero-guest-loading system with a rigid test molecule, setting the
+per-system keyword `"ComputeZeroLoadingHeatOfAdsorption": true` also
+accumulates
+
+\f[
+Q_{st}^{0}=k_B T-\frac{\left\langle X\,\Delta U\right\rangle}
+                         {\left\langle X\right\rangle}.
+\f]
+
+The output includes block estimates and the average with uncertainty in K and
+kJ/mol. `Delta U` is the full hypothetical insertion energy, including the
+active classical or MBX energy convention. This estimator currently requires a
+rigid host and test molecule at fixed volume; it rejects nonzero guest loading,
+flexible systems, and volume moves rather than reporting an invalid zero-loading
+result.
+
 Steps:
 
 - select a random box,

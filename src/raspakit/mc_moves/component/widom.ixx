@@ -13,6 +13,19 @@ import system;
 export namespace MC_Moves
 {
 /**
+ * \brief Result of one non-mutating conventional Widom trial.
+ *
+ * A failed construction has weight zero and no insertion energy.  A completed
+ * trial contains the Rosenbluth/Widom sample weight and the potential-energy
+ * difference between the hypothetical N+1 state and the live N-particle state.
+ */
+struct WidomTrialResult
+{
+  double weight{};
+  std::optional<double> insertionEnergy{};
+};
+
+/**
  * \brief Performs a Widom insertion move for the specified component.
  *
  * Attempts to insert a molecule of the selected component into the system using
@@ -22,7 +35,7 @@ export namespace MC_Moves
  * \param random Reference to the random number generator.
  * \param system Reference to the simulation system.
  * \param selectedComponent Index of the component to perform the Widom move on.
- * \return The Widom insertion weight if successful, or std::nullopt if the move was rejected.
+ * \return The sample weight and, for a completed ghost insertion, its insertion energy.
  */
-double WidomMove(RandomNumber& random, System& system, std::size_t selectedComponent);
+WidomTrialResult WidomMove(RandomNumber& random, System& system, std::size_t selectedComponent);
 }  // namespace MC_Moves

@@ -1922,6 +1922,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       bool useMBXCalculator{false};
       std::optional<std::string> mbxFilePath;
       bool writeEnergyLog{true};
+      bool computeZeroLoadingHeatOfAdsorption{false};
 
       if (value.contains("UseMBX"))
       {
@@ -1952,6 +1953,15 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
       else if (value.contains("WriteEnergyLog"))
       {
         writeEnergyLog = value["WriteEnergyLog"].get<bool>();
+      }
+      if (value.contains("ComputeZeroLoadingHeatOfAdsorption"))
+      {
+        if (!value["ComputeZeroLoadingHeatOfAdsorption"].is_boolean())
+        {
+          throw std::runtime_error(
+              "[Input reader]: 'ComputeZeroLoadingHeatOfAdsorption' must be a boolean");
+        }
+        computeZeroLoadingHeatOfAdsorption = value["ComputeZeroLoadingHeatOfAdsorption"].get<bool>();
       }
       if (value.contains("MBXSettingsFile") && !value["MBXSettingsFile"].is_string())
       {
@@ -2358,7 +2368,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
               System(forceFields[systemId].value(), std::nullopt, hasExternalField, T, P, heliumVoidFraction,
                      jsonFrameworkComponents, jsonComponents[systemId], jsonRestartFilePositions[systemId],
                      jsonCreateNumberOfMolecules[systemId], jsonNumberOfBlocks, mc_moves_probabilities,
-                     useMBXCalculator, mbxFilePath, writeEnergyLog);
+                     useMBXCalculator, mbxFilePath, writeEnergyLog, computeZeroLoadingHeatOfAdsorption);
         }
         else if (cif.error() == CIFReader::ParseError::invalidInput)
         {
@@ -2401,7 +2411,8 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
         systems[systemId] =
             System(forceFields[systemId].value(), simulationBox, hasExternalField, T, P, 1.0, {},
                    jsonComponents[systemId], jsonRestartFilePositions[systemId], jsonCreateNumberOfMolecules[systemId],
-                   jsonNumberOfBlocks, mc_moves_probabilities, useMBXCalculator, mbxFilePath, writeEnergyLog);
+                   jsonNumberOfBlocks, mc_moves_probabilities, useMBXCalculator, mbxFilePath, writeEnergyLog,
+                   computeZeroLoadingHeatOfAdsorption);
       }
       else
       {
@@ -3508,6 +3519,7 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "MBXSettingsFile",
     "PrintEnergyTerms",
     "WriteEnergyLog",
+    "ComputeZeroLoadingHeatOfAdsorption",
     "ComputeEnergyHistogram",
     "SampleEnergyHistogramEvery",
     "WriteEnergyHistogramEvery",

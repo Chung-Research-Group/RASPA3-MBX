@@ -157,26 +157,39 @@ export struct PropertyWidom
   PropertyWidom() = default;
 
   PropertyWidom(std::size_t numberOfBlocks)
-      : numberOfBlocks(numberOfBlocks), rosenbluthWeight(numberOfBlocks), chemicalPotentialTerms(numberOfBlocks)
+      : numberOfBlocks(numberOfBlocks),
+        rosenbluthWeight(numberOfBlocks),
+        chemicalPotentialTerms(numberOfBlocks),
+        zeroLoadingHeatTerms(numberOfBlocks)
   {
   }
 
-  std::uint64_t versionNumber{1};
+  std::uint64_t versionNumber{2};
 
   std::size_t numberOfBlocks;
   BlockAverage<double> rosenbluthWeight;
   BlockAverage<WidomData> chemicalPotentialTerms;
+  /// Raw [W, W*DeltaU, unused] terms for Qst^0 = kBT - <W DeltaU>/<W>.
+  BlockAverage<WidomData> zeroLoadingHeatTerms;
 
   std::string writeAveragesRosenbluthWeightStatistics(double temperature, double volume,
                                                       std::optional<double> frameworkMass,
                                                       std::optional<int3> number_of_unit_cells) const;
   std::string writeAveragesChemicalPotentialStatistics(double beta, std::optional<double> imposedChemicalPotential,
                                                        std::optional<double> imposedFugacity) const;
+  std::string writeAveragesZeroLoadingHeatOfAdsorptionStatistics(double beta) const;
 
   inline void addWidomSample(std::size_t blockIndex, double RosenbluthValue, std::size_t N, double V, double weight)
   {
     rosenbluthWeight.addSample(blockIndex, RosenbluthValue, weight);
     chemicalPotentialTerms.addSample(blockIndex, WidomData(0.0, RosenbluthValue, static_cast<double>(N) / V), weight);
+  }
+
+  inline void addZeroLoadingHeatSample(std::size_t blockIndex, double RosenbluthValue,
+                                       std::optional<double> insertionEnergy, double weight)
+  {
+    const double weightedInsertionEnergy = insertionEnergy.has_value() ? RosenbluthValue * *insertionEnergy : 0.0;
+    zeroLoadingHeatTerms.addSample(blockIndex, WidomData(RosenbluthValue, weightedInsertionEnergy, 0.0), weight);
   }
 
   //====================================================================================================================
@@ -229,6 +242,30 @@ export struct PropertyWidom
   std::pair<double, double> fugacityResult(double beta) const
   {
     return chemicalPotentialTerms.statistics([beta](const WidomData &terms) { return fugacityTransform(terms, beta); });
+  }
+
+  //====================================================================================================================
+
+  static double zeroLoadingHeatTransform(const WidomData &terms, double beta)
+  {
+    if (!(terms.total > 0.0)) return std::numeric_limits<double>::quiet_NaN();
+    return (1.0 / beta) - terms.excess / terms.total;
+  }
+
+  double averagedZeroLoadingHeatOfAdsorption(double beta) const
+  {
+    return zeroLoadingHeatTransform(zeroLoadingHeatTerms.averaged(), beta);
+  }
+
+  double averagedZeroLoadingHeatOfAdsorption(std::size_t blockIndex, double beta) const
+  {
+    return zeroLoadingHeatTransform(zeroLoadingHeatTerms.averaged(blockIndex), beta);
+  }
+
+  std::pair<double, double> zeroLoadingHeatOfAdsorptionResult(double beta) const
+  {
+    return zeroLoadingHeatTerms.statistics(
+        [beta](const WidomData &terms) { return zeroLoadingHeatTransform(terms, beta); });
   }
 
   //====================================================================================================================

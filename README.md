@@ -8,7 +8,7 @@ RASPA3-MBX is the Chung Research Group integration of
 [RASPA3](https://github.com/iRASPA/RASPA3) with the MBX many-body
 energy model. It retains the normal classical RASPA3 build while adding an
 optional MBX path for supported Monte Carlo calculations, Morse-potential
-inputs, accepted-move energy diagnostics, configurable coordinate restarts,
+inputs, accepted-move and Widom-trial energy diagnostics, configurable coordinate restarts,
 and one-shot evaluation of coordinate snapshots.
 
 This is a research fork, not an official iRASPA release. The current
@@ -23,7 +23,8 @@ are documented in [the synchronization report](docs/mbx-upstream-sync.md).
 |---|---|
 | MBX guest energy | Enabled per system with `"UseMBX": true` and an `MBXSettingsFile` |
 | Morse potential | Supported by the current native RASPA3 force-field implementation and retained in the MOF-74 inputs |
-| Accepted-energy log | `PrintEnergyTerms` writes accepted-move decompositions to `output/energy_terms.s<id>.csv` |
+| Energy-term logs | `PrintEnergyTerms` writes accepted moves to `output/energy_terms.s<id>.csv` and conventional Widom trials to `output/widom_energy_terms.s<id>.csv` |
+| Zero-loading heat | `ComputeZeroLoadingHeatOfAdsorption` reports energy-weighted conventional-Widom (Q_{st}^0) statistics |
 | Coordinate restart cadence | Top-level `WriteRestartEvery` replaces the previous hard-coded interval of 5000 cycles |
 | Snapshot comparison | `SimulationType: EnergyEvaluation` reads a coordinate-restart JSON, evaluates it once, and exits without a Monte Carlo move |
 | Upstream maintenance | The official repository is kept as the `upstream` remote and integrated through reviewable synchronization branches |
@@ -369,14 +370,15 @@ Relative `MBXSettingsFile` paths are resolved from the directory containing
 |---|---|---:|---|
 | `UseMBX` | Per system | `false` | Use MBX for the supported guest-energy calculation |
 | `MBXSettingsFile` | Per system | — | MBX JSON settings file; required when `UseMBX` is true |
-| `PrintEnergyTerms` | Per system | `true` | Write accepted-move rows to `output/energy_terms.s<id>.csv`; set false to disable |
+| `PrintEnergyTerms` | Per system | `true` | Write accepted-move and conventional-Widom diagnostic CSVs under `output/`; set false to disable |
+| `ComputeZeroLoadingHeatOfAdsorption` | Per system | `false` | Accumulate and print (Q_{st}^0) from conventional Widom trials; requires zero guest loading, a positive `WidomProbability`, a rigid host/test component, and fixed volume |
 | `WriteRestartEvery` | Top level | `5000` | Periodic coordinate-restart interval for regular MC and thermodynamic integration; `0` disables periodic writes |
 | `SimulationType: EnergyEvaluation` | Top level | — | Evaluate a configuration once without changing it |
 
 `WriteEnergyLog` remains a legacy alias for `PrintEnergyTerms`. Supplying both
 with different values is an input error.
 
-### Accepted-energy CSV
+### Energy diagnostic CSVs
 
 A fresh run truncates `output/energy_terms.s<id>.csv`. A binary-resumed run
 appends without duplicating the header. Each row represents an accepted move
@@ -388,9 +390,58 @@ total plus its 2B, 3B, 4B, dispersion, permanent-electrostatic, and
 induced-electrostatic terms. The raw MBX 1B diagnostic is not part of this
 historical CSV schema.
 
+Conventional Widom insertions never enter the live system and therefore do not
+produce accepted-move rows. When `PrintEnergyTerms` is enabled, each completed
+ghost insertion is instead written to
+`output/widom_energy_terms.s<id>.csv`. Its row retains the actual loading `N`,
+labels the hypothetical loading as `trial_N`, and contains the current and
+hypothetical total energies, the hypothetical energy decomposition, insertion
+energy `E_insert`, Widom/Rosenbluth `weight`, and `weighted_E_insert =
+weight*E_insert`. Failed growths and blocked-pocket trials have zero statistical
+weight but no well-defined complete energy decomposition, so they are not CSV
+rows.
+
 CSV rows are flushed independently of binary checkpoints. After an abrupt
 crash, replaying moves from an older binary checkpoint can therefore duplicate
 the CSV rows written after that checkpoint.
+
+### Zero-loading heat of adsorption from Widom trials
+
+Set `ComputeZeroLoadingHeatOfAdsorption` to `true` on a system and give the
+rigid component a positive `WidomProbability`. Use a rigid host at fixed volume,
+start with zero guest molecules, and do not enable insertion moves that can
+change that loading. For example, the relevant parts of a single-component
+input are:
+
+```json
+{
+  "Systems": [
+    {
+      "ComputeZeroLoadingHeatOfAdsorption": true
+    }
+  ],
+  "Components": [
+    {
+      "Name": "CO2",
+      "CreateNumberOfMolecules": 0,
+      "WidomProbability": 1.0
+    }
+  ]
+}
+```
+
+RASPA reports block values, an average, and an uncertainty in K and kJ/mol using
+
+```text
+Qst^0 = kB*T - <weight * E_insert> / <weight>.
+```
+
+The run stops instead of silently relabeling a finite-loading result if any
+guest molecule is present initially or appears during sampling. The current
+estimator is intentionally restricted to a rigid host and rigid Widom
+components at fixed volume; flexible adsorbates require an additional ideal-gas
+intramolecular contribution, while flexible/NPT hosts require host-energy or
+volume fluctuation terms.
 
 ## Evaluating a saved snapshot
 

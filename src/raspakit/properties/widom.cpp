@@ -203,6 +203,27 @@ std::string PropertyWidom::writeAveragesChemicalPotentialStatistics(double beta,
   return stream.str();
 }
 
+std::string PropertyWidom::writeAveragesZeroLoadingHeatOfAdsorptionStatistics(double beta) const
+{
+  std::ostringstream stream;
+  const auto [average, error] = zeroLoadingHeatOfAdsorptionResult(beta);
+
+  std::print(stream, "    Zero-loading heat of adsorption from Widom insertion:\n");
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  for (std::size_t blockIndex = 0; blockIndex < numberOfBlocks; ++blockIndex)
+  {
+    const double blockAverage = averagedZeroLoadingHeatOfAdsorption(blockIndex, beta);
+    std::print(stream, "        Block[ {:2d}] {: .6e} [K]  {: .6e} [kJ/mol]\n", blockIndex,
+               Units::EnergyToKelvin * blockAverage, Units::EnergyToKJPerMol * blockAverage);
+  }
+  std::print(stream, "    ---------------------------------------------------------------------------\n");
+  std::print(stream, "    Average Qst^0:                   {: .6e} +/- {: .6e} [K]\n",
+             Units::EnergyToKelvin * average, Units::EnergyToKelvin * error);
+  std::print(stream, "    Average Qst^0:                   {: .6e} +/- {: .6e} [kJ/mol]\n\n\n",
+             Units::EnergyToKJPerMol * average, Units::EnergyToKJPerMol * error);
+  return stream.str();
+}
+
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const PropertyWidom &w)
 {
   archive << w.versionNumber;
@@ -210,6 +231,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Proper
   archive << w.numberOfBlocks;
   archive << w.rosenbluthWeight;
   archive << w.chemicalPotentialTerms;
+  archive << w.zeroLoadingHeatTerms;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -232,6 +254,14 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, PropertyWido
   archive >> w.numberOfBlocks;
   archive >> w.rosenbluthWeight;
   archive >> w.chemicalPotentialTerms;
+  if (versionNumber >= 2)
+  {
+    archive >> w.zeroLoadingHeatTerms;
+  }
+  else
+  {
+    w.zeroLoadingHeatTerms = BlockAverage<WidomData>(w.numberOfBlocks);
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

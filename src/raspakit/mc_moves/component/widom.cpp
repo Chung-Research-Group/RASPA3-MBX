@@ -32,7 +32,8 @@ import interactions_mbx;
 #endif
 import mc_moves_move_types;
 
-double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t selectedComponent)
+MC_Moves::WidomTrialResult MC_Moves::WidomMove(RandomNumber& random, System& system,
+                                               std::size_t selectedComponent)
 {
   // Set trial moleculeId to something that does not overlap with the current molecules
   std::size_t selectedMolecule = system.numberOfMolecules();
@@ -66,7 +67,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   system.mc_moves_cputime[move][Move::Timing::NonEwald] += (t2 - t1);
 
   // If molecule growth failed, terminate the move.
-  if (!growData) return 0.0;
+  if (!growData) return {};
 
   if (system.forceField.useDualCutOff)
   {
@@ -74,7 +75,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
     // cut-offs.
     std::optional<RunningEnergy> correctionNew =
         CBMC::computeDualCutOffCorrection(growContext, component, growData->atoms);
-    if (!correctionNew.has_value()) return 0.0;
+    if (!correctionNew.has_value()) return {};
 
     growData->energies += correctionNew.value();
     growData->RosenbluthWeight *= std::exp(-system.beta * correctionNew->potentialEnergy());
@@ -85,7 +86,7 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   // Check if the new molecule is inside blocked pockets; if so, abort the move.
   if (system.insideBlockedPockets(component, newMolecule))
   {
-    return 0.0;
+    return {};
   }
 
   // Update statistics for successfully constructed molecules.
@@ -160,7 +161,13 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
 
   double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
 
+  // This is the potential-energy change of the hypothetical N+1 state.  Widom
+  // only observes this trial: none of these terms are committed to the system.
+  RunningEnergy insertionEnergyDifference =
+      growData->energies + energyFourierDifference + tailEnergyDifference + polarizationDifference;
   double weight = 0.0;
+  std::vector<double> mbxEnergyTerms;
+  std::optional<double> exactTrialMBXEnergy;
 #ifdef BUILD_MBX
   if (!system.useMBX)
 #endif
@@ -170,13 +177,15 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
 #ifdef BUILD_MBX
   if (system.useMBX)
   {
+    mbxEnergyTerms.resize(7, 0.0);
     t1 = std::chrono::steady_clock::now();
     const RunningEnergy oldMBXTotalEnergy = Interactions::computeMBXEnergy(
         system, system.components, system.simulationBox, system.framework, selectedComponent,
         system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), {}, false);
     const RunningEnergy newMBXTotalEnergy = Interactions::computeMBXEnergy(
         system, system.components, system.simulationBox, system.framework, selectedComponent,
-        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), newMolecule, true);
+        system.spanOfFrameworkAtoms(), system.spanOfMoleculeAtoms(), newMolecule, true, &mbxEnergyTerms);
+    exactTrialMBXEnergy = newMBXTotalEnergy.mbxEnergy;
     t2 = std::chrono::steady_clock::now();
     component.mc_moves_cputime[move][Move::Timing::MBX] += (t2 - t1);
     system.mc_moves_cputime[move][Move::Timing::MBX] += (t2 - t1);
@@ -196,8 +205,14 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
         std::log(growData->RosenbluthWeight) - std::log(idealGasRosenbluthWeight) -
         system.beta * (mbxEnergyDifference.potentialEnergy() - growData->energies.potentialEnergy());
     weight = std::exp(logWeight);
+    insertionEnergyDifference = mbxEnergyDifference;
   }
 #endif
 
-  return weight;
+  RunningEnergy trialTotalEnergy = system.runningEnergies + insertionEnergyDifference;
+  if (exactTrialMBXEnergy) trialTotalEnergy.mbxEnergy = *exactTrialMBXEnergy;
+  system.writeWidomEnergyLog(selectedComponent, trialTotalEnergy, std::span<const double>(mbxEnergyTerms),
+                             insertionEnergyDifference.potentialEnergy(), weight);
+
+  return {weight, insertionEnergyDifference.potentialEnergy()};
 }

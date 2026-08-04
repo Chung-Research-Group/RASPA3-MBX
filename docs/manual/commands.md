@@ -872,7 +872,17 @@ reported separately at the end of the simulation.
     an abrupt-crash resume can repeat the rows newer than the restored
     checkpoint. Default: `true` for compatibility with RASPA3-MBX.
     `"WriteEnergyLog"` is retained as a legacy alias; specifying both keys with
-    different values is an error.
+    different values is an error. Completed conventional Widom ghost trials use
+    the separate `output/widom_energy_terms.s<system-id>.csv` schema and never
+    appear as accepted moves.
+
+-   `"ComputeZeroLoadingHeatOfAdsorption" : boolean`\
+    Accumulates the conventional-Widom estimator
+    `Qst^0 = kB*T - <W*DeltaU>/<W>` and prints block statistics plus the mean
+    and uncertainty in K and kJ/mol. It requires zero guest molecules, a
+    positive component `WidomProbability`, a rigid framework and test
+    component, and fixed volume. The calculation stops if the guest loading
+    becomes nonzero. Default: `false`.
 
 ### System `MC`-moves <a name="system-mc-moves"></a>
 

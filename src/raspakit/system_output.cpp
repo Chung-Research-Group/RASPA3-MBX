@@ -869,9 +869,14 @@ nlohmann::json System::jsonSystemStatus() const
   system["monoclinicAngleType"] = monoclinicAngleTypeName(monoclinicAngleType);
   system["useMBX"] = useMBX;
   system["printEnergyTerms"] = writeEnergyLog;
+  system["computeZeroLoadingHeatOfAdsorption"] = computeZeroLoadingHeatOfAdsorption;
   if (writeEnergyLog && !energyTermsLogSink.filePath.empty())
   {
     system["energyTermsLogFile"] = energyTermsLogSink.filePath;
+  }
+  if (writeEnergyLog && !energyTermsLogSink.widomFilePath.empty())
+  {
+    system["widomEnergyTermsLogFile"] = energyTermsLogSink.widomFilePath;
   }
   if (useMBX)
   {
@@ -982,6 +987,11 @@ std::string System::writeMCMoveStatistics() const
       std::print(stream, "{}",
                  component.averageRosenbluthWeights.writeAveragesChemicalPotentialStatistics(
                      beta, imposedChemicalPotential, imposedFugacity));
+      if (computeZeroLoadingHeatOfAdsorption)
+      {
+        std::print(stream, "{}",
+                   component.averageRosenbluthWeights.writeAveragesZeroLoadingHeatOfAdsorptionStatistics(beta));
+      }
     }
 
     for (std::size_t i = 0; i != component.atoms.size(); ++i)

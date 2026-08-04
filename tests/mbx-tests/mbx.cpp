@@ -27,6 +27,11 @@ import simulation_schedule;
 import energy_evaluation;
 import archive;
 import randomnumbers;
+import property_widom;
+import mc_moves_move_types;
+import mc_moves_probabilities;
+import mc_moves;
+import mc_moves_widom;
 
 namespace
 {
@@ -387,6 +392,55 @@ TEST(mbx_energy_log, Test_print_energy_terms_input_and_legacy_alias)
   EXPECT_TRUE(defaultReader.systems[0].writeEnergyLog);
 }
 
+TEST(widom_heat, Test_zero_loading_heat_input_validation)
+{
+  TemporaryDirectory workspace = makeInputReaderWorkspace();
+  ScopedCurrentPath currentPath(workspace.path());
+
+  nlohmann::json input = energyTermsInput();
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  input["Components"][0]["WidomProbability"] = 1.0;
+  input["Systems"][0]["ComputeZeroLoadingHeatOfAdsorption"] = true;
+  workspace.write("simulation.json", input.dump(2));
+  InputReader enabledReader("simulation.json");
+  ASSERT_EQ(1uz, enabledReader.systems.size());
+  EXPECT_TRUE(enabledReader.systems[0].computeZeroLoadingHeatOfAdsorption);
+
+  input["Systems"][0]["ComputeZeroLoadingHeatOfAdsorption"] = "yes";
+  workspace.write("simulation.json", input.dump(2));
+  EXPECT_THROW(InputReader invalidTypeReader("simulation.json"), std::runtime_error);
+
+  input["Systems"][0]["ComputeZeroLoadingHeatOfAdsorption"] = true;
+  input["Components"][0]["CreateNumberOfMolecules"] = 1;
+  workspace.write("simulation.json", input.dump(2));
+  EXPECT_THROW(InputReader nonzeroLoadingReader("simulation.json"), std::runtime_error);
+
+  input["Components"][0]["CreateNumberOfMolecules"] = 0;
+  input["Components"][0].erase("WidomProbability");
+  workspace.write("simulation.json", input.dump(2));
+  EXPECT_THROW(InputReader noWidomReader("simulation.json"), std::runtime_error);
+}
+
+TEST(widom_heat, Test_energy_weighted_zero_loading_estimator)
+{
+  PropertyWidom widom(2);
+  constexpr double beta = 0.01;
+
+  for (std::size_t block = 0; block < 2; ++block)
+  {
+    widom.addZeroLoadingHeatSample(block, 2.0, -100.0, 1.0);
+    widom.addZeroLoadingHeatSample(block, 1.0, -40.0, 1.0);
+    widom.addZeroLoadingHeatSample(block, 0.0, std::nullopt, 1.0);
+  }
+
+  // <W DeltaU>/<W> = (-200 - 40)/(2 + 1) = -80; kBT = 1/beta = 100.
+  const auto [average, error] = widom.zeroLoadingHeatOfAdsorptionResult(beta);
+  EXPECT_DOUBLE_EQ(180.0, average);
+  EXPECT_DOUBLE_EQ(0.0, error);
+  EXPECT_NE(std::string::npos,
+            widom.writeAveragesZeroLoadingHeatOfAdsorptionStatistics(beta).find("Average Qst^0"));
+}
+
 TEST(run_control, Test_write_restart_every_parser_and_driver_propagation)
 {
   TemporaryDirectory workspace = makeInputReaderWorkspace();
@@ -654,6 +708,89 @@ TEST(mbx_energy_log, Test_disabled_energy_terms_create_no_file_or_stderr_output)
   system.writeAcceptedEnergyLog("translation", 0, RunningEnergy{}, {}, 0.0, 1.0);
   EXPECT_TRUE(testing::internal::GetCapturedStderr().empty());
   EXPECT_FALSE(std::filesystem::exists(logPath));
+}
+
+TEST(mbx_energy_log, Test_widom_trial_has_dedicated_log_and_does_not_mutate_system)
+{
+  TemporaryDirectory temporaryDirectory;
+  ForceField forceField = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  Component component = Component::makeCO2(forceField, 0, true);
+  component.name = "co2";
+  std::swap(component.definedAtoms[0], component.definedAtoms[1]);
+  component.mc_moves_probabilities.setProbability(Move::Types::Widom, 1.0);
+  Framework framework = Framework::makeMFI(forceField, int3(2, 2, 2));
+
+  System system(forceField, std::nullopt, false, 300.0, 1e4, 1.0, {framework}, {component}, {}, {0}, 5,
+                MCMoveProbabilities{}, true, mbxSettingsFile().path().string(), true, true);
+  setupFrameworkPermanentEnergy(system, system.spanOfFrameworkAtoms());
+  std::array<double, 7> initialTerms{};
+  system.runningEnergies = system.computeTotalEnergies(initialTerms);
+
+  const std::filesystem::path acceptedPath = temporaryDirectory.path() / "output" / "energy_terms.s0.csv";
+  const std::filesystem::path widomPath = temporaryDirectory.path() / "output" / "widom_energy_terms.s0.csv";
+  system.configureEnergyTermsLog(acceptedPath.string(), false);
+
+  const std::vector<double3> positionsBefore =
+      system.spanOfMoleculeAtoms() | std::views::transform(&Atom::position) | std::ranges::to<std::vector>();
+  const RunningEnergy energyBefore = system.runningEnergies;
+  RandomNumber random(std::optional<std::size_t>{42uz});
+  MC_Moves::WidomTrialResult result;
+  for (std::size_t attempt = 0; attempt < 100 && !result.insertionEnergy.has_value(); ++attempt)
+  {
+    result = MC_Moves::WidomMove(random, system, 0);
+  }
+  ASSERT_TRUE(result.insertionEnergy.has_value());
+  EXPECT_TRUE(std::isfinite(result.weight));
+  EXPECT_GT(result.weight, 0.0);
+
+  EXPECT_EQ(0uz, system.numberOfMolecules());
+  const std::vector<double3> positionsAfter =
+      system.spanOfMoleculeAtoms() | std::views::transform(&Atom::position) | std::ranges::to<std::vector>();
+  EXPECT_EQ(positionsBefore, positionsAfter);
+  EXPECT_DOUBLE_EQ(energyBefore.potentialEnergy(), system.runningEnergies.potentialEnergy());
+
+  std::ifstream acceptedInput(acceptedPath);
+  std::string acceptedHeader;
+  std::string acceptedRow;
+  ASSERT_TRUE(std::getline(acceptedInput, acceptedHeader));
+  EXPECT_FALSE(std::getline(acceptedInput, acceptedRow));
+
+  std::ifstream widomInput(widomPath);
+  std::string widomHeader;
+  std::string widomRow;
+  ASSERT_TRUE(std::getline(widomInput, widomHeader));
+  ASSERT_TRUE(std::getline(widomInput, widomRow));
+  EXPECT_TRUE(widomHeader.starts_with("component,N,trial_N,current_total,trial_total"));
+
+  std::vector<std::string> columns;
+  std::stringstream rowStream(widomRow);
+  for (std::string value; std::getline(rowStream, value, ',');) columns.push_back(std::move(value));
+  ASSERT_EQ(17uz, columns.size());
+  EXPECT_EQ("0", columns[0]);
+  EXPECT_EQ("0", columns[1]);
+  EXPECT_EQ("1", columns[2]);
+  EXPECT_NEAR(std::stod(columns[4]) - std::stod(columns[3]), std::stod(columns[14]), 1.0e-8);
+  EXPECT_NEAR(result.weight, std::stod(columns[15]), std::abs(result.weight) * 1.0e-12);
+  EXPECT_NEAR(result.weight * *result.insertionEnergy, std::stod(columns[16]),
+              std::abs(result.weight * *result.insertionEnergy) * 1.0e-12);
+
+  system.flushEnergyTermsLog();
+  const std::uintmax_t enabledLogSize = std::filesystem::file_size(widomPath);
+  system.writeEnergyLog = false;
+  std::size_t fractionalMoleculeSystem = 0;
+  double sampledHeat = std::numeric_limits<double>::quiet_NaN();
+  testing::internal::CaptureStderr();
+  for (std::size_t attempt = 0; attempt < 100 && !std::isfinite(sampledHeat); ++attempt)
+  {
+    EXPECT_EQ(Move::Types::Widom,
+              MC_Moves::performRandomMoveProduction(random, system, system, 0, fractionalMoleculeSystem, 0));
+    sampledHeat = system.components[0].averageRosenbluthWeights.averagedZeroLoadingHeatOfAdsorption(system.beta);
+  }
+  EXPECT_TRUE(testing::internal::GetCapturedStderr().empty());
+  EXPECT_TRUE(std::isfinite(sampledHeat));
+  EXPECT_NE(std::string::npos, system.writeMCMoveStatistics().find("Average Qst^0"));
+  system.flushEnergyTermsLog();
+  EXPECT_EQ(enabledLogSize, std::filesystem::file_size(widomPath));
 }
 
 TEST(mbx_energy_log, Test_transition_matrix_fresh_truncates_and_resume_appends_energy_log)

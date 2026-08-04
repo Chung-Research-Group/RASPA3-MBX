@@ -39,15 +39,16 @@ The integration copy has two remotes:
 | Area | Required modification and decision |
 |---|---|
 | Build system | Keep the current upstream CMake target layout and C++ module architecture. Make MBX optional through `BUILD_MBX`; discover its headers, generated configuration header, library, and FFTW through cache variables rather than hard-coded Carbon/Oxygen paths. Add optional installed HDF5 and GoogleTest paths for offline/reproducible builds. |
-| System state | Add `useMBX`, the canonical MBX settings path, `writeEnergyLog`, the precomputed bare-framework permanent energy, and logger state to the current upstream `System`. Preserve all new upstream thermobarostat, group, flexible-framework, interpolation, and property state. |
-| Input reader | Parse and validate `UseMBX`, `MBXSettingsFile`, canonical `PrintEnergyTerms` (with `WriteEnergyLog` as a legacy alias), `WriteRestartEvery`, and `EnergyEvaluation`. Resolve relative settings and coordinate snapshots against the simulation input directory, validate restart coordinates, and fail clearly if the executable was built without MBX. |
+| System state | Add `useMBX`, the canonical MBX settings path, `writeEnergyLog`, the zero-loading Widom heat control, the precomputed bare-framework permanent energy, and logger state to the current upstream `System`. Preserve all new upstream thermobarostat, group, flexible-framework, interpolation, and property state. |
+| Input reader | Parse and validate `UseMBX`, `MBXSettingsFile`, canonical `PrintEnergyTerms` (with `WriteEnergyLog` as a legacy alias), `ComputeZeroLoadingHeatOfAdsorption`, `WriteRestartEvery`, and `EnergyEvaluation`. Resolve relative settings and coordinate snapshots against the simulation input directory, validate restart coordinates, and fail clearly if the executable was built without MBX. |
 | MBX adapter | Port `interactions_mbx` to the new module interfaces. Use stack ownership/RAII and spans, validate component/atom layouts, keep atom tags within MBX's integer range, and avoid the old raw-allocation and `noexcept` failure modes. |
 | Total-energy contract | Prevent classical RASPA guest VDW, guest charge, Ewald, polarization, and intramolecular terms from being added on top of MBX. Retain external-field energy and classical framework–guest VDW plus its framework-tail correction. |
 | Running energy | Start from current upstream `RunningEnergy`, including thermobarostat energy and per-group `dU/dlambda` arrays, and add one `mbxEnergy` field to totals, arithmetic, clearing, text, JSON, and archives. Do not restore the fork's obsolete split-tail fields. |
 | Energy statistics | Add MBX-aware `EnergyStatus` arithmetic, block statistics, text output, and archives. An MBX total is external field + framework–guest VDW + framework tail + MBX. Classical component decompositions remain available for the pressure estimator but do not enter the MBX total. |
 | MC moves | Forward-port MBX acceptance and bookkeeping to translation, rotation, conventional insertion/deletion, CBMC insertion/deletion, CBMC reinsertion, Widom, and isotropic framework-free volume changes. Preserve current upstream TMMC updates, dual cutoffs, Ewald trial caches, polarization caches, CBMC Rosenbluth handling, and timing. |
 | Drift correction | Recompute the old and proposed full MBX energy for an MBX move. Use their physical difference in acceptance and the exact accepted MBX total in diagnostic output. This incorporates the important stale-bookkeeping fix from fork commit `e48115b0`. |
-| Accepted-energy log | Replace scattered `std::cerr` fragments with one persistent `System::writeAcceptedEnergyLog` path. Write per-system CSV files under `output/`, and write only after accepted moves connected to that hook. The supported MBX move surface is fully covered; several newer classical-only move implementations are not yet connected. `PrintEnergyTerms` defaults to `true` to preserve the existing fork's behavior and can be disabled explicitly. Widom does not emit an “accepted” row because it does not mutate the system. |
+| Energy logs | Replace scattered `std::cerr` fragments with persistent per-system CSV streams under `output/`. Accepted state-changing moves use `energy_terms.s<id>.csv`; completed conventional Widom ghost insertions use the distinct `widom_energy_terms.s<id>.csv` schema and never emit an accepted row. `PrintEnergyTerms` defaults to `true` and can be disabled explicitly. |
+| Zero-loading Widom heat | Add the opt-in rigid-host/rigid-adsorbate, fixed-volume estimator `Qst^0 = kBT - <W DeltaU>/<W>`, block uncertainty, K and kJ/mol output, and hard guards that guest loading remains zero. |
 | Restart cadence | Replace the hard-coded 5000-cycle coordinate-snapshot interval with top-level `WriteRestartEvery`; `0` disables periodic writes. Count completed cycles, preserve the value in version-2 Monte Carlo binary archives, and retain version-1 read compatibility. |
 | One-shot energy | Add `SimulationType: EnergyEvaluation` to evaluate an input configuration or coordinate restart once, without MC moves. Emit a human-readable decomposition and `output/energy_evaluation.json`, including all seven raw MBX terms when enabled. |
 | CPU timing | Add a dedicated `Move::Timing::MBX` entry without renumbering existing timing values. Bump the CPU-time archive version because the serialized timing row size changes. |
@@ -138,20 +139,23 @@ An MBX system uses the following current input fields:
 {
   "UseMBX": true,
   "MBXSettingsFile": "mbx.json",
-  "PrintEnergyTerms": true
+  "PrintEnergyTerms": true,
+  "ComputeZeroLoadingHeatOfAdsorption": false
 }
 ```
 
 `MBXSettingsFile` may be relative to `simulation.json`. `PrintEnergyTerms` is
 optional and defaults to `true` for compatibility with the fork. Set it to
-`false` for production without accepted-move energy rows. The legacy
+`false` for production without move/trial energy rows. The legacy
 `WriteEnergyLog` alias remains accepted; conflicting values are rejected.
-Regular Monte Carlo writes `output/energy_terms.s0.csv` (one file per system),
-truncating on a fresh run and appending on binary resume without a duplicate
+Regular Monte Carlo writes accepted state changes to
+`output/energy_terms.s0.csv`; when conventional Widom moves are enabled it
+also writes completed ghost trials to `output/widom_energy_terms.s0.csv`.
+Both truncate on a fresh run and append on binary resume without a duplicate
 header. The CSV and binary checkpoint are separate streams: after an abrupt
 crash, rows written after the last binary checkpoint can be replayed and
-duplicated in the appended tail. Treat the CSV as diagnostic output and split
-or deduplicate that final segment when resuming a checkpoint.
+duplicated in the appended tail. Treat them as diagnostic output and split or
+deduplicate that final segment when resuming a checkpoint.
 
 Coordinate restart cadence is controlled separately:
 
@@ -209,7 +213,7 @@ The integration was validated in the prepared Carbon environment as follows:
 | Current MBX-enabled build | Passed against the public MBX prefix after the StructureKit merge, including `libraspakit_base.a`, `app/raspa3`, and `unit_tests_mbx` |
 | Complete MBX-disabled build | Passed from the current sources in a separate configuration, with no MBX headers or library in the target |
 | User-facing executables | `app/raspa3` and `cli/raspa3-cli` linked successfully and both passed help/startup checks |
-| Focused MBX/diagnostic tests | 12/12 passed: four MBX energy/bookkeeping tests, four accepted-energy-log tests, one restart-cadence/archive test, and three fixed-snapshot evaluation tests |
+| Focused MBX/diagnostic tests | 15/15 passed: four MBX energy/bookkeeping tests, five accepted/Widom energy-log tests, two zero-loading Widom-heat tests, one restart-cadence/archive test, and three fixed-snapshot evaluation tests |
 | Broader current-source test suite | 532/535 enabled tests passed, with 6 additional tests disabled (541 registered); the three failures are in unchanged hybrid-MC, second-order Taylor-shifted Lennard-Jones, and exact-sphere-pruning paths described below |
 | Native Morse tests | 7/7 relevant tests passed: reference energy, shifted cutoff, fractional-lambda finiteness, lambda derivative, spatial derivatives, bonded Morse, and Urey-Bradley Morse |
 | Two-CO2 MBX application smoke test | Passed through the real input reader and `raspa3` executable with initialization and 20 production MC steps |
@@ -386,8 +390,9 @@ Recommended cadence and process:
    resolutions; always review energy and archive conflicts manually.
 5. Run both an upstream-only configuration (`BUILD_MBX=OFF`) and the MBX CI
    configuration (`BUILD_MBX=ON`).
-6. Run upstream tests plus the MBX absolute-energy, accepted-move drift, logger,
-   and Morse direct-CPU regressions.
+6. Run upstream tests plus the MBX absolute-energy, accepted-move drift,
+   accepted/Widom logger, zero-loading Widom-heat, and Morse direct-CPU
+   regressions.
 7. Compare one short fixed-seed MOF-74 trajectory against the last released
    fork and explain expected model changes such as new Morse tails.
 8. Merge the sync branch into `main`, tag it as

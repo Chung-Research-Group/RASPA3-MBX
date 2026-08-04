@@ -95,7 +95,8 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
                std::optional<double> P, double heliumVoidFraction, std::optional<Framework> f, std::vector<Component> c,
                std::vector<std::vector<double3>> initialpositions, std::vector<std::size_t> initialNumberOfMolecules,
                std::size_t numberOfBlocks, const MCMoveProbabilities& systemProbabilities, bool useMBXCalculator,
-               std::optional<std::string> mbxFilePath, bool writeEnergyLog)
+               std::optional<std::string> mbxFilePath, bool writeEnergyLog,
+               bool computeZeroLoadingHeatOfAdsorption)
     : temperature(T),
       pressure(P.value_or(0.0) / Units::PressureConversionFactor),
       input_pressure(P.value_or(0.0)),
@@ -126,6 +127,7 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
       useMBX(useMBXCalculator),
       mbxSettingsFilePath(mbxFilePath.value_or(std::string{})),
       writeEnergyLog(writeEnergyLog),
+      computeZeroLoadingHeatOfAdsorption(computeZeroLoadingHeatOfAdsorption),
       numberOfPseudoAtoms(c.size(), std::vector<std::size_t>(forceField.pseudoAtoms.size())),
       totalNumberOfPseudoAtoms(forceField.pseudoAtoms.size()),
       atomData({}),
@@ -245,6 +247,42 @@ System::System(ForceField forcefield, std::optional<SimulationBox> box, bool has
   createInitialMolecules(initialpositions);
   initializeFixedLambdaFractionalMolecules();
   computeTailCorrectionCounts();
+
+  if (computeZeroLoadingHeatOfAdsorption)
+  {
+    if (numberOfMolecules() != 0)
+    {
+      throw std::runtime_error(
+          "[System]: ComputeZeroLoadingHeatOfAdsorption requires zero initial guest molecules");
+    }
+    if (framework.has_value() && framework->hasMobileAtoms())
+    {
+      throw std::runtime_error(
+          "[System]: ComputeZeroLoadingHeatOfAdsorption currently requires a rigid framework");
+    }
+    if (mc_moves_probabilities.getProbability(Move::Types::VolumeChange) > 0.0 ||
+        mc_moves_probabilities.getProbability(Move::Types::AnisotropicVolumeChange) > 0.0)
+    {
+      throw std::runtime_error(
+          "[System]: ComputeZeroLoadingHeatOfAdsorption currently requires a fixed simulation volume");
+    }
+    bool hasWidomComponent = false;
+    for (const Component& component : components)
+    {
+      if (component.mc_moves_probabilities.getProbability(Move::Types::Widom) <= 0.0) continue;
+      hasWidomComponent = true;
+      if (!component.rigid)
+      {
+        throw std::runtime_error(
+            "[System]: ComputeZeroLoadingHeatOfAdsorption currently requires rigid Widom components");
+      }
+    }
+    if (!hasWidomComponent)
+    {
+      throw std::runtime_error(
+          "[System]: ComputeZeroLoadingHeatOfAdsorption requires a positive WidomProbability");
+    }
+  }
 
   // Build the per-component ideal-gas conformation reservoirs used to seed CBMC growth. Done after the
   // initial molecules are placed so their placement keeps using the cold-start seed (unchanged initial
@@ -1444,14 +1482,26 @@ std::string System::writeMBXStatus() const
   const std::string energyTermsDestination =
       !writeEnergyLog ? std::string{"disabled"}
                       : (energyTermsLogSink.filePath.empty() ? std::string{"enabled"} : energyTermsLogSink.filePath);
+  const bool hasConventionalWidom = std::ranges::any_of(components, [](const Component& component) {
+    return component.mc_moves_probabilities.getProbability(Move::Types::Widom) > 0.0;
+  });
+  const std::string widomEnergyTermsDestination =
+      !writeEnergyLog || !hasConventionalWidom
+          ? std::string{"disabled"}
+          : (energyTermsLogSink.widomFilePath.empty() ? std::string{"enabled"}
+                                                       : energyTermsLogSink.widomFilePath);
   return std::format(
       "MBX energy model\n"
       "===============================================================================\n"
       "Settings file: {}\n"
       "Accepted-move energy terms: {}\n"
+      "Widom-trial energy terms: {}\n"
+      "Zero-loading Widom heat: {}\n"
       "Current retained MBX guest energy: {: .6e} [{}]\n"
       "Bare-framework permanent electrostatics removed from MBX: {: .6e} [{}]\n\n",
-      mbxSettingsFilePath, energyTermsDestination, runningEnergies.mbxEnergy * Units::EnergyToKelvin,
+      mbxSettingsFilePath, energyTermsDestination, widomEnergyTermsDestination,
+      computeZeroLoadingHeatOfAdsorption ? "enabled" : "disabled",
+      runningEnergies.mbxEnergy * Units::EnergyToKelvin,
       Units::displayedUnitOfEnergyString, frameworkPermanentInternal * Units::EnergyToKelvin,
       Units::displayedUnitOfEnergyString);
 }
@@ -1525,11 +1575,65 @@ void System::configureEnergyTermsLog(std::string filePath, bool append)
     std::flush(*energyTermsLogSink.stream);
     energyTermsLogSink.headerWritten = true;
   }
+
+  const bool hasConventionalWidom = std::ranges::any_of(components, [](const Component& component) {
+    return component.mc_moves_probabilities.getProbability(Move::Types::Widom) > 0.0;
+  });
+  if (!hasConventionalWidom) return;
+
+  const std::filesystem::path widomPath = path.parent_path() / std::format("widom_{}", path.filename().string());
+  bool existingWidomContent = false;
+  if (append)
+  {
+    const bool exists = std::filesystem::exists(widomPath, error);
+    if (error)
+    {
+      throw std::runtime_error(
+          std::format("Unable to inspect Widom energy-terms log '{}': {}", widomPath.string(), error.message()));
+    }
+    if (exists)
+    {
+      existingWidomContent = std::filesystem::file_size(widomPath, error) > 0;
+      if (error)
+      {
+        throw std::runtime_error(
+            std::format("Unable to inspect Widom energy-terms log '{}': {}", widomPath.string(), error.message()));
+      }
+    }
+  }
+
+  auto widomStream = std::make_unique<std::ofstream>(widomPath, mode);
+  if (!*widomStream)
+  {
+    throw std::runtime_error(std::format("Unable to open Widom energy-terms log '{}'", widomPath.string()));
+  }
+  energyTermsLogSink.widomFilePath = widomPath.string();
+  energyTermsLogSink.widomHeaderWritten = existingWidomContent;
+  energyTermsLogSink.widomStream = std::move(widomStream);
+
+  if (!energyTermsLogSink.widomHeaderWritten)
+  {
+    if (useMBX)
+    {
+      *energyTermsLogSink.widomStream
+          << "component,N,trial_N,current_total,trial_total,hg_VDW,hg_tail,mbx_tot,E2b,E3b,E4b,Edisp,"
+             "Eelec_perm,Eelec_ind,E_insert,weight,weighted_E_insert\n";
+    }
+    else
+    {
+      *energyTermsLogSink.widomStream
+          << "component,N,trial_N,current_total,trial_total,hg_VDW,gg_VDW,tail,hg_Charge,gg_Charge,E_ewald,"
+             "E_insert,weight,weighted_E_insert\n";
+    }
+    std::flush(*energyTermsLogSink.widomStream);
+    energyTermsLogSink.widomHeaderWritten = true;
+  }
 }
 
 void System::flushEnergyTermsLog() const
 {
   if (energyTermsLogSink.stream) std::flush(*energyTermsLogSink.stream);
+  if (energyTermsLogSink.widomStream) std::flush(*energyTermsLogSink.widomStream);
 }
 
 void System::writeAcceptedEnergyLog(std::string_view moveType, std::size_t componentId,
@@ -1581,6 +1685,63 @@ void System::writeAcceptedEnergyLog(std::string_view moveType, std::size_t compo
            << totalEnergy.ewald_fourier + totalEnergy.ewald_self + totalEnergy.ewald_exclusion << ',';
   }
   output << energyDifference << ',' << acceptanceProbability << '\n' << std::flush_emit;
+}
+
+void System::writeWidomEnergyLog(std::size_t componentId, const RunningEnergy& trialTotalEnergy,
+                                 std::span<const double> mbxTerms, double insertionEnergy,
+                                 double widomWeight) const
+{
+  if (!writeEnergyLog) return;
+  if (useMBX && mbxTerms.size() != 7)
+  {
+    throw std::invalid_argument(
+        std::format("Widom MBX energy log requires 7 subterms, received {}", mbxTerms.size()));
+  }
+
+  std::ostream& target = energyTermsLogSink.widomStream
+                             ? static_cast<std::ostream&>(*energyTermsLogSink.widomStream)
+                             : std::cerr;
+  std::osyncstream output(target);
+  if (!energyTermsLogSink.widomHeaderWritten)
+  {
+    if (useMBX)
+    {
+      output << "component,N,trial_N,current_total,trial_total,hg_VDW,hg_tail,mbx_tot,E2b,E3b,E4b,Edisp,"
+                "Eelec_perm,Eelec_ind,E_insert,weight,weighted_E_insert\n";
+    }
+    else
+    {
+      output << "component,N,trial_N,current_total,trial_total,hg_VDW,gg_VDW,tail,hg_Charge,gg_Charge,E_ewald,"
+                "E_insert,weight,weighted_E_insert\n";
+    }
+    energyTermsLogSink.widomHeaderWritten = true;
+  }
+
+  const std::size_t moleculeCount = numberOfIntegerMoleculesPerComponent.at(componentId);
+  if (moleculeCount == std::numeric_limits<std::size_t>::max())
+  {
+    throw std::overflow_error("Widom trial molecule count cannot be represented");
+  }
+  output << std::setprecision(17) << componentId << ',' << moleculeCount << ',' << moleculeCount + 1 << ','
+         << runningEnergies.potentialEnergy() << ',' << trialTotalEnergy.potentialEnergy() << ',';
+
+  if (useMBX)
+  {
+    output << trialTotalEnergy.frameworkMoleculeVDW << ',' << trialTotalEnergy.tail << ','
+           << trialTotalEnergy.mbxEnergy << ',' << mbxTerms[1] / Units::EnergyToKCalPerMol << ','
+           << mbxTerms[2] / Units::EnergyToKCalPerMol << ',' << mbxTerms[3] / Units::EnergyToKCalPerMol << ','
+           << mbxTerms[4] / Units::EnergyToKCalPerMol << ',' << mbxTerms[5] / Units::EnergyToKCalPerMol << ','
+           << mbxTerms[6] / Units::EnergyToKCalPerMol << ',';
+  }
+  else
+  {
+    output << trialTotalEnergy.frameworkMoleculeVDW << ',' << trialTotalEnergy.moleculeMoleculeVDW << ','
+           << trialTotalEnergy.tail << ',' << trialTotalEnergy.frameworkMoleculeCharge << ','
+           << trialTotalEnergy.moleculeMoleculeCharge << ','
+           << trialTotalEnergy.ewald_fourier + trialTotalEnergy.ewald_self + trialTotalEnergy.ewald_exclusion << ',';
+  }
+  output << insertionEnergy << ',' << widomWeight << ',' << insertionEnergy * widomWeight << '\n'
+         << std::flush_emit;
 }
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s)
@@ -1637,6 +1798,7 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   archive << s.useMBX;
   archive << s.mbxSettingsFilePath;
   archive << s.writeEnergyLog;
+  archive << s.computeZeroLoadingHeatOfAdsorption;
   archive << s.elecPermFrameworkMBX;
 
   archive << s.numberOfPseudoAtoms;
@@ -1803,6 +1965,14 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
     archive >> s.useMBX;
     archive >> s.mbxSettingsFilePath;
     archive >> s.writeEnergyLog;
+    if (versionNumber >= 3)
+    {
+      archive >> s.computeZeroLoadingHeatOfAdsorption;
+    }
+    else
+    {
+      s.computeZeroLoadingHeatOfAdsorption = false;
+    }
     archive >> s.elecPermFrameworkMBX;
   }
   else
@@ -1811,6 +1981,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
     s.useMBX = false;
     s.mbxSettingsFilePath.clear();
     s.writeEnergyLog = true;
+    s.computeZeroLoadingHeatOfAdsorption = false;
     s.elecPermFrameworkMBX = 0.0;
   }
   s.energyTermsLogSink = System::EnergyTermsLogSink{};
