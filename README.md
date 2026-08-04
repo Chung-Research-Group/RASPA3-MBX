@@ -68,8 +68,10 @@ Classical RASPA3 calculations remain available by building with
 
 The current Linux build requires:
 
-- CMake 4.0.3 or newer, Ninja, and a compiler with the required C++26 module
-  support; the maintained build was tested with Clang 20;
+- CMake 4.0.3 through 4.4.x, Ninja, and a compiler with the required C++26
+  module support; the maintained build was tested with Clang 20. `import std`
+  is still an experimental CMake feature whose activation token can change
+  between CMake releases, so newer CMake versions must be reviewed before use;
 - BLAS, LAPACK, OpenMP, OpenCL, zlib, and HDF5;
 - for an MBX-enabled build, MBX headers, the generated `mbx_version.h`, the MBX
   library, and FFTW3.
@@ -159,6 +161,54 @@ The template expects `libmbx.a` under `$MBX_ROOT/lib`; edit the ignored local
 preset if your installation layout differs. It uses LLVM `libomp`, matching the
 maintained build. Select a different but consistent compiler/OpenMP combination
 when rebuilding both RASPA3-MBX and MBX together.
+
+Before configuring, confirm that the active `cmake` is the one from the Conda
+environment. On the maintained workstation, `/usr/local/bin/cmake` is an older
+3.28 installation and must not be used for this source tree:
+
+```bash
+conda activate raspa3-mbx_2
+hash -r
+command -v cmake
+cmake --version
+```
+
+The user-preset template provides three roles without creating separate source
+repositories:
+
+| Preset | Build directory | Intended use |
+|---|---|---|
+| `mbx-local` | `build-mbx` | Portable validation build with focused MBX tests |
+| `mbx-release-avx2` | `build-mbx-release-avx2` | Production build for the current AVX2 workstation |
+| `mbx-server` | `build-mbx-server` | Portable x86-64 server build without workstation-specific `-march` flags |
+
+For the optimized workstation executable, use:
+
+```bash
+cmake --preset mbx-release-avx2 --fresh
+cmake --build --preset mbx-release-avx2 --parallel
+```
+
+For a server, clone this same repository, install the matching Conda environment
+and audited MBX dependency on that server, set `MBX_ROOT`, copy the user-preset
+template, and run:
+
+```bash
+cmake --preset mbx-server --fresh
+cmake --build --preset mbx-server --parallel
+```
+
+Build on the server itself unless its compiler, standard library, and CPU are
+known to match the workstation. C++ module artifacts are toolchain-specific;
+copying the source repository and rebuilding is safer than copying a build
+directory. The old `MBX_INCLUDES` spelling is intentionally not used: this
+version expects `MBX_INCLUDE_DIR`, `MBX_CONFIG_INCLUDE_DIR`, and `MBX_LIBRARY`.
+
+If configuration reports that `CXX_MODULE_STD` lacks toolchain support, first
+run the configure command with `--fresh`. Then verify the CMake version as
+shown above. RASPA3-MBX contains the experimental activation tokens for CMake
+4.0.3--4.4.x; a version outside that range now stops with a direct diagnostic
+instead of failing later while generating `raspakit_base`.
 
 The main executable is:
 

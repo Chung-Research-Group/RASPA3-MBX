@@ -2,12 +2,11 @@
   "version": 2,
   "configurePresets": [
     {
-      "name": "mbx-local",
-      "displayName": "Local RASPA3-MBX build",
+      "name": "mbx-common",
+      "hidden": true,
       "inherits": "linux_conda",
-      "binaryDir": "${sourceDir}/build-mbx",
       "environment": {
-        "LD_LIBRARY_PATH": "$penv{CONDA_PREFIX}/lib"
+        "LD_LIBRARY_PATH": "$penv{CONDA_PREFIX}/lib:$penv{LD_LIBRARY_PATH}"
       },
       "cacheVariables": {
         "BUILD_MBX": true,
@@ -16,34 +15,81 @@
         "MBX_LIBRARY": "$env{MBX_ROOT}/lib/libmbx.a",
         "FFTW_INCLUDE_DIR": "$env{CONDA_PREFIX}/include",
         "FFTW_LIBRARY": "$env{CONDA_PREFIX}/lib/libfftw3.so",
-        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -Xclang -fopenmp -DNDEBUG -stdlib=libstdc++ -fexperimental-library -O3 -ffast-math",
-        "OpenMP_C_FLAGS": "-fopenmp",
-        "OpenMP_CXX_FLAGS": "-fopenmp",
+        "OpenCL_INCLUDE_DIR": "$env{CONDA_PREFIX}/include",
+        "OpenCL_LIBRARY": "$env{CONDA_PREFIX}/lib/libOpenCL.so",
+        "BLAS_LIBRARIES": "$env{CONDA_PREFIX}/lib/libopenblas.so",
+        "LAPACK_LIBRARIES": "$env{CONDA_PREFIX}/lib/libopenblas.so",
+        "BLA_VENDOR": "OpenBLAS",
+        "BLA_SIZEOF_INTEGER": "4",
+        "CMAKE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
+        "PACKAGE_INSTALL_PREFIX": "$env{CONDA_PREFIX}",
+        "CMAKE_BUILD_WITH_INSTALL_RPATH": true,
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libstdc++ -fexperimental-library -Xclang -fopenmp -g -O3 -fomit-frame-pointer -ffast-math",
+        "OpenMP_C_FLAGS": "-Xclang -fopenmp",
+        "OpenMP_CXX_FLAGS": "-Xclang -fopenmp",
         "OpenMP_C_LIB_NAMES": "omp",
         "OpenMP_CXX_LIB_NAMES": "omp",
         "OpenMP_omp_LIBRARY": "$env{CONDA_PREFIX}/lib/libomp.so",
+        "OpenMP_libomp_INCLUDES": "$env{CONDA_PREFIX}/lib/clang/20/include",
         "RASPA_USE_SYSTEM_HDF5": true,
         "RASPA_USE_SYSTEM_GTEST": true,
         "BUILD_APP": true,
-        "BUILD_CLI": true,
+        "BUILD_CLI": false,
         "BUILD_PYTHON": false,
-        "BUILD_TESTING": true,
+        "BUILD_TESTING": false,
         "BUILD_TESTING_MATHKIT": false,
         "BUILD_TESTING_FOUNDATIONKIT": false,
         "BUILD_TESTING_SYMMETRYKIT": false,
         "BUILD_TESTING_RASPAKIT": false,
         "BUILD_TESTING_RASPA3": false,
-        "BUILD_TESTING_MBX": true,
+        "BUILD_TESTING_MBX": false,
         "BUILD_DOXYGEN": false,
         "BUILD_BENCHMARKS": false,
         "CMAKE_INTERPROCEDURAL_OPTIMIZATION": false
       }
+    },
+    {
+      "name": "mbx-local",
+      "displayName": "RASPA3-MBX validation build",
+      "description": "Portable release build with the focused MBX tests enabled",
+      "inherits": "mbx-common",
+      "binaryDir": "${sourceDir}/build-mbx",
+      "cacheVariables": {
+        "BUILD_CLI": true,
+        "BUILD_TESTING": true,
+        "BUILD_TESTING_MBX": true
+      }
+    },
+    {
+      "name": "mbx-release-avx2",
+      "displayName": "RASPA3-MBX workstation release (AVX2)",
+      "description": "Optimized for the current core-avx2 workstation; do not use on an unknown CPU",
+      "inherits": "mbx-common",
+      "binaryDir": "${sourceDir}/build-mbx-release-avx2",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_RELEASE": "-I$env{CONDA_PREFIX}/include -D_LIBCPP_DISABLE_AVAILABILITY -DNDEBUG -stdlib=libstdc++ -fexperimental-library -Xclang -fopenmp -g -O3 -march=core-avx2 -mfma -fomit-frame-pointer -ffast-math"
+      }
+    },
+    {
+      "name": "mbx-server",
+      "displayName": "RASPA3-MBX portable server release",
+      "description": "Portable x86-64 release build without workstation-specific CPU instructions",
+      "inherits": "mbx-common",
+      "binaryDir": "${sourceDir}/build-mbx-server"
     }
   ],
   "buildPresets": [
     {
       "name": "mbx-local",
       "configurePreset": "mbx-local"
+    },
+    {
+      "name": "mbx-release-avx2",
+      "configurePreset": "mbx-release-avx2"
+    },
+    {
+      "name": "mbx-server",
+      "configurePreset": "mbx-server"
     }
   ],
   "testPresets": [

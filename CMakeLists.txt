@@ -3,8 +3,15 @@ cmake_minimum_required(VERSION 4.0.3)
 
 if(CMAKE_VERSION VERSION_LESS 4.3)
   set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
-else()
+elseif(CMAKE_VERSION VERSION_LESS 4.4)
   set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+elseif(CMAKE_VERSION VERSION_LESS 4.5)
+  set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
+else()
+  message(FATAL_ERROR
+    "CMake ${CMAKE_VERSION} is newer than the import-std versions validated by "
+    "RASPA3-MBX. Use CMake 4.0.3 through 4.4.x, or update the experimental "
+    "CMAKE_EXPERIMENTAL_CXX_IMPORT_STD gate for this CMake release.")
 endif()
 set(CMAKE_CXX_MODULE_STD ON)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
