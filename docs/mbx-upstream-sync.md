@@ -8,14 +8,14 @@ update and the maintenance policy for later updates.
 
 | Item | Commit or location |
 |---|---|
-| Original MBX working tree | `/home/carbon/software/MBX_latest/RASPA3.0.21-MBX` |
+| Original MBX working tree | Historical local `RASPA3.0.21-MBX` checkout |
 | Original MBX branch | `E_print` at `186f3b8cc6c4bbc28cbdbc5954ddd05b63357c4f` |
 | Upstream release on which the fork was named | v3.0.21 at `729be4b40ca6b011488fd83d2a3d94eb15e41a66` |
 | True Git merge base | `6b8b25f2c944bbea751fcb63eb79668040c87042` |
 | Imported upstream | `a8a70ca7` (`feat: structurekit`, current `upstream/main` on 2026-08-03) |
 | Latest upstream merge commit | `afab6925` |
-| Integration working tree | `/home/carbon/calculation/YuC/RASPA3-MBX` |
-| Integration branch | local `main` (tested promotion candidate; not yet pushed) |
+| Integration working tree | This `RASPA3-MBX` repository |
+| Integration branch | `main` (tested publication branch) |
 
 The merge base is 23 upstream commits newer than the v3.0.21 release tag.
 From that true base, the fork contains 57 commits and upstream contains 248
@@ -24,10 +24,10 @@ true merge base is important: comparing two directory snapshots alone makes
 upstream refactors look like local MBX changes and leads to the wrong conflict
 choices.
 
-The original repository was not modified. The integration copy is a compact
-Git clone without the approximately 3.7 GB ignored build directory. The
-original untracked MOF-74 Morse inputs and structure were copied into the new
-working tree so that scientific inputs are not lost.
+The historical checkout was not modified during integration. This repository
+was created as a compact Git clone without the approximately 3.7 GB ignored
+build directory. The original untracked MOF-74 Morse inputs and structure were
+copied into this working tree so that scientific inputs were not lost.
 
 The integration copy has two remotes:
 
@@ -183,20 +183,20 @@ created.
 
 Machine-specific paths live in ignored `CMakeUserPresets.json`, not in the
 shared `CMakePresets.json`. A portable template is provided as
-`CMakeUserPresets.json.example`. On Carbon, the prepared local workflow is:
+`CMakeUserPresets.json.example`. The prepared local workflow is:
 
 ```bash
-/home/carbon/miniconda3/envs/raspa3-mbx_2/bin/cmake --preset mbx-local
-/home/carbon/miniconda3/envs/raspa3-mbx_2/bin/cmake --build --preset mbx-local --parallel 4
-/home/carbon/miniconda3/envs/raspa3-mbx_2/bin/ctest --preset mbx-local
+cmake --preset mbx-local
+cmake --build --preset mbx-local --parallel 4
+ctest --preset mbx-local
 ```
 
-The preset uses CMake 4.0.3, Clang 20, the existing static MBX library, the
-Conda FFTW/HDF5/GoogleTest packages, and avoids network downloads. The root
-CMake file also retains the token required by CMake 4.3 and newer. MBX's static
-library was compiled against LLVM OpenMP (`__kmpc_*`), so the local preset uses
-the matching Conda `libomp`; linking it with GNU `libgomp` leaves unresolved
-symbols and mixing both OpenMP runtimes in one process is unsafe.
+The audited Carbon build used CMake 4.0.3, Clang 20, the existing static MBX
+library, and Conda FFTW/HDF5/GoogleTest packages without network downloads. The
+root CMake file also retains the token required by CMake 4.3 and newer. MBX's
+static library was compiled against LLVM OpenMP (`__kmpc_*`), so the local
+preset uses the matching Conda `libomp`; linking it with GNU `libgomp` leaves
+unresolved symbols and mixing both OpenMP runtimes in one process is unsafe.
 
 ## Verification performed
 
@@ -329,22 +329,21 @@ resuming an old MBX binary checkpoint.
 
 ### One canonical repository
 
-Use `/home/carbon/calculation/YuC/RASPA3-MBX` as the sole active checkout. It
-contains the original MBX/Morse history plus the current upstream history, and
-the old `/home/carbon/software/MBX_latest/RASPA3.0.21-MBX` checkout has no
-tracked working-tree changes that need to be merged in place. Updating the old
-folder would retain its obsolete multi-gigabyte build tree and would make the
-repository ancestry harder to audit.
+Use this `RASPA3-MBX` repository as the sole active checkout. It contains the
+original MBX/Morse history plus the current upstream history, and the old local
+`RASPA3.0.21-MBX` checkout has no tracked working-tree changes that need to be
+merged in place. Updating the old folder would retain its obsolete
+multi-gigabyte build tree and would make the repository ancestry harder to
+audit.
 
-The regression matrix is complete and the tested integration branch is now
-named local `main`. It has deliberately not been pushed. The remaining safe
-one-time promotion sequence is:
+The regression matrix is complete and the tested integration branch is
+`main`. The safe one-time publication or recovery sequence is:
 
 1. Create a Git bundle of the old repository and preserve any deliberately
    untracked research files before removing anything.
-2. Review the remote diff, then push local `main` to the Chung Research Group
-   fork and make it the default branch. The old `E_print` and `development` tips
-   may remain as archival remote branches until the first tagged release.
+2. Review the remote diff, then push `main` to the Chung Research Group fork
+   and make it the default branch. The old `E_print` and `development` tips may
+   remain as archival remote branches until the first tagged release.
 3. Only after cloning the promoted remote into a temporary directory and
    rerunning a smoke test should the old checkout be archived or deleted.
 
