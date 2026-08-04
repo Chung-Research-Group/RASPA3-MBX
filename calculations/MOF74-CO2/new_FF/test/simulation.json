@@ -1,6 +1,6 @@
 {
     "SimulationType" : "MonteCarlo",
-    "NumberOfCycles" : 10000,
+    "NumberOfProductionCycles" : 10000,
     "NumberOfInitializationCycles" : 5000,
     "PrintEvery" : 5,
     
@@ -33,7 +33,7 @@
             "ReinsertionProbability" : 1.0,
             "SwapProbability" : 0.0,
             "SwapConventionalProbability" : 1.0,
-            "CreateNumberofmolecules" : 0
+            "CreateNumberOfMolecules" : 0
         }
     ]
 }

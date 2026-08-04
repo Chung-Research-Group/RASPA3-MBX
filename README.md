@@ -78,16 +78,67 @@ RASPA3-MBX and MBX must use a compatible OpenMP runtime. For example, do not
 mix an MBX library built with LLVM `libomp` into a RASPA3 executable configured
 for GNU `libgomp`.
 
-MBX is an external dependency and is not vendored here. This integration was
-validated with `MBX_VERSION` 1.3.3; compatibility with arbitrary MBX versions
-is not implied. Record the exact MBX source revision alongside each
-RASPA3-MBX release. MBX also has licensing terms separate from this
-repository's MIT license, so consult the license supplied with your MBX build.
+MBX is an external dependency and is not vendored here. The maintained public
+dependency is [paesanilab/MBX](https://github.com/paesanilab/MBX), pinned to
+release `v1.4.0` at commit
+`0e01b75b47611d7d51f27a34b112bdc5e2090a50`. It replaces the former private
+MBX 1.3.3 fork: the private fork contained no private potential, coefficient,
+or RASPA API, and its one compile-only OpenMP patch is superseded in v1.4.0.
+Compatibility with arbitrary moving MBX branches is not implied. See the
+[public-MBX migration audit](docs/mbx-public-migration.md) for the source,
+API, numerical, and licensing comparison.
+
+This is a source-compatible migration, not a binary hot-swap. Do not relink
+old RASPA objects against the new archive: public v1.4.0 also updates MBX's
+bundled JSON implementation. Reconfigure from a fresh RASPA build tree using
+the public headers and library together.
+
+Record the exact MBX source revision alongside each RASPA3-MBX release. MBX
+also has licensing terms separate from this repository's MIT license, so
+consult the license supplied with your MBX build.
 
 `BUILD_MBX` defaults to `ON` in this fork. Pass `-DBUILD_MBX=OFF` explicitly
 when configuring a classical-only build without the external MBX dependency.
 
-### MBX-enabled build
+### Build the audited public MBX dependency
+
+Use MBX's basic, non-MPI installation. The following is the validated
+Clang/Conda workflow; choose a permanent versioned path for `MBX_ROOT`:
+
+```bash
+git clone https://github.com/paesanilab/MBX.git
+cd MBX
+git checkout --detach 0e01b75b47611d7d51f27a34b112bdc5e2090a50
+
+export MBX_ROOT=/path/to/dependencies/mbx-1.4.0-0e01b75b
+export FFTW_HOME="$CONDA_PREFIX"
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+autoreconf -fi
+CC="$CONDA_PREFIX/bin/clang" \
+  CXX="$CONDA_PREFIX/bin/clang++" \
+  LDFLAGS="-L$CONDA_PREFIX/lib" \
+  ./configure --prefix="$MBX_ROOT"
+
+make -j8
+make check
+make install
+```
+
+Passing the Conda library directory in `LDFLAGS` during `configure` is
+important. In the maintained Clang environment it lets MBX select the
+`libiomp5` compatibility name for LLVM `libomp`, instead of falling back to GNU
+`libgomp`. Verify the installed executable before building RASPA3-MBX:
+
+```bash
+ldd "$MBX_ROOT/bin/single_point" | grep -E 'fftw|[ig]?omp'
+```
+
+The maintained build shows Conda `libfftw3.so` and one `libomp.so`; it does not
+load both `libgomp` and `libomp`. All 34 MBX v1.4.0 tests must pass before the
+installation is used.
+
+### Build RASPA3-MBX against MBX
 
 The most reproducible local setup is an ignored `CMakeUserPresets.json` that
 inherits the tracked `linux_conda` preset and supplies machine-specific MBX,
@@ -98,7 +149,7 @@ dependency paths should not be committed:
 cp CMakeUserPresets.json.example CMakeUserPresets.json
 export MBX_ROOT=/path/to/installed/mbx
 
-cmake --preset mbx-local
+cmake --preset mbx-local --fresh
 cmake --build --preset mbx-local --parallel
 ctest --preset mbx-local
 ```
@@ -303,6 +354,7 @@ into `main` and create a release tag. The detailed process and CI matrix are in
 ## Documentation
 
 - [RASPA3-MBX synchronization and compatibility report](docs/mbx-upstream-sync.md)
+- [Public MBX replacement and validation report](docs/mbx-public-migration.md)
 - [Input-command reference](docs/manual/commands.md)
 - [Coordinate and binary restarts](docs/manual/restart.md)
 - [Full RASPA3 manual](docs/manual/manual.md)

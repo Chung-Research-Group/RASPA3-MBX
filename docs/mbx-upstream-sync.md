@@ -186,17 +186,18 @@ shared `CMakePresets.json`. A portable template is provided as
 `CMakeUserPresets.json.example`. The prepared local workflow is:
 
 ```bash
-cmake --preset mbx-local
+cmake --preset mbx-local --fresh
 cmake --build --preset mbx-local --parallel 4
 ctest --preset mbx-local
 ```
 
-The audited Carbon build used CMake 4.0.3, Clang 20, the existing static MBX
-library, and Conda FFTW/HDF5/GoogleTest packages without network downloads. The
-root CMake file also retains the token required by CMake 4.3 and newer. MBX's
-static library was compiled against LLVM OpenMP (`__kmpc_*`), so the local
-preset uses the matching Conda `libomp`; linking it with GNU `libgomp` leaves
-unresolved symbols and mixing both OpenMP runtimes in one process is unsafe.
+The audited Carbon build used CMake 4.0.3, Clang 20, public MBX v1.4.0 at
+`0e01b75b47611d7d51f27a34b112bdc5e2090a50`, and Conda
+FFTW/HDF5/GoogleTest packages. The root CMake file also retains the token
+required by CMake 4.3 and newer. MBX and RASPA were compiled against LLVM
+OpenMP (`libomp`); linking with GNU `libgomp` as a second runtime is unsafe.
+The public dependency comparison and clean-build recipe are recorded in the
+[public-MBX migration audit](mbx-public-migration.md).
 
 ## Verification performed
 
@@ -204,7 +205,8 @@ The integration was validated in the prepared Carbon environment as follows:
 
 | Check | Result |
 |---|---|
-| Current MBX-enabled build | Passed after the StructureKit merge, including `libraspakit_base.a`, `app/raspa3`, and `unit_tests_mbx` |
+| Public MBX dependency | Fresh v1.4.0 build and install passed 34/34 upstream tests and resolved one LLVM OpenMP runtime |
+| Current MBX-enabled build | Passed against the public MBX prefix after the StructureKit merge, including `libraspakit_base.a`, `app/raspa3`, and `unit_tests_mbx` |
 | Complete MBX-disabled build | Passed from the current sources in a separate configuration, with no MBX headers or library in the target |
 | User-facing executables | `app/raspa3` and `cli/raspa3-cli` linked successfully and both passed help/startup checks |
 | Focused MBX/diagnostic tests | 12/12 passed: four MBX energy/bookkeeping tests, four accepted-energy-log tests, one restart-cadence/archive test, and three fixed-snapshot evaluation tests |
@@ -215,6 +217,7 @@ The integration was validated in the prepared Carbon environment as follows:
 | Accepted-energy file smoke test | A fresh two-cycle Monte Carlo run configured with `WriteRestartEvery: 1` wrote one-header `output/energy_terms.s0.csv` and produced no energy rows on standard error |
 | Classical snapshot evaluation | The MBX-disabled executable loaded a relative two-molecule coordinate restart, evaluated it once without moves, and created only `output/energy_evaluation.json` |
 | MBX + Morse snapshot evaluation | A nonzero one-CO2 MOF-74 snapshot produced the classical Morse framework term, retained MBX total, and all seven raw MBX terms without changing the snapshot |
+| Private/public fixed-snapshot parity | All seven raw terms agreed; the largest difference was `8.731e-11` kcal/mol and the retained/total difference was `4.394e-8` K |
 | Merge hygiene | No unresolved paths or conflict markers; the original source repository remains unchanged |
 
 The native RASPAKit test executable itself also builds after restoring the
@@ -409,7 +412,8 @@ absolute dependency presets, production output, or downloaded dependencies.
 ## Pull-request policy
 
 Do not open or push a pull request automatically from the integration branch.
-The MBX fork update belongs in the fork repository after local review. The
-Morse I/O/reporting work described above should be prepared separately from a
-clean official-upstream branch. Publishing either branch requires an explicit
-review of the final diff, commit message, target repository, and target branch.
+The RASPA3-MBX integration update belongs in the fork repository after local
+review. The Morse I/O/reporting work described above should be prepared
+separately from a clean official-upstream branch. Publishing either branch
+requires an explicit review of the final diff, commit message, target
+repository, and target branch.
