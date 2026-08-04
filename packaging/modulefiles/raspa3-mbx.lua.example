@@ -1,0 +1,25 @@
+help([[
+RASPA3-MBX molecular simulation package.
+
+The executable reads simulation.json from the current working directory.
+]])
+
+whatis("Name: RASPA3-MBX")
+whatis("Category: molecular simulation")
+whatis("URL: https://github.com/Chung-Research-Group/RASPA3-MBX")
+
+-- Replace both paths for the server installation. They may be the same path
+-- when RASPA3-MBX was installed directly into the Conda environment.
+local root = "/shared/apps/raspa3-mbx/REPLACE_WITH_VERSION"
+local deps = "/shared/apps/conda/envs/raspa3-mbx"
+
+conflict("raspa3")
+conflict("raspa3-mbx")
+
+prepend_path("PATH", pathJoin(root, "bin"))
+prepend_path("LD_LIBRARY_PATH", pathJoin(deps, "lib"))
+
+-- RASPA_DIR is used to locate installed force fields and molecule data.
+setenv("RASPA_DIR", root)
+setenv("RASPA3_MBX_ROOT", root)
+setenv("RASPA3_MBX_ENV", deps)

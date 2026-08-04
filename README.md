@@ -216,6 +216,104 @@ The main executable is:
 build-mbx/app/raspa3
 ```
 
+### Create the dependency environment
+
+The tracked [`env.yml`](env.yml) defines the validated Linux x86-64 direct
+dependencies: Clang 20, CMake 4.0.3, OpenBLAS, HDF5, FFTW, the OpenCL loader,
+and LLVM OpenMP. It also includes Autotools and related utilities needed to
+build the audited public MBX dependency:
+
+```bash
+conda env create -f env.yml
+conda activate raspa3-mbx
+```
+
+The compiler and CMake versions are intentionally pinned because C++ standard
+library module artifacts are compiler-specific and CMake's `import std` gate is
+version-sensitive. The YAML has no `prefix`, so each user can install it in a
+normal writable Conda environment. It is intended for Linux x86-64 servers;
+other operating systems need a platform-specific environment.
+
+MBX itself is not installed by this YAML because the audited MBX revision is
+not distributed as the required Conda package. Build and install public MBX
+with this activated environment using the preceding instructions, then set
+`MBX_ROOT` to that installation before configuring RASPA3-MBX.
+
+`ocl-icd` supplies the OpenCL loader. A server still needs an appropriate
+vendor OpenCL implementation if OpenCL calculations are requested; the NVIDIA,
+AMD, or Intel driver is normally managed outside Conda by the cluster.
+
+### Use the executable from the build tree
+
+RASPA3 reads a file named `simulation.json` from the current working directory;
+it does not take the JSON path as a positional argument. Keep the Conda runtime
+libraries active, enter the calculation directory, and run the executable:
+
+```bash
+conda activate raspa3-mbx
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+
+cd /path/to/calculation
+/path/to/RASPA3-MBX/build-mbx/app/raspa3
+```
+
+Useful checks are:
+
+```bash
+raspa3 --help
+raspa3 --opencl
+```
+
+The simulation writes its normal `output/`, restart, and other result files
+relative to the calculation directory. An MBX settings path supplied in
+`simulation.json` is also resolved relative to that input file.
+
+### Install and expose RASPA3-MBX as a server module
+
+For a shared server installation, install a tested build into a versioned
+application directory. Do not expose only the build directory without its
+matching Conda runtime libraries:
+
+```bash
+cmake --build --preset mbx-server --parallel
+cmake --install build-mbx-server --prefix /shared/apps/raspa3-mbx/REPLACE_WITH_VERSION
+```
+
+An Lmod module template is provided at
+[`packaging/modulefiles/raspa3-mbx.lua.example`](packaging/modulefiles/raspa3-mbx.lua.example).
+Copy it into the server's module tree and edit its `root` and `deps` paths. The
+module performs three required operations:
+
+- adds the installed `bin` directory to `PATH`;
+- adds the matching Conda `lib` directory to `LD_LIBRARY_PATH`;
+- sets `RASPA_DIR` so installed force fields and molecule definitions can be
+  found under `share/raspa3`.
+
+After the administrator installs the module file, users can run:
+
+```bash
+module load raspa3-mbx/REPLACE_WITH_VERSION
+command -v raspa3
+raspa3 --help
+
+cd /path/to/calculation-containing-simulation.json
+raspa3
+```
+
+For a single-process Slurm calculation, a minimal job body is:
+
+```bash
+module purge
+module load raspa3-mbx/REPLACE_WITH_VERSION
+export OMP_NUM_THREADS="$SLURM_CPUS_PER_TASK"
+srun --cpu-bind=cores raspa3
+```
+
+The module must refer to the same Conda dependency environment used when the
+executable was linked. Without that library path, the system can select an
+incompatible `libstdc++`, HDF5, OpenBLAS, or OpenMP library and fail before the
+simulation starts.
+
 ### Classical build without MBX
 
 Use a separate disposable build directory:

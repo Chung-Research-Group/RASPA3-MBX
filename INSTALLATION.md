@@ -1,5 +1,12 @@
 # RASPA 3 – Installation Guide
 
+> **RASPA3-MBX users:** the upstream-oriented package instructions below do
+> not describe this fork's MBX build. RASPA3-MBX is currently validated with
+> the dynamically linked Conda environment in [`env.yml`](env.yml), CMake
+> 4.0.3, and Clang 20. Follow the [RASPA3-MBX build, runtime, and server-module
+> instructions](README.md#building). In particular, the matching Conda `lib`
+> directory must be available at runtime.
+
 RASPA 3 is a modern Monte‑Carlo simulation package that uses C++23.
 Pre‑built binaries are **statically linked** and therefore do not require any external runtime libraries.
 If you only want to *use* RASPA 3, download a pre‑built package.
