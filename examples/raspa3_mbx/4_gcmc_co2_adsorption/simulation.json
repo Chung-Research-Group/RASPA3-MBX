@@ -1,0 +1,34 @@
+{
+  "SimulationType": "MonteCarlo",
+  "NumberOfProductionCycles": 5,
+  "NumberOfInitializationCycles": 2,
+  "NumberOfEquilibrationCycles": 2,
+  "PrintEvery": 1,
+  "WriteRestartEvery": 2,
+  "RandomSeed": 42,
+  "ForceField": "../../basic/10_mc_adorption_co2_in_mfi",
+  "Systems": [
+    {
+      "Type": "Framework",
+      "Name": "../../basic/10_mc_adorption_co2_in_mfi/MFI_SI",
+      "HeliumVoidFraction": 0.3,
+      "NumberOfUnitCells": [2, 2, 2],
+      "ExternalTemperature": 298.0,
+      "ExternalPressure": 100000.0,
+      "ChargeMethod": "Ewald",
+      "UseMBX": true,
+      "MBXSettingsFile": "../mbx.json",
+      "PrintEnergyTerms": true
+    }
+  ],
+  "Components": [
+    {
+      "Name": "co2",
+      "MoleculeDefinition": "ExampleDefinitions",
+      "TranslationProbability": 0.3,
+      "RotationProbability": 0.3,
+      "SwapConventionalProbability": 0.4,
+      "CreateNumberOfMolecules": 0
+    }
+  ]
+}
