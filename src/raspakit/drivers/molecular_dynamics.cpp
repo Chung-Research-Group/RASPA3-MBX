@@ -1377,9 +1377,9 @@ void MolecularDynamics::output()
     std::print(stream, "{}", integratorsCPUTime.writeIntegratorsCPUTimeStatistics(totalSimulationTime));
     std::print(stream, "\n\n");
 
-    std::print(
-        stream, "{}",
-        system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
+    std::print(stream, "{}",
+               system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework,
+                                                              system.components, system.useMBX));
 
     std::print(stream, "Temperature averages and statistics:\n");
     std::print(stream, "===============================================================================\n\n");

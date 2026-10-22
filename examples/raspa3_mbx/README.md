@@ -96,3 +96,24 @@ All three inputs set `UseMBX` to `true` and read `mbx.json` from this directory.
 They require an executable built with `BUILD_MBX=ON`. Output is created inside
 the selected example directory. Remove or archive an old `output/` directory
 before comparing fresh runs.
+
+## Model order and scientific checks
+
+MBX `co2` requires C,O,O sites. The shared definition and the snapshot use that
+order; positions are not automatically sorted by the adapter. The preceding
+O,C,O example definition was incorrect even though the executable could finish.
+The corrected snapshot retains the same physical positions, now ordered for MBX.
+Do not reuse output generated from the old example input as a numerical reference.
+The paper's original calculation directories are separate and remain unchanged.
+
+Run all four examples in a fresh copied directory with output checks:
+
+```bash
+python tests/run_mbx_examples.py --source . --executable /absolute/path/to/raspa3 \
+  --output /absolute/path/to/new-example-checks
+```
+
+This checks monomer order, finite/decomposed energy, molecular population,
+Widom noncommit behavior and requested output. Example 4 uses conventional
+insertion/deletion; it does not establish CBMC coverage. These short examples
+exercise functionality, not equilibration or scientific convergence.

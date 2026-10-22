@@ -1,5 +1,8 @@
 add_executable(unit_tests_mbx
   mbx.cpp
+  component_validation.cpp
+  reporting.cpp
+  volume_integration.cpp
   main.cpp)
 
 add_custom_command(TARGET unit_tests_mbx POST_BUILD

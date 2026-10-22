@@ -1175,9 +1175,9 @@ void MonteCarlo::output()
     std::print(stream, "Total simulation time:          {:14f} [s]\n", totalSimulationTime.count());
     std::print(stream, "\n\n");
 
-    std::print(
-        stream, "{}",
-        system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
+    std::print(stream, "{}",
+               system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework,
+                                                              system.components, system.useMBX));
 
     if (!(system.framework.has_value() && system.framework->rigid))
     {

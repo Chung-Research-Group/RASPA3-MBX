@@ -16,13 +16,13 @@ import system;
 
 export namespace Interactions
 {
-/** Bare-framework permanent electrostatic energy in MBX units (kcal/mol). */
+/// Bare-framework permanent electrostatic energy in MBX units (kcal/mol).
 double computeFrameworkElecPermMBXEnergy(const System& system, const SimulationBox& simulationBox,
                                          const std::optional<Framework>& framework,
                                          std::span<const Atom> frameworkAtoms);
 
 /**
- * Absolute MBX guest energy for a complete System. The optional seven-element output span is populated
+ * Absolute retained MBX guest energy for a complete System. The optional seven-element output span is populated
  * in the order [1B, 2B, 3B, 4B, dispersion, permanent electrostatics, induced electrostatics], in kcal/mol.
  */
 RunningEnergy computeMBXEnergySystem(const System& system, const std::vector<Component>& components,
@@ -31,8 +31,10 @@ RunningEnergy computeMBXEnergySystem(const System& system, const std::vector<Com
                                      std::span<double> mbxEnergyLog = {});
 
 /**
- * Absolute MBX energy with a selected molecule replaced, inserted, or removed. When supplied, mbxEnergyLog
+ * Absolute retained MBX energy with a selected molecule replaced, inserted, or removed. When supplied, mbxEnergyLog
  * must point to a seven-element vector using the same order and units as computeMBXEnergySystem().
+ * The molecule identity determines replacement versus insertion; false excludes an existing selected molecule.
+ * See docs/mbx-maintenance.md for the operation table and rigid-monomer target contract.
  */
 RunningEnergy computeMBXEnergy(const System& system, const std::vector<Component>& components,
                                const SimulationBox& simulationBox, const std::optional<Framework>& framework,

@@ -100,7 +100,7 @@ export struct System
          std::vector<Component> components, std::vector<std::vector<double3>> initialPositions,
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities(), bool useMBXCalculator = false,
-         std::optional<std::string> mbxFilePath = std::nullopt, bool writeEnergyLog = true,
+         std::optional<std::string> mbxFilePath = std::nullopt, bool writeEnergyLog = false,
          bool computeZeroLoadingHeatOfAdsorption = false);
 
   std::uint64_t versionNumber{3};
@@ -185,10 +185,10 @@ export struct System
   bool useMBX{false};
   /// Validated path to the MBX JSON settings file. Empty when MBX is disabled.
   std::string mbxSettingsFilePath{};
-  /// Emit accepted-move and completed Widom-trial energy CSV records.
+  /// Opt in to accepted-move and completed Widom-trial energy CSV records.
   /// The canonical simulation.json key is PrintEnergyTerms; WriteEnergyLog is
   /// retained as a backward-compatible input alias and archive field.
-  bool writeEnergyLog{true};
+  bool writeEnergyLog{false};
   /// Accumulate Qst^0 = kBT - <W DeltaU>/<W> for conventional Widom trials.
   bool computeZeroLoadingHeatOfAdsorption{false};
   /// Permanent electrostatic energy of the bare framework in MBX units (kcal/mol).
@@ -408,6 +408,9 @@ export struct System
    * This is a no-op when UseMBX is false and throws with an actionable message otherwise.
    */
   void validateMBXMonteCarloConfiguration() const;
+  /// Check the rigid-guest target and known MBX site orders before evaluating any configuration.
+  /// CO2 uses C,O,O and water uses O,H,H; other monomers must follow the installed MBX database.
+  void validateMBXComponentDefinitions() const;
   void precomputeTotalGradients() noexcept;
   /// Compute the absolute potential energy. With MBX, an optional seven-value span receives
   /// [1B, 2B, 3B, 4B, dispersion, permanent electrostatics, induced electrostatics] in kcal/mol.

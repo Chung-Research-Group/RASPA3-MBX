@@ -762,6 +762,7 @@ void System::precomputeTotalRigidEnergy() noexcept
 
 void System::preComputeElecPermFrameworkMBX()
 {
+  validateMBXComponentDefinitions();
 #ifdef BUILD_MBX
   elecPermFrameworkMBX = useMBX && framework.has_value() ? Interactions::computeFrameworkElecPermMBXEnergy(
                                                                *this, simulationBox, framework, spanOfFrameworkAtoms())
@@ -776,9 +777,62 @@ void System::preComputeElecPermFrameworkMBX()
 #endif
 }
 
+void System::validateMBXComponentDefinitions() const
+{
+  if (!useMBX) return;
+
+  for (const Component& component : components)
+  {
+    // The paper target omits MBX 1B and classical intramolecular energies. Flexible guests need
+    // a different target and reservoir normalization, maintained on the development branches.
+    if (!component.rigid)
+    {
+      throw std::runtime_error(
+          std::format("[System MBX validation]: component '{}' is flexible; this branch supports rigid MBX guests only "
+                      "because the retained target excludes the one-body deformation energy",
+                      component.name));
+    }
+
+    std::array<std::size_t, 3> expectedAtomicNumbers{};
+    if (component.name == "co2")
+    {
+      expectedAtomicNumbers = {6, 8, 8};
+    }
+    else if (component.name == "h2o")
+    {
+      expectedAtomicNumbers = {8, 1, 1};
+    }
+    else
+    {
+      // Do not invent site conventions for other MBX monomers. Their supported site order
+      // remains a contract of the installed MBX database and the supplied component definition.
+      continue;
+    }
+
+    if (component.definedAtoms.size() != expectedAtomicNumbers.size())
+    {
+      throw std::runtime_error(std::format(
+          "[System MBX validation]: monomer '{}' requires three physical sites in MBX database order", component.name));
+    }
+    for (std::size_t site = 0; site < expectedAtomicNumbers.size(); ++site)
+    {
+      const std::size_t type = static_cast<std::size_t>(component.definedAtoms[site].first.type);
+      if (type >= forceField.pseudoAtoms.size() ||
+          forceField.pseudoAtoms[type].atomicNumber != expectedAtomicNumbers[site])
+      {
+        throw std::runtime_error(
+            std::format("[System MBX validation]: monomer '{}' site {} must have atomic number {}; "
+                        "use C,O,O for co2 and O,H,H for h2o, including coordinate restart files",
+                        component.name, site, expectedAtomicNumbers[site]));
+      }
+    }
+  }
+}
+
 void System::validateMBXMonteCarloConfiguration() const
 {
   if (!useMBX) return;
+  validateMBXComponentDefinitions();
 
   if (tmmc.doTMMC)
   {
@@ -801,18 +855,6 @@ void System::validateMBXMonteCarloConfiguration() const
     throw std::runtime_error(
         "[System MBX validation]: force-based RDF sampling is not supported with UseMBX because its force path "
         "uses the classical gradient energy; conventional geometry-only RDF sampling remains supported");
-  }
-
-  for (std::size_t componentId = 0; componentId < components.size(); ++componentId)
-  {
-    const Component& component = components[componentId];
-    if (!component.rigid && component.mc_moves_probabilities.getProbability(Move::Types::Swap) > 0.0)
-    {
-      throw std::runtime_error(std::format(
-          "[System MBX validation, component {} ('{}')]: conventional insertion/deletion is supported only for "
-          "rigid components; use SwapCBMC for flexible or semi-flexible components",
-          componentId, component.name));
-    }
   }
 
   const auto moveIsSupported = [this](Move::Types move)
@@ -877,7 +919,8 @@ RunningEnergy System::computeTotalEnergies(std::span<double> mbxEnergyTerms)
     throw std::runtime_error(
         "[System]: MBX energy was requested, but this RASPA binary was built without BUILD_MBX support");
 #else
-    // MBX owns every guest intra/intermolecular and electrostatic contribution. RASPA contributes only
+    validateMBXComponentDefinitions();
+    // MBX supplies the retained rigid-guest intermolecular and electrostatic energy. RASPA contributes only
     // framework-guest VDW (including its tail correction) and the configured external field. In particular,
     // no classical guest intra/intermolecular, Ewald, or polarization energy is added here.
     const RunningEnergy frameworkMoleculeEnergy = Interactions::computeFrameworkMoleculeEnergy(
@@ -1497,11 +1540,12 @@ std::string System::writeMBXStatus() const
       "Accepted-move energy terms: {}\n"
       "Widom-trial energy terms: {}\n"
       "Zero-loading Widom heat: {}\n"
+      "Pressure estimator: classical virial diagnostic; MBX virial is not implemented.\n"
+      "NPT acceptance uses the imposed pressure, not the reported diagnostic.\n"
       "Current retained MBX guest energy: {: .6e} [{}]\n"
       "Bare-framework permanent electrostatics removed from MBX: {: .6e} [{}]\n\n",
       mbxSettingsFilePath, energyTermsDestination, widomEnergyTermsDestination,
-      computeZeroLoadingHeatOfAdsorption ? "enabled" : "disabled",
-      runningEnergies.mbxEnergy * Units::EnergyToKelvin,
+      computeZeroLoadingHeatOfAdsorption ? "enabled" : "disabled", runningEnergies.mbxEnergy * Units::EnergyToKelvin,
       Units::displayedUnitOfEnergyString, frameworkPermanentInternal * Units::EnergyToKelvin,
       Units::displayedUnitOfEnergyString);
 }
@@ -1980,7 +2024,7 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
     // Upstream version-1 System archives predate MBX state. Preserve stream alignment and default safely.
     s.useMBX = false;
     s.mbxSettingsFilePath.clear();
-    s.writeEnergyLog = true;
+    s.writeEnergyLog = false;
     s.computeZeroLoadingHeatOfAdsorption = false;
     s.elecPermFrameworkMBX = 0.0;
   }

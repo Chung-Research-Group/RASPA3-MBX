@@ -1566,9 +1566,9 @@ void ParallelTMMC::writeWalkerFinalReports(std::vector<RunningEnergy>& recompute
     std::print(walkerStream, "NOTE: the walker samples under the flattening transition-matrix bias; the\n");
     std::print(walkerStream, "      averages below are biased flat-histogram averages (diagnostics only).\n");
     std::print(walkerStream, "      The physical results are in the combined analysis files.\n\n");
-    std::print(
-        walkerStream, "{}",
-        system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework, system.components));
+    std::print(walkerStream, "{}",
+               system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework,
+                                                              system.components, system.useMBX));
     if (!(system.framework.has_value() && system.framework->rigid))
     {
       std::print(walkerStream, "{}", system.averagePressure.writeAveragesStatistics());

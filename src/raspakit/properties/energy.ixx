@@ -34,7 +34,7 @@ export struct PropertyEnergy : BlockAverage<EnergyStatus>
   }
 
   std::string writeAveragesStatistics(bool externalField, std::optional<Framework> &framework,
-                                      std::vector<Component> &components) const;
+                                      std::vector<Component> &components, bool useMBX) const;
   nlohmann::json jsonAveragesStatistics(bool externalField, std::optional<Framework> &framework,
                                         std::vector<Component> &components) const;
 

@@ -10,18 +10,21 @@ jobs:
     steps:
       - name: checkout-repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: set-up-formatting-python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
 
       - name: install-formatting-tools
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends git ca-certificates
-          sudo apt-get install -y --no-install-recommends clang-format
+        run: python -m pip install clang-format==20.1.6
 
-      - name: run-clang-format
-        shell: bash
-        run: |
-          find src tests -name '*.cpp' -o -name '*.ixx' | xargs clang-format --dry-run --Werror
+      - name: check-changed-cpp-lines
+        env:
+          REVIEW_BASE: ${{ github.event.pull_request.base.sha || 'HEAD~1' }}
+        run: python tests/check_cpp_format.py --base "$REVIEW_BASE"
 
   python-formatting:
     runs-on: ubuntu-24.04
@@ -46,44 +49,4 @@ jobs:
           black -l 120 --check raspa/
 
   test-cpp:
-    permissions: write-all
-    runs-on: ubuntu-24.04
-
-    steps:
-      - name: checkout-repository
-        uses: actions/checkout@v4
-
-      - name: install-packages
-        shell: bash
-        run: |
-          sudo apt-get update
-          sudo DEBIAN_FRONTEND=noninteractive TZ=Europe/Amsterdam apt-get -y install tzdata
-          sudo apt-get install -y --no-install-recommends git ca-certificates cmake ninja-build
-          sudo apt-get install -y --no-install-recommends llvm lld clang clang-tools clang-tidy libc++-dev libc++abi-dev libomp-dev
-          sudo apt-get install -y --no-install-recommends python3 pybind11-dev python3-pybind11
-          sudo apt-get install -y --no-install-recommends liblapack64-dev libblas64-dev
-          sudo apt-get install -y --no-install-recommends libhdf5-cpp-103-1t64 libhdf5-103-1t64 libhdf5-dev
-          sudo apt-get install -y --no-install-recommends doxygen graphviz
-
-      - name: configure-cmake-raspa3 
-        shell: bash
-        run: |
-          cmake -B ${{github.workspace}}/build --preset linux-x86_64-core-avx2-ubuntu-24 -DBUILD_TESTING=ON
-
-      - name: build-raspa3-and-tests
-        shell: bash
-        run: |
-          ninja -C ${{github.workspace}}/build
-
-      - name: run-tests
-        shell: bash
-        run: |
-          ${{github.workspace}}/build/tests/raspakit-tests/unit_tests_raspakit --gtest_output=xml:${{github.workspace}}/testResults.xml
-
-      - name: test-report
-        uses: dorny/test-reporter@v1
-        if: success() || failure()    
-        with:
-          name: raspa3-unit-tests
-          path: ${{github.workspace}}/*Results.xml 
-          reporter: java-junit
+    uses: ./.github/workflows/mbx-validation.yml

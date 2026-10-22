@@ -924,7 +924,7 @@ void HyperParallelTempering::writeReplicaFinalReports(std::vector<RunningEnergy>
 
     std::print(replicaStream, "{}",
                system.averageEnergies.writeAveragesStatistics(system.hasExternalField, system.framework,
-                                                              system.components));
+                                                              system.components, system.useMBX));
     if (!(system.framework.has_value() && system.framework->rigid))
     {
       std::print(replicaStream, "{}", system.averagePressure.writeAveragesStatistics());

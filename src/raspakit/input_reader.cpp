@@ -1921,7 +1921,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 
       bool useMBXCalculator{false};
       std::optional<std::string> mbxFilePath;
-      bool writeEnergyLog{true};
+      bool writeEnergyLog{false};
       bool computeZeroLoadingHeatOfAdsorption{false};
 
       if (value.contains("UseMBX"))

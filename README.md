@@ -23,7 +23,7 @@ are documented in [the synchronization report](docs/mbx-upstream-sync.md).
 |---|---|
 | MBX guest energy | Enabled per system with `"UseMBX": true` and an `MBXSettingsFile` |
 | Morse potential | Supported by the current native RASPA3 force-field implementation and retained in the MOF-74 inputs |
-| Energy-term logs | `PrintEnergyTerms` writes accepted moves to `output/energy_terms.s<id>.csv` and conventional Widom trials to `output/widom_energy_terms.s<id>.csv` |
+| Energy-term logs | Opt in with `PrintEnergyTerms: true` to write accepted moves to `output/energy_terms.s<id>.csv` and conventional Widom trials to `output/widom_energy_terms.s<id>.csv` |
 | Zero-loading heat | `ComputeZeroLoadingHeatOfAdsorption` reports energy-weighted conventional-Widom (Q_{st}^0) statistics |
 | Coordinate restart cadence | Top-level `WriteRestartEvery` replaces the previous hard-coded interval of 5000 cycles |
 | Snapshot comparison | `SimulationType: EnergyEvaluation` reads a coordinate-restart JSON, evaluates it once, and exits without a Monte Carlo move |
@@ -47,10 +47,9 @@ before comparing results with another program.
 MBX trajectory generation currently supports the regular, single-system
 `MonteCarlo` driver. Supported state-changing moves include translation,
 rotation, CBMC reinsertion, conventional or CBMC insertion/deletion, and a
-framework-free isotropic volume move without an external field. Conventional
-insertion/deletion is limited to rigid components; flexible components must use
-CBMC. Widom evaluation and the non-mutating `EnergyEvaluation` mode are also
-supported.
+framework-free isotropic volume move without an external field. All guest components must be rigid, including for CBMC and `EnergyEvaluation`.
+Flexible-guest targets and MBX-TMMC are maintained separately on development
+branches. Widom evaluation and the non-mutating `EnergyEvaluation` mode are supported.
 
 The input reader rejects unported MBX combinations before starting a run. In
 particular, do not enable MBX for molecular dynamics, minimization,
@@ -62,6 +61,16 @@ limitations are in
 
 Classical RASPA3 calculations remain available by building with
 `BUILD_MBX=OFF` or by leaving `UseMBX` false.
+
+Known MBX monomers require database site order: `co2` is C,O,O and `h2o` is O,H,H.
+The component definition and coordinate restart must use the same order; the
+adapter does not sort atoms. Known definitions are checked using pseudo-atom
+atomic numbers. Other monomers remain subject to the installed MBX model's
+site count, order and supported interaction combinations.
+
+The current maintenance and branch policy is in [Maintaining the MBX interface](docs/mbx-maintenance.md).
+The archived synchronization report records earlier verification and must not
+be read as the test receipt for a new build.
 
 ## Building
 
@@ -168,7 +177,7 @@ environment. On the maintained workstation, `/usr/local/bin/cmake` is an older
 3.28 installation and must not be used for this source tree:
 
 ```bash
-conda activate raspa3-mbx_2
+conda activate raspa3-mbx
 hash -r
 command -v cmake
 cmake --version
@@ -373,7 +382,7 @@ Relative `MBXSettingsFile` paths are resolved from the directory containing
 |---|---|---:|---|
 | `UseMBX` | Per system | `false` | Use MBX for the supported guest-energy calculation |
 | `MBXSettingsFile` | Per system | — | MBX JSON settings file; required when `UseMBX` is true |
-| `PrintEnergyTerms` | Per system | `true` | Write accepted-move and conventional-Widom diagnostic CSVs under `output/`; set false to disable |
+| `PrintEnergyTerms` | Per system | `false` | Set true to write accepted-move and conventional-Widom diagnostic CSVs under `output/` |
 | `ComputeZeroLoadingHeatOfAdsorption` | Per system | `false` | Accumulate and print (Q_{st}^0) from conventional Widom trials; requires zero guest loading, a positive `WidomProbability`, a rigid host/test component, and fixed volume |
 | `WriteRestartEvery` | Top level | `5000` | Periodic coordinate-restart interval for regular MC and thermodynamic integration; `0` disables periodic writes |
 | `SimulationType: EnergyEvaluation` | Top level | — | Evaluate a configuration once without changing it |
@@ -383,7 +392,14 @@ with different values is an input error.
 
 ### Energy diagnostic CSVs
 
-A fresh run truncates `output/energy_terms.s<id>.csv`. A binary-resumed run
+Energy diagnostic CSVs are disabled by default; set `PrintEnergyTerms` to
+`true` when move/trial records are needed. Normal scientific summaries,
+warnings, errors, and explicitly requested `EnergyEvaluation` results remain
+available. Binary restarts that store the logging flag preserve its saved
+value; older version-1 system archives without the flag resume with logging
+disabled.
+
+With logging enabled, a fresh run truncates `output/energy_terms.s<id>.csv`. A binary-resumed run
 appends without duplicating the header. Each row represents an accepted move
 and contains the move type, component, loading, retained total, framework-guest
 VDW and tail terms, the energy difference, and the acceptance factor. Classical

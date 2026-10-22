@@ -30,6 +30,22 @@ import interactions_mbx;
 #endif
 import mc_moves_move_types;
 
+namespace
+{
+// This failure guard must observe NaN/Inf even in builds using -ffast-math.
+// Volatile character reads preserve the object representation; a floating-value
+// isfinite/bit_cast expression can otherwise be optimized to unconditional true.
+bool finiteVolumeScreenEnergy(const double &energy)
+{
+  static_assert(std::numeric_limits<double>::is_iec559 && sizeof(double) == sizeof(std::uint64_t));
+  const volatile unsigned char *bytes = reinterpret_cast<const volatile unsigned char *>(&energy);
+  std::array<unsigned char, sizeof(double)> observed{};
+  for (std::size_t i = 0; i < observed.size(); ++i) observed[i] = bytes[i];
+  constexpr std::uint64_t exponentMask{0x7ff0000000000000ULL};
+  return (std::bit_cast<std::uint64_t>(observed) & exponentMask) != exponentMask;
+}
+}  // namespace
+
 std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &system)
 {
   if (system.useMBX && system.framework.has_value())
@@ -112,9 +128,8 @@ std::optional<RunningEnergy> MC_Moves::volumeMove(RandomNumber &random, System &
 
   // Do not pass a severely compressed/overlapping trial to MBX. The total-energy kernel does not return
   // an overlap sentinel, so inspect its VDW contribution before evaluating the many-body model.
-  if (system.useMBX &&
-      (!std::isfinite(newTotalInterEnergy.moleculeMoleculeVDW) ||
-       newTotalInterEnergy.moleculeMoleculeVDW > system.forceField.energyOverlapCriteria))
+  if (system.useMBX && (!finiteVolumeScreenEnergy(newTotalInterEnergy.moleculeMoleculeVDW) ||
+                        newTotalInterEnergy.moleculeMoleculeVDW > system.forceField.energyOverlapCriteria))
   {
     restoreCutOffs();
     return std::nullopt;

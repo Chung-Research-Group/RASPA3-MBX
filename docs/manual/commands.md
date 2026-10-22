@@ -870,7 +870,11 @@ reported separately at the end of the simulation.
     truncate the file and binary-resumed runs append without duplicating the
     header. Because CSV rows are flushed independently of binary checkpoints,
     an abrupt-crash resume can repeat the rows newer than the restored
-    checkpoint. Default: `true` for compatibility with RASPA3-MBX.
+    checkpoint. Default: `false`; set `true` to opt in to these diagnostics.
+    Normal scientific summaries, warnings, errors, and explicitly requested
+    `EnergyEvaluation` results are unaffected. Binary restarts preserve a
+    stored logging flag; version-1 system archives without that flag default
+    to disabled.
     `"WriteEnergyLog"` is retained as a legacy alias; specifying both keys with
     different values is an error. Completed conventional Widom ghost trials use
     the separate `output/widom_energy_terms.s<system-id>.csv` schema and never

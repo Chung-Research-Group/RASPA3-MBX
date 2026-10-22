@@ -1,0 +1,82 @@
+name: RASPA3 optional MBX validation
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  native-tests:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        mbx: ["ON", "OFF"]
+    defaults:
+      run:
+        shell: bash -el {0}
+    env:
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MBX_COMMIT: 0e01b75b47611d7d51f27a34b112bdc5e2090a50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          environment-file: env.yml
+          activate-environment: raspa3-mbx
+          auto-activate-base: false
+      - name: Configure runtime
+        run: |
+          echo "LD_LIBRARY_PATH=$CONDA_PREFIX/lib" >> "$GITHUB_ENV"
+          echo "MBX_ROOT=$RUNNER_TEMP/mbx-install" >> "$GITHUB_ENV"
+          cmake --version
+          clang++ --version
+      - name: Build pinned public MBX
+        if: matrix.mbx == 'ON'
+        run: |
+          git clone https://github.com/paesanilab/MBX.git "$RUNNER_TEMP/MBX"
+          git -C "$RUNNER_TEMP/MBX" checkout --detach "$MBX_COMMIT"
+          test "$(git -C "$RUNNER_TEMP/MBX" rev-parse HEAD)" = "$MBX_COMMIT"
+          cd "$RUNNER_TEMP/MBX"
+          autoreconf -fi
+          export FFTW_HOME="$CONDA_PREFIX"
+          CC="$CONDA_PREFIX/bin/clang" CXX="$CONDA_PREFIX/bin/clang++" \
+            LDFLAGS="-L$CONDA_PREFIX/lib" ./configure --prefix="$MBX_ROOT"
+          make -j2
+          make check
+          make install
+      - name: Configure RASPA3
+        run: |
+          cp CMakeUserPresets.json.example CMakeUserPresets.json
+          cmake --preset mbx-local --fresh \
+            -DBUILD_MBX=${{ matrix.mbx }} \
+            -DBUILD_TESTING_MBX=${{ matrix.mbx }} \
+            -DBUILD_TESTING_RASPAKIT=ON \
+            -DBUILD_TESTING_RASPA3=ON
+      - name: Build RASPA3 and native tests
+        run: cmake --build --preset mbx-local --parallel 2
+      - name: Run all discovered native tests
+        run: |
+          ctest --preset mbx-local --show-only=json-v1 > ctest_inventory.json
+          ctest --preset mbx-local --output-on-failure --timeout 180 --output-junit native-tests.xml
+      - name: Run shipped examples with physical and output checks
+        if: always() && matrix.mbx == 'ON'
+        run: |
+          python tests/run_mbx_examples.py --source "$GITHUB_WORKSPACE" \
+            --executable "$GITHUB_WORKSPACE/build-mbx/app/raspa3" \
+            --output "$RUNNER_TEMP/example-checks" --timeout 600
+      - name: Preserve native evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-evidence-MBX-${{ matrix.mbx }}
+          path: |
+            native-tests.xml
+            ctest_inventory.json
+            build-mbx/Testing/Temporary/
+            ${{ runner.temp }}/example-checks/

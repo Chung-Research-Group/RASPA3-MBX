@@ -505,6 +505,10 @@ std::string System::writeProductionStatusReportMC(const std::string& statusLine)
 
   if (!(framework.has_value() && framework->rigid))
   {
+    if (useMBX)
+    {
+      std::print(stream, "Pressure below is a classical virial diagnostic, not an MBX mechanical pressure.\n");
+    }
     std::pair<PressureData, PressureData> average_pressure = averagePressure.average();
 
     switch (Units::unitSystem)
@@ -880,6 +884,8 @@ nlohmann::json System::jsonSystemStatus() const
   }
   if (useMBX)
   {
+    system["pressureEstimator"] = "classical virial diagnostic; MBX virial not implemented";
+    system["pressureIsImposedInput"] = true;
     system["mbxSettingsFile"] = mbxSettingsFilePath;
     system["mbxEnergy [K]"] = runningEnergies.mbxEnergy * Units::EnergyToKelvin;
   }

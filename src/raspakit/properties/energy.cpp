@@ -17,7 +17,7 @@ import units;
 import json;
 
 std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::optional<Framework> &framework,
-                                                    std::vector<Component> &components) const
+                                                    std::vector<Component> &components, bool useMBX) const
 {
   std::ostringstream stream;
 
@@ -734,7 +734,8 @@ std::string PropertyEnergy::writeAveragesStatistics(bool externalField, std::opt
 
   double prefactor = Units::EnergyToKelvin;
 
-  if (computedAverage.first.useMBX)
+  // The system selects the model; accumulator metadata can remain false, including in saved restarts.
+  if (useMBX)
   {
     std::print(stream, "MBX:\n");
     std::print(stream, "-------------------------------------------------------------------------------\n\n");

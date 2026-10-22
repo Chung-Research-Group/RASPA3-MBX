@@ -4,6 +4,17 @@ This document records the 2026-08 integration of the Chung Research Group
 RASPA3-MBX fork with current RASPA3. It is both a change checklist for this
 update and the maintenance policy for later updates.
 
+## Current maintenance boundary (22 October 2026)
+
+The source history below is retained. Current `main` uses the rigid-guest energy
+contract and explicitly rejects flexible MBX guests. Known model site orders are
+checked before evaluation. Experimental MBX-TMMC/flexible code is preserved on
+separate branches; inactive ND-TMMC files and generated debug outputs have been
+removed from the main working tree without deleting their Git history.
+See [the maintained contract and branch policy](mbx-maintenance.md) for current
+entrypoints, test commands and pending extension work. Historical test counts
+below are not a substitute for a current build receipt.
+
 ## Repository baseline
 
 | Item | Commit or location |
@@ -47,7 +58,7 @@ The integration copy has two remotes:
 | Energy statistics | Add MBX-aware `EnergyStatus` arithmetic, block statistics, text output, and archives. An MBX total is external field + framework–guest VDW + framework tail + MBX. Classical component decompositions remain available for the pressure estimator but do not enter the MBX total. |
 | MC moves | Forward-port MBX acceptance and bookkeeping to translation, rotation, conventional insertion/deletion, CBMC insertion/deletion, CBMC reinsertion, Widom, and isotropic framework-free volume changes. Preserve current upstream TMMC updates, dual cutoffs, Ewald trial caches, polarization caches, CBMC Rosenbluth handling, and timing. |
 | Drift correction | Recompute the old and proposed full MBX energy for an MBX move. Use their physical difference in acceptance and the exact accepted MBX total in diagnostic output. This incorporates the important stale-bookkeeping fix from fork commit `e48115b0`. |
-| Energy logs | Replace scattered `std::cerr` fragments with persistent per-system CSV streams under `output/`. Accepted state-changing moves use `energy_terms.s<id>.csv`; completed conventional Widom ghost insertions use the distinct `widom_energy_terms.s<id>.csv` schema and never emit an accepted row. `PrintEnergyTerms` defaults to `true` and can be disabled explicitly. |
+| Energy logs | Replace scattered `std::cerr` fragments with persistent per-system CSV streams under `output/`. Accepted state-changing moves use `energy_terms.s<id>.csv`; completed conventional Widom ghost insertions use the distinct `widom_energy_terms.s<id>.csv` schema and never emit an accepted row. `PrintEnergyTerms` defaults to `false`; set it to `true` to opt in. Preserve stored restart flags; version-1 system archives without the flag default to disabled. |
 | Zero-loading Widom heat | Add the opt-in rigid-host/rigid-adsorbate, fixed-volume estimator `Qst^0 = kBT - <W DeltaU>/<W>`, block uncertainty, K and kJ/mol output, and hard guards that guest loading remains zero. |
 | Restart cadence | Replace the hard-coded 5000-cycle coordinate-snapshot interval with top-level `WriteRestartEvery`; `0` disables periodic writes. Count completed cycles, preserve the value in version-2 Monte Carlo binary archives, and retain version-1 read compatibility. |
 | One-shot energy | Add `SimulationType: EnergyEvaluation` to evaluate an input configuration or coordinate restart once, without MC moves. Emit a human-readable decomposition and `output/energy_evaluation.json`, including all seven raw MBX terms when enabled. |
@@ -103,9 +114,9 @@ move to corrupt an MBX trajectory.
 |---|---|
 | Translation | Supported |
 | Rotation | Supported |
-| Reinsertion CBMC | Supported |
-| Conventional insertion/deletion (`SwapConventionalProbability`) | Supported for rigid components; flexible components must use CBMC |
-| CBMC insertion/deletion (`SwapProbability`) | Supported |
+| Reinsertion CBMC | Supported for rigid components |
+| Conventional insertion/deletion (`SwapConventionalProbability`) | Supported for rigid components only |
+| CBMC insertion/deletion (`SwapProbability`) | Supported for rigid components |
 | Widom | Supported |
 | Isotropic volume, framework-free box without an external field | Supported |
 | Isotropic volume with a framework | Rejected |
@@ -117,7 +128,7 @@ move to corrupt an MBX trajectory.
 | CFCMC, pair/group swap, Gibbs, reactions | Rejected |
 | Transition-matrix and parallel-replica drivers | Rejected |
 | Molecular dynamics, minimization, thermodynamic integration | Rejected; MBX gradients are not forward-ported |
-| One-shot `EnergyEvaluation` | Supported for JSON coordinate snapshots; no moves or MBX gradients are used |
+| One-shot `EnergyEvaluation` | Supported for rigid-guest JSON coordinate snapshots; no moves or MBX gradients are used |
 | Classical RASPA polarization together with MBX | Rejected; MBX supplies the retained induced term |
 | Force-based RDF sampling | Rejected; it invokes the classical full-gradient path and would overwrite MBX running energy |
 
@@ -145,10 +156,13 @@ An MBX system uses the following current input fields:
 ```
 
 `MBXSettingsFile` may be relative to `simulation.json`. `PrintEnergyTerms` is
-optional and defaults to `true` for compatibility with the fork. Set it to
-`false` for production without move/trial energy rows. The legacy
+optional and defaults to `false`. Set it to `true` when move/trial energy
+diagnostics are needed. Normal scientific summaries, warnings, errors, and
+explicitly requested `EnergyEvaluation` results remain available. Binary
+restarts preserve the stored logging flag; version-1 system archives without
+that flag default to disabled. The legacy
 `WriteEnergyLog` alias remains accepted; conflicting values are rejected.
-Regular Monte Carlo writes accepted state changes to
+With logging enabled, regular Monte Carlo writes accepted state changes to
 `output/energy_terms.s0.csv`; when conventional Widom moves are enabled it
 also writes completed ghost trials to `output/widom_energy_terms.s0.csv`.
 Both truncate on a fresh run and append on binary resume without a duplicate
@@ -334,7 +348,7 @@ resuming an old MBX binary checkpoint.
 
 ## Long-term branch and update plan
 
-### One canonical repository
+### Historical repository consolidation plan
 
 Use this `RASPA3-MBX` repository as the sole active checkout. It contains the
 original MBX/Morse history plus the current upstream history, and the old local
@@ -360,6 +374,9 @@ are disposable artifacts, not repository versions. Remote pushes, default
 branch changes, and removal of the old checkout remain explicit user actions.
 
 ### Upstream synchronization workflow
+
+Current branch roles are defined in [mbx-maintenance.md](mbx-maintenance.md).
+The older archival-development instructions above are superseded by that policy.
 
 Keep the fork as a thin set of reviewable layers instead of one long-lived
 mixed feature branch:
