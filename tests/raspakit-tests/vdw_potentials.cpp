@@ -331,7 +331,9 @@ TEST(vdw_potentials, second_order_taylor_shifted_spatial_derivatives_match_finit
 
   for (double r : {3.0, 3.405, 3.8, 5.0, 11.0})
   {
-    constexpr double delta = 1e-5;
+    // Use the same fourth-order stencil as the general spatial-derivative test.
+    // A tiny three-point step loses precision when subtracting nearly equal energies.
+    const double delta = 1e-4 * std::max(1.0, r);
     const Potentials::PairDerivatives<1> gradient =
         Potentials::potentialVDW<1>(forceField, 1.0, 1.0, r * r, 0, 0);
     const Potentials::PairDerivatives<2> hessian =
@@ -344,8 +346,15 @@ TEST(vdw_potentials, second_order_taylor_shifted_spatial_derivatives_match_finit
     const double minus = Potentials::potentialVDW<0>(
                              forceField, 1.0, 1.0, (r - delta) * (r - delta), 0, 0)
                              .energy;
-    const double numericalFirst = (plus - minus) / (2.0 * delta);
-    const double numericalSecond = (plus - 2.0 * center + minus) / (delta * delta);
+    const double plus2 = Potentials::potentialVDW<0>(
+                             forceField, 1.0, 1.0, (r + 2.0 * delta) * (r + 2.0 * delta), 0, 0)
+                             .energy;
+    const double minus2 = Potentials::potentialVDW<0>(
+                              forceField, 1.0, 1.0, (r - 2.0 * delta) * (r - 2.0 * delta), 0, 0)
+                              .energy;
+    const double numericalFirst = (minus2 - 8.0 * minus + 8.0 * plus - plus2) / (12.0 * delta);
+    const double numericalSecond =
+        (-plus2 + 16.0 * plus - 30.0 * center + 16.0 * minus - minus2) / (12.0 * delta * delta);
 
     EXPECT_NEAR(gradient.firstDerivativeFactor * r, numericalFirst,
                 1e-5 * std::max(1.0, std::abs(numericalFirst)))

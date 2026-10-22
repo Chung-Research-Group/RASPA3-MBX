@@ -260,6 +260,69 @@ TEST(exact_sphere_sweep, pruning_keeps_one_of_a_pair_of_equals_and_the_order_of_
 }
 
 
+TEST(exact_sphere_sweep, pruning_concentric_caps_does_not_depend_on_rounded_norms)
+{
+  // Neither a normalized axis nor the sine/cosine pair is guaranteed to have squared norm exactly one.
+  // Concentric containment follows from the ordered half angles, including caps close to a whole sphere.
+  for (const double3& axis : {double3(0.0, 0.0, 1.0), double3(1.0, 1.0, 1.0), double3(1.0, 2.0, 3.0)})
+  {
+    for (double halfAngle : {0.1, 0.5, 0.9, std::numbers::pi - 1.0e-6})
+    {
+      const SweepCircle outer = capOf(axis, halfAngle);
+      std::vector<SweepCircle> circles = {outer, capOf(axis, 0.5 * halfAngle), outer};
+      pruneContainedDiscs(circles);
+      ASSERT_EQ(circles.size(), 1uz);
+      EXPECT_EQ(circles[0].axis, outer.axis);
+      EXPECT_EQ(circles[0].cosineHalfAngle, outer.cosineHalfAngle);
+
+      // Even a one-ulp radius difference must retain the larger cap, rather than treating it as a tie.
+      const std::optional<SweepCircle> larger =
+          makeSweepCircle(outer.axis, std::nextafter(outer.cosineHalfAngle, -1.0));
+      ASSERT_TRUE(larger.has_value());
+      circles = {larger.value(), outer};
+      pruneContainedDiscs(circles);
+      ASSERT_EQ(circles.size(), 1uz);
+      EXPECT_EQ(circles[0].cosineHalfAngle, larger->cosineHalfAngle);
+    }
+  }
+}
+
+
+TEST(exact_sphere_sweep, pruning_preserves_nearby_distinct_caps_of_equal_radius)
+{
+  // The axes are distinct even when their dot product rounds to one. An epsilon on the containment
+  // threshold would merge these discs, although each has a boundary region not covered by the other.
+  for (double separation : {1.0e-10, 1.0e-8, 1.0e-6})
+  {
+    for (double halfAngle : {0.5, 0.9, std::numbers::pi - 1.0e-6})
+    {
+      const SweepCircle first = capOf(double3(0.0, 0.0, 1.0), halfAngle);
+      const SweepCircle second = capOf(double3(separation, 0.0, 1.0), halfAngle);
+      ASSERT_FALSE(first.axis == second.axis);
+      std::vector<SweepCircle> circles = {first, second};
+      pruneContainedDiscs(circles);
+      ASSERT_EQ(circles.size(), 2uz);
+      EXPECT_EQ(circles[0].axis, first.axis);
+      EXPECT_EQ(circles[1].axis, second.axis);
+    }
+  }
+}
+
+
+TEST(exact_sphere_sweep, pruning_keeps_the_last_whole_sphere_cap_regardless_of_axis)
+{
+  const std::optional<SweepCircle> first = makeSweepCircle(double3(0.0, 0.0, 1.0), -1.0);
+  const std::optional<SweepCircle> last = makeSweepCircle(double3(1.0, 0.0, 0.0), -1.0);
+  ASSERT_TRUE(first.has_value());
+  ASSERT_TRUE(last.has_value());
+  std::vector<SweepCircle> circles = {first.value(), capOf(double3(0.0, 1.0, 0.0), 0.9), last.value()};
+  pruneContainedDiscs(circles);
+  ASSERT_EQ(circles.size(), 1uz);
+  EXPECT_EQ(circles[0].axis, last->axis);
+  EXPECT_EQ(circles[0].cosineHalfAngle, -1.0);
+}
+
+
 TEST(exact_sphere_sweep, a_crossing_lies_on_both_of_the_circles_that_made_it)
 {
   RandomNumber random{std::optional<std::size_t>(5)};

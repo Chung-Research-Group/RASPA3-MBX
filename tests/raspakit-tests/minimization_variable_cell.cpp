@@ -370,7 +370,10 @@ void expectCellDerivativesMatchFiniteDifference(System system, double gradientTo
   const MinimizationDofLayout layout =
       buildMinimizationDofLayout(system.moleculeData, system.components, frameworkDofs, cellLayout.size());
   const Evaluation reference = evaluate(system, layout);
-  constexpr double delta = 2.0e-5;
+  // A second energy difference amplifies coordinate/energy roundoff by 1 / delta^2.
+  // Balance that error against the O(delta^2) truncation error. In particular, a null
+  // rotation of a linear molecule must not amplify quaternion roundoff into curvature.
+  const double delta = std::pow(std::numeric_limits<double>::epsilon(), 0.25);
 
   for (std::size_t cellCoordinate = 0; cellCoordinate < cellLayout.size(); ++cellCoordinate)
   {

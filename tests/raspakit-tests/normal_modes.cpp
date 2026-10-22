@@ -162,6 +162,8 @@ TEST(normal_modes, writes_one_pdb_movie_per_mode)
   std::ifstream movie(directory / "mode_0011.s0.pdb");
   ASSERT_TRUE(movie.is_open());
   const std::string contents((std::istreambuf_iterator<char>(movie)), std::istreambuf_iterator<char>());
+  // NFS retains an unlinked open file as .nfs*, preventing removal of its directory.
+  movie.close();
   EXPECT_TRUE(contents.contains("MODEL"));
   EXPECT_TRUE(contents.contains("ATOM"));
   EXPECT_TRUE(contents.contains("ENDMDL"));
