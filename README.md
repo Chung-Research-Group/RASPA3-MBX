@@ -539,9 +539,9 @@ ctest --preset mbx-local \
   --output-on-failure
 ```
 
-The latest audited results, including known failures in unchanged upstream
-code, are recorded under
-[Verification performed](docs/mbx-upstream-sync.md#verification-performed).
+The current source-bound test results and repair scope are recorded in
+[Maintained verification](docs/validation-current.md). Earlier synchronization
+counts are preserved as historical evidence, not as this edition's results.
 
 ## Keeping the fork synchronized
 

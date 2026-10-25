@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="56" failures="6" disabled="0" errors="0" time="42.302" timestamp="2026-10-25T23:51:47.918" name="AllTests">
+  <testsuite name="hybrid_mc" tests="5" failures="1" disabled="0" skipped="0" errors="0" time="0.319" timestamp="2026-10-25T23:51:47.918">
+    <testcase name="flexible_framework_only_does_not_throw_and_restores_on_reject" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp" line="693" status="run" result="completed" time="0." timestamp="2026-10-25T23:51:47.918" classname="hybrid_mc">
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:710&#x0A;Value of: accepted.has_value()&#x0A;  Actual: true&#x0A;Expected: false&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:710
+Value of: accepted.has_value()
+  Actual: true
+Expected: false
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:398&#x0A;The difference between a.x and b.x is 1.2035809695216262, which exceeds tol, where&#x0A;a.x evaluates to 6.2035809695216262,&#x0A;b.x evaluates to 5, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:398
+The difference between a.x and b.x is 1.2035809695216262, which exceeds tol, where
+a.x evaluates to 6.2035809695216262,
+b.x evaluates to 5, and
+tol evaluates to 1e-14.
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:399&#x0A;The difference between a.y and b.y is 0.54647063211545177, which exceeds tol, where&#x0A;a.y evaluates to 5.5464706321154518,&#x0A;b.y evaluates to 5, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:399
+The difference between a.y and b.y is 0.54647063211545177, which exceeds tol, where
+a.y evaluates to 5.5464706321154518,
+b.y evaluates to 5, and
+tol evaluates to 1e-14.
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:400&#x0A;The difference between a.z and b.z is 0.083783939100998239, which exceeds tol, where&#x0A;a.z evaluates to 5.0837839391009982,&#x0A;b.z evaluates to 5, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:400
+The difference between a.z and b.z is 0.083783939100998239, which exceeds tol, where
+a.z evaluates to 5.0837839391009982,
+b.z evaluates to 5, and
+tol evaluates to 1e-14.
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:398&#x0A;The difference between a.x and b.x is 0.48143238780865083, which exceeds tol, where&#x0A;a.x evaluates to 5.6185676121913488,&#x0A;b.x evaluates to 6.0999999999999996, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:398
+The difference between a.x and b.x is 0.48143238780865083, which exceeds tol, where
+a.x evaluates to 5.6185676121913488,
+b.x evaluates to 6.0999999999999996, and
+tol evaluates to 1e-14.
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:399&#x0A;The difference between a.y and b.y is 0.21858825284618089, which exceeds tol, where&#x0A;a.y evaluates to 4.7814117471538191,&#x0A;b.y evaluates to 5, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:399
+The difference between a.y and b.y is 0.21858825284618089, which exceeds tol, where
+a.y evaluates to 4.7814117471538191,
+b.y evaluates to 5, and
+tol evaluates to 1e-14.
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:400&#x0A;The difference between a.z and b.z is 0.033513575640399473, which exceeds tol, where&#x0A;a.z evaluates to 4.9664864243596005,&#x0A;b.z evaluates to 5, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:400
+The difference between a.z and b.z is 0.033513575640399473, which exceeds tol, where
+a.z evaluates to 4.9664864243596005,
+b.z evaluates to 5, and
+tol evaluates to 1e-14.
+]]></failure>
+    </testcase>
+    <testcase name="rigid_molecules_in_rigid_framework_does_not_throw" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp" line="715" status="run" result="completed" time="0.003" timestamp="2026-10-25T23:51:47.919" classname="hybrid_mc" />
+    <testcase name="flexible_molecule_in_rigid_framework_does_not_throw" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp" line="730" status="run" result="completed" time="0.156" timestamp="2026-10-25T23:51:47.922" classname="hybrid_mc" />
+    <testcase name="rigid_molecule_in_flexible_framework_does_not_throw" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp" line="746" status="run" result="completed" time="0." timestamp="2026-10-25T23:51:48.078" classname="hybrid_mc" />
+    <testcase name="flexible_molecule_in_flexible_framework_does_not_throw" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp" line="765" status="run" result="completed" time="0.158" timestamp="2026-10-25T23:51:48.079" classname="hybrid_mc" />
+  </testsuite>
+  <testsuite name="minimization_variable_cell" tests="16" failures="2" disabled="0" skipped="0" errors="0" time="41.885" timestamp="2026-10-25T23:51:48.238">
+    <testcase name="symmetric_logarithmic_strain_layouts_and_aliases" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="434" status="run" result="completed" time="0." timestamp="2026-10-25T23:51:48.238" classname="minimization_variable_cell" />
+    <testcase name="logarithmic_strain_preserves_positive_volume_and_rigid_geometry" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="454" status="run" result="completed" time="0." timestamp="2026-10-25T23:51:48.238" classname="minimization_variable_cell" />
+    <testcase name="all_cell_modes_vdw_gradient_and_hessian_match_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="479" status="run" result="completed" time="3.866" timestamp="2026-10-25T23:51:48.238" classname="minimization_variable_cell" />
+    <testcase name="charged_regular_gradient_and_hessian_match_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="492" status="run" result="completed" time="1.485" timestamp="2026-10-25T23:51:52.105" classname="minimization_variable_cell" />
+    <testcase name="periodic_image_blocks_match_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="497" status="run" result="completed" time="1.383" timestamp="2026-10-25T23:51:53.590" classname="minimization_variable_cell" />
+    <testcase name="periodic_framework_molecule_blocks_match_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="505" status="run" result="completed" time="0.88" timestamp="2026-10-25T23:51:54.974" classname="minimization_variable_cell" />
+    <testcase name="periodic_framework_bond_blocks_match_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="522" status="run" result="completed" time="0.105" timestamp="2026-10-25T23:51:55.854" classname="minimization_variable_cell" />
+    <testcase name="periodic_framework_bend_and_torsion_blocks_match_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="539" status="run" result="completed" time="0.243" timestamp="2026-10-25T23:51:55.959" classname="minimization_variable_cell" />
+    <testcase name="rigid_charged_mixed_blocks_match_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="562" status="run" result="completed" time="11.02" timestamp="2026-10-25T23:51:56.203" classname="minimization_variable_cell">
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp:427&#x0A;The difference between analyticHessian and numericalHessian is 0.0090372154204487725, which exceeds hessianTolerance * hessianScale, where&#x0A;analyticHessian evaluates to 0,&#x0A;numericalHessian evaluates to 0.0090372154204487725, and&#x0A;hessianTolerance * hessianScale evaluates to 0.0050000000000000001.&#x0A;row=11 cell coordinate=2&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp:427
+The difference between analyticHessian and numericalHessian is 0.0090372154204487725, which exceeds hessianTolerance * hessianScale, where
+analyticHessian evaluates to 0,
+numericalHessian evaluates to 0.0090372154204487725, and
+hessianTolerance * hessianScale evaluates to 0.0050000000000000001.
+row=11 cell coordinate=2
+]]></failure>
+    </testcase>
+    <testcase name="polarization_real_space_matches_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="567" status="run" result="completed" time="1.488" timestamp="2026-10-25T23:52:07.224" classname="minimization_variable_cell" />
+    <testcase name="polarization_reciprocal_framework_matches_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="572" status="run" result="completed" time="10.258" timestamp="2026-10-25T23:52:08.713" classname="minimization_variable_cell" />
+    <testcase name="polarization_rigid_molecule_real_space_matches_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="577" status="run" result="completed" time="10.908" timestamp="2026-10-25T23:52:18.971" classname="minimization_variable_cell">
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp:427&#x0A;The difference between analyticHessian and numericalHessian is 0.0090394358664980228, which exceeds hessianTolerance * hessianScale, where&#x0A;analyticHessian evaluates to 0,&#x0A;numericalHessian evaluates to 0.0090394358664980228, and&#x0A;hessianTolerance * hessianScale evaluates to 0.0050000000000000001.&#x0A;row=11 cell coordinate=2&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp:427
+The difference between analyticHessian and numericalHessian is 0.0090394358664980228, which exceeds hessianTolerance * hessianScale, where
+analyticHessian evaluates to 0,
+numericalHessian evaluates to 0.0090394358664980228, and
+hessianTolerance * hessianScale evaluates to 0.0050000000000000001.
+row=11 cell coordinate=2
+]]></failure>
+    </testcase>
+    <testcase name="polarization_rigid_molecule_real_space_strain_matches_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="584" status="run" result="completed" time="0.017" timestamp="2026-10-25T23:52:29.880" classname="minimization_variable_cell" />
+    <testcase name="polarization_rigid_molecule_reciprocal_strain_matches_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="593" status="run" result="completed" time="0.214" timestamp="2026-10-25T23:52:29.898" classname="minimization_variable_cell" />
+    <testcase name="fixed_cell_keeps_original_layout_and_energy" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="598" status="run" result="completed" time="0.001" timestamp="2026-10-25T23:52:30.112" classname="minimization_variable_cell" />
+    <testcase name="driver_applies_a_clipped_cell_step" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="613" status="run" result="completed" time="0.009" timestamp="2026-10-25T23:52:30.114" classname="minimization_variable_cell" />
+  </testsuite>
+  <testsuite name="normal_modes" tests="3" failures="1" disabled="0" skipped="0" errors="0" time="0.065" timestamp="2026-10-25T23:52:30.123">
+    <testcase name="harmonic_framework_dimer_matches_analytic_frequency" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/normal_modes.cpp" line="37" status="run" result="completed" time="0.002" timestamp="2026-10-25T23:52:30.123" classname="normal_modes" />
+    <testcase name="rigid_methane_pair_lennard_jones_stretch_frequency" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/normal_modes.cpp" line="79" status="run" result="completed" time="0.017" timestamp="2026-10-25T23:52:30.126" classname="normal_modes" />
+    <testcase name="writes_one_pdb_movie_per_mode" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/normal_modes.cpp" line="125" status="run" result="completed" time="0.044" timestamp="2026-10-25T23:52:30.143" classname="normal_modes">
+      <failure message="unknown file&#x0A;C++ exception with description &quot;filesystem error: cannot remove: Directory not empty [normal_modes_test_output]&quot; thrown in the test body.&#x0A;" type=""><![CDATA[unknown file
+C++ exception with description "filesystem error: cannot remove: Directory not empty [normal_modes_test_output]" thrown in the test body.
+]]></failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="vdw_potentials" tests="8" failures="1" disabled="0" skipped="0" errors="0" time="0.003" timestamp="2026-10-25T23:52:30.188">
+    <testcase name="RASPA2_reference_values_at_full_coupling" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp" line="165" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.188" classname="vdw_potentials" />
+    <testcase name="shifted_potential_is_zero_at_cutoff" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp" line="183" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.189" classname="vdw_potentials" />
+    <testcase name="finite_at_zero_distance_for_fractional_lambda" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp" line="195" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.189" classname="vdw_potentials" />
+    <testcase name="lambda_derivative_matches_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp" line="215" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.190" classname="vdw_potentials" />
+    <testcase name="all_spatial_derivatives_match_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp" line="247" status="run" result="completed" time="0.001" timestamp="2026-10-25T23:52:30.190" classname="vdw_potentials" />
+    <testcase name="wca_continuous_at_internal_cutoff" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp" line="304" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.192" classname="vdw_potentials" />
+    <testcase name="second_order_taylor_shifted_spatial_derivatives_match_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp" line="327" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.192" classname="vdw_potentials">
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp:354&#x0A;The difference between hessian.firstDerivativeFactor + hessian.secondDerivativeFactor * r * r and numericalSecond is 0.00059479761898018069, which exceeds 1e-5 * std::max(1.0, std::abs(numericalSecond)), where&#x0A;hessian.firstDerivativeFactor + hessian.secondDerivativeFactor * r * r evaluates to -41.969156756657171,&#x0A;numericalSecond evaluates to -41.96856195903819, and&#x0A;1e-5 * std::max(1.0, std::abs(numericalSecond)) evaluates to 0.00041968561959038192.&#x0A;r = 5&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp:354
+The difference between hessian.firstDerivativeFactor + hessian.secondDerivativeFactor * r * r and numericalSecond is 0.00059479761898018069, which exceeds 1e-5 * std::max(1.0, std::abs(numericalSecond)), where
+hessian.firstDerivativeFactor + hessian.secondDerivativeFactor * r * r evaluates to -41.969156756657171,
+numericalSecond evaluates to -41.96856195903819, and
+1e-5 * std::max(1.0, std::abs(numericalSecond)) evaluates to 0.00041968561959038192.
+r = 5
+]]></failure>
+    </testcase>
+    <testcase name="second_order_taylor_shifted_energy_gradient_and_hessian_vanish_at_cutoff" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp" line="359" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.192" classname="vdw_potentials" />
+  </testsuite>
+  <testsuite name="exact_sphere_sweep" tests="24" failures="1" disabled="0" skipped="0" errors="0" time="0.028" timestamp="2026-10-25T23:52:30.192">
+    <testcase name="a_perpendicular_is_perpendicular_and_of_unit_length" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="71" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.192" classname="exact_sphere_sweep" />
+    <testcase name="a_polar_angle_folds_back_into_the_half_turn" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="90" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.192" classname="exact_sphere_sweep" />
+    <testcase name="the_sweep_frame_is_orthonormal" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="111" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.192" classname="exact_sphere_sweep" />
+    <testcase name="the_pole_is_kept_off_every_cap_axis" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="137" status="run" result="completed" time="0.001" timestamp="2026-10-25T23:52:30.192" classname="exact_sphere_sweep" />
+    <testcase name="the_frame_does_not_depend_on_the_order_the_axes_arrive_in" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="156" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.193" classname="exact_sphere_sweep" />
+    <testcase name="a_cap_that_covers_nothing_is_not_a_cap_and_one_that_covers_everything_says_so" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="182" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.193" classname="exact_sphere_sweep" />
+    <testcase name="a_disc_within_a_disc_is_recognised_without_taking_an_arc_cosine" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="209" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.193" classname="exact_sphere_sweep" />
+    <testcase name="pruning_keeps_one_of_a_pair_of_equals_and_the_order_of_the_rest" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="236" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.193" classname="exact_sphere_sweep">
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp:249&#x0A;Expected equality of these values:&#x0A;  circles.size()&#x0A;    Which is: 3&#x0A;  2uz&#x0A;    Which is: 2&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp:249
+Expected equality of these values:
+  circles.size()
+    Which is: 3
+  2uz
+    Which is: 2
+]]></failure>
+    </testcase>
+    <testcase name="a_crossing_lies_on_both_of_the_circles_that_made_it" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="263" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.193" classname="exact_sphere_sweep" />
+    <testcase name="circles_that_miss_or_run_concentric_cross_nowhere" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="294" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.194" classname="exact_sphere_sweep" />
+    <testcase name="three_orthogonal_hemispheres_leave_three_corners_of_six" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="311" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.194" classname="exact_sphere_sweep" />
+    <testcase name="the_gauss_rule_is_symmetric_on_the_unit_interval" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="332" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.194" classname="exact_sphere_sweep" />
+    <testcase name="the_gauss_rule_is_exact_on_the_polynomials_it_claims" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="356" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.194" classname="exact_sphere_sweep" />
+    <testcase name="a_sphere_no_cap_touches_is_the_whole_sphere" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="375" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.194" classname="exact_sphere_sweep" />
+    <testcase name="one_cap_leaves_the_closed_form" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="383" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.194" classname="exact_sphere_sweep" />
+    <testcase name="a_turning_latitude_near_a_pole_does_not_cost_digits" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="396" status="run" result="completed" time="0.002" timestamp="2026-10-25T23:52:30.194" classname="exact_sphere_sweep" />
+    <testcase name="two_caps_that_do_not_meet_take_their_own_areas_and_no_more" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="452" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.196" classname="exact_sphere_sweep" />
+    <testcase name="three_orthogonal_hemispheres_leave_one_octant" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="467" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.196" classname="exact_sphere_sweep" />
+    <testcase name="refining_the_panels_moves_the_answer_by_no_more_than_the_rule_is_worth" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="483" status="run" result="completed" time="0.013" timestamp="2026-10-25T23:52:30.196" classname="exact_sphere_sweep" />
+    <testcase name="the_area_does_not_depend_on_where_the_configuration_stands" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="504" status="run" result="completed" time="0.003" timestamp="2026-10-25T23:52:30.210" classname="exact_sphere_sweep" />
+    <testcase name="crossings_handed_in_give_the_same_area_as_crossings_looked_for" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="535" status="run" result="completed" time="0.006" timestamp="2026-10-25T23:52:30.214" classname="exact_sphere_sweep" />
+    <testcase name="covered_arcs_come_out_in_order_of_where_they_begin" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="561" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.220" classname="exact_sphere_sweep" />
+    <testcase name="a_gap_carries_the_directions_at_its_own_ends" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="591" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.220" classname="exact_sphere_sweep" />
+    <testcase name="a_sphere_buried_under_one_cap_has_nothing_left" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="622" status="run" result="completed" time="0." timestamp="2026-10-25T23:52:30.220" classname="exact_sphere_sweep" />
+  </testsuite>
+</testsuites>

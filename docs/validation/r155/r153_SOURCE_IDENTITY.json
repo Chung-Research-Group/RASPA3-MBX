@@ -1,0 +1,41 @@
+{
+  "base": "df7a90656e8e2a8ad276ca8310b161ec61f506af",
+  "files": [
+    {
+      "path": "src/structurekit/diagrams/exact/sphere_sweep.ixx",
+      "base_sha256": "2b4647b3beeed48a4ba40238d5f686bf6b77a838d80942905ebf1fd25ee21bc1",
+      "candidate_sha256": "bd53fe7ec125be153c0b620f1719aa311a3f6d21438d9515ac1232d1aa1a69d1",
+      "base_same_as_upstream_a8": true
+    },
+    {
+      "path": "tests/raspakit-tests/exact_sphere_sweep.cpp",
+      "base_sha256": "7c86026cdfbdfbc0b60273fafb7644bc4264f619366e6f995412310cc9c73d46",
+      "candidate_sha256": "0815e3898bb895fa317d550e569bbdfe5a2dc669cfeb7691527703ac4e78a078",
+      "base_same_as_upstream_a8": true
+    },
+    {
+      "path": "tests/raspakit-tests/integrators.cpp",
+      "base_sha256": "22d0645db2f40b2188ca664f9abcd98d72c45d75fb3d9160e5140f8e2acae7bc",
+      "candidate_sha256": "c9100e1e04edb805cbacbee49983668f234ea05104ef590c7c402ea5876e6be0",
+      "base_same_as_upstream_a8": true
+    },
+    {
+      "path": "tests/raspakit-tests/minimization_variable_cell.cpp",
+      "base_sha256": "efeae5df3b36172cd966f182151d0e0ef93ed6dc841ce400c542500a950e3477",
+      "candidate_sha256": "12daa8b876d645cc636be8dafa859ff0cd59524afd2c7a7fd63864389f8972db",
+      "base_same_as_upstream_a8": true
+    },
+    {
+      "path": "tests/raspakit-tests/normal_modes.cpp",
+      "base_sha256": "c0da41f90d241f7e8a2c90662db7244edb0e4aafdaf51d4348add69a4fe46c29",
+      "candidate_sha256": "1e6516205ca4f529ca888d5d7c73e2230ca2612b7661fdb1b3ed7d4cf8c20a31",
+      "base_same_as_upstream_a8": true
+    },
+    {
+      "path": "tests/raspakit-tests/vdw_potentials.cpp",
+      "base_sha256": "ca4c05bb68f52fb832bc32ae101f9aa0b76f43d314c6c5443a8be6e88d511222",
+      "candidate_sha256": "217c41f5d3416a22f034e2e209d915eadb3bc3764bc11be22c473c588ed14c38",
+      "base_same_as_upstream_a8": true
+    }
+  ]
+}
