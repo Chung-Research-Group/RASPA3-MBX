@@ -1,0 +1,6932 @@
+{
+  "candidate": "f4a29a88c117ba87d4c03b122f900662aea65499",
+  "binary_sha256": "242ffbea45298047e4ff47f8845c91f3dab0f8ce6d414ac55f37422e07be385b",
+  "frozen_source_files_checked": 1731,
+  "all_source_matches": true,
+  "checks": [
+    {
+      "file": "CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "CMakePresets.json",
+      "matches": true
+    },
+    {
+      "file": "CMakeUserPresets.json.example",
+      "matches": true
+    },
+    {
+      "file": "env.yml",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/1_energy_logging_and_restarts/run.sh",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/1_energy_logging_and_restarts/simulation.json",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/2_widom_zero_loading_qst/run.sh",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/2_widom_zero_loading_qst/simulation.json",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/3_snapshot_energy_evaluation/co2_snapshot.json",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/3_snapshot_energy_evaluation/run.sh",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/3_snapshot_energy_evaluation/simulation.json",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/4_gcmc_co2_adsorption/run.sh",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/4_gcmc_co2_adsorption/simulation.json",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/README.md",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/co2.json",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/mbx.json",
+      "matches": true
+    },
+    {
+      "file": "examples/raspa3_mbx/run-example.sh",
+      "matches": true
+    },
+    {
+      "file": "src/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/archive.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/archive.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/characterset.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/characterset.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/getopt.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/getopt.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/graceful_shutdown.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/hdf5.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/hdf5.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/indexpath.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/indexpath.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/json.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/json.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/mdspan.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/opencl.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/opencl.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/scanner.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/scanner.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/stringutils.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/stringutils.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/threadpool.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/threadpool.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/foundationkit/units.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/makefile-manual",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/bool3.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/bool3.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/cubic.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/cubic.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double2.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double2.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double3.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double3.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double3x3.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double3x3.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double3x3x3.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double3x3x3.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double4.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double4.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double4x3.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double4x3.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double4x4.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/double4x4.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/entity_hessian_layout.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float2.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float2.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float3.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float3.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float3x3.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float3x3.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float3x4.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float3x4.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float4.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float4.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float4x4.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/float4x4.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/generalized_hessian.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/generalized_hessian.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/hashcombine.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/hashcombine.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/hermitian_eigensolver.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/hermitian_eigensolver.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/int3.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/int3.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/int3x3.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/int3x3.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/marchingcubes.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/marchingcubes.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/matrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/matrix.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/polint.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/polint.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/randomnumbers.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/randomnumbers.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/ring.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/ring.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/ringmatrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/ringmatrix.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/simd_quatd.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/simd_quatd.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/special_functions.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/special_functions.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/symmetric_eigensolver.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/symmetric_eigensolver.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/symmetric_matrix_layout.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/symmetric_matrix_layout.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/uint3.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/mathkit/uint3.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/atom.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/atom.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/atom_dynamics.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/atom_dynamics.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/averages.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/averages.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/cbmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/cbmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/cbmc_growth_context.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/chain_data.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/chain_data.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/first_bead_data.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/first_bead_data.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/flexible_molecules/cbmc_statistics.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/flexible_molecules/cbmc_statistics.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/flexible_molecules/deletion.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/flexible_molecules/deletion.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/flexible_molecules/insertion.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/flexible_molecules/insertion.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/flexible_molecules/recoil_growth.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/flexible_molecules/recoil_growth.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/growth_plan.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/growth_plan.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/interactions.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/interactions.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/interactions_external_field.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/interactions_external_field.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/interactions_framework_molecule.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/interactions_framework_molecule.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/interactions_intermolecular.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/interactions_intermolecular.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/multiple_first_bead.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/multiple_first_bead.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/operators.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/operators.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/util.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cbmc/util.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cif_reader.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/cif_reader.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/component.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/component.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/connectivity_table.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/connectivity_table.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/energy_evaluation.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/energy_evaluation.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/hyper_parallel_tempering.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/hyper_parallel_tempering.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/minimization.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/minimization.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/molecular_dynamics.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/molecular_dynamics.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/monte_carlo.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/monte_carlo.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/monte_carlo_transition_matrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/monte_carlo_transition_matrix.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/parallel_tempering.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/parallel_tempering.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/parallel_thermodynamic_integration.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/parallel_thermodynamic_integration.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/parallel_tmmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/parallel_tmmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/reweighted_histogram.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/reweighted_histogram.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/simulation_schedule.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/thermodynamic_integration.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/drivers/thermodynamic_integration.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/forcefield/forcefield.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/forcefield/forcefield.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/forcefield/pseudo_atom.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/forcefield/pseudo_atom.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/forcefield/vdwparameters.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/forcefield/vdwparameters.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/fragment.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/fragment.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/fragment_graph.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/fragment_graph.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/framework.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/framework.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/hardware_info.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/hardware_info.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/input_reader.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/input_reader.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/integrators/compute.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/integrators/compute.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/integrators/cputime.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/integrators/cputime.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/integrators/integrator.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/integrators/integrator.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/integrators/update.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/integrators/update.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/ewald.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/ewald.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/ewald_kvector.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/external_field.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/external_field.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/external_field_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/external_field_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/framework_molecule.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/framework_molecule.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/framework_molecule_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/framework_molecule_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/hessian_ewald.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/hessian_ewald.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/hessian_framework_molecule.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/hessian_framework_molecule.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/hessian_intermolecular.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/hessian_intermolecular.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/hessian_intramolecular.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/hessian_intramolecular.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/hessian_intramolecular_cross.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/intermolecular.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/intermolecular.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/intramolecular.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/intramolecular.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/intramolecular_hyper_dual.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/mbx_interaction.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/mbx_interaction.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/pair_kernel.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/polarization.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/polarization.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/polarization_derivatives.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interactions/polarization_derivatives.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interpolation_energy_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/interpolation_energy_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/lammps.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/lammps.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/libtorch.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/deletion.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/deletion.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/deletion_cbmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/deletion_cbmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/group_swap.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/group_swap.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/group_swap_cfcmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/group_swap_cfcmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/identity_change.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/identity_change.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/insertion.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/insertion.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/insertion_cbmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/insertion_cbmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/pair_deletion_cbmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/pair_deletion_cbmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/pair_insertion_cbmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/pair_insertion_cbmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/pair_swap_cfcmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/pair_swap_cfcmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/pair_swap_cfcmc_cbmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/pair_swap_cfcmc_cbmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/partial_reinsertion_cbmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/partial_reinsertion_cbmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/random_rotation.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/random_rotation.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/random_translation.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/random_translation.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/reinsertion.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/reinsertion.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/rotation.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/rotation.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/rotation_smart_mc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/rotation_smart_mc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/swap_cfcmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/swap_cfcmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/swap_cfcmc_cbmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/swap_cfcmc_cbmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/tethered_proton_hop.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/tethered_proton_hop.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/translation.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/translation.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/translation_rotation_smart_mc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/translation_rotation_smart_mc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/translation_smart_mc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/translation_smart_mc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/widom.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/component/widom.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cputime.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cputime.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_conventional_cbcfcmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_conventional_cbcfcmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_conventional_cfcmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_conventional_cfcmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_conventional_common.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_conventional_common.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_identity_change.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_identity_change.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_swap_cbcfcmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_swap_cbcfcmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_swap_cbmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_swap_cbmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_swap_cfcmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_swap_cfcmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_volume.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/gibbs_volume.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/lambda_exchange.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/lambda_exchange.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/parallel_tempering_swap.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/cross_system/parallel_tempering_swap.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction_cbcfcmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction_cbcfcmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction_cfcmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction_cfcmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction_common.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction_common.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction_conventional_cbcfcmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction_conventional_cbcfcmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction_conventional_cfcmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/group/reaction_conventional_cfcmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/mc_moves.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/mc_moves.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/move_statistics.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/move_statistics.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/move_types.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/move_types.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/probabilities.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/probabilities.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/statistics.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/statistics.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/system/hybridmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/system/hybridmc.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/system/rotation_smart_mc_all.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/system/rotation_smart_mc_all.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/system/translation_smart_mc_all.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/system/translation_smart_mc_all.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/system/volume.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/mc_moves/system/volume.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/baker_minimizer.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/baker_minimizer.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/bend_hessian_geometry.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/cell_layout.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/cell_layout.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/dof_layout.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/dof_layout.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/elastic_constants.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/elastic_constants.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/elastic_tensor.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/elastic_tensor.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/evaluate_derivatives.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/evaluate_derivatives.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/force_constants.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/force_constants.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/generalized_coordinates.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/generalized_coordinates.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/hessian_scatter.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/hessian_scatter.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/internal_coordinate_hessian.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/internal_coordinate_hessian.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/mass_metric.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/mass_metric.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/minimization_options.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/normal_modes.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/normal_modes.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/phonon_dynamical_matrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/phonon_dynamical_matrix.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/phonon_kpath.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/phonon_kpath.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/rigid_kinematics.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/rigid_kinematics.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/minimization/torsion_hessian_geometry.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/molecule.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/molecule.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/correction_pressure.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/correction_pressure.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/correction_vdw.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/correction_vdw.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/coulomb_real_space.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/electrostatics.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/electrostatics.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/tricubic_derivative_factor.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/tricubic_derivative_factor.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/tricubic_derivative_lj.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/tricubic_derivative_lj.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/tricubic_derivative_real_ewald.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/tricubic_derivative_real_ewald.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/tricubic_derivatives_external_field.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/tricubic_derivatives_external_field.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/triquintic_derivative_factor.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/triquintic_derivative_factor.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/triquintic_derivative_lj.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/triquintic_derivative_lj.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/triquintic_derivative_real_ewald.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/triquintic_derivative_real_ewald.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/triquintic_derivatives_external_field.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/interpolation/triquintic_derivatives_external_field.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bend_bend_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bend_bend_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bend_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bend_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bend_potential_gradient_hessian_strain.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bend_potential_gradient_hessian_strain.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bend_torsion_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bend_torsion_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bond_bend_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bond_bend_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bond_bond_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bond_bond_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bond_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bond_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bond_torsion_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/bond_torsion_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/chiral_center.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/chiral_center.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/coulomb_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/coulomb_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/distance_potential_gradient_hessian_strain.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/distance_potential_gradient_hessian_strain.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/distance_potential_gradient_strain.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/distance_potential_gradient_strain.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/intramolecular_potentials.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/intramolecular_potentials.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/inversion_bend_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/inversion_bend_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/out_of_plane_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/out_of_plane_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/torsion_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/torsion_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/torsion_potential_gradient_hessian_strain.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/torsion_potential_gradient_hessian_strain.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/urey_bradley_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/urey_bradley_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/van_der_waals_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/intramolecular/van_der_waals_potential.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/pair_coulomb.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/pair_derivatives.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/pair_vdw.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/potentials/vdw_rare_derivatives.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/average_energy_type.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/average_energy_type.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/conventional_radial_distribution_function.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/conventional_radial_distribution_function.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/density_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/density_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/elastic_constants_fluctuation.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/elastic_constants_fluctuation.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy_dudlambda.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy_dudlambda.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy_histogram.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy_histogram.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy_status.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy_status.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy_status_inter.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy_status_inter.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy_status_intra.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/energy_status_intra.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/enthalpy.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/enthalpy.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/gibbs_widom.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/gibbs_widom.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/lambda_probability_histogram.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/lambda_probability_histogram.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/lammps_data.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/lammps_data.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/loading.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/loading.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/mc_opencl_void_fraction.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/mc_opencl_void_fraction.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/mc_void_fraction.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/mc_void_fraction.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/mean_squared_displacement.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/mean_squared_displacement.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/mean_squared_displacement_data.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/mean_squared_displacement_data.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/molecule_properties.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/molecule_properties.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/number_of_molecules_histogram.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/number_of_molecules_histogram.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/pore_size_distribution_ban_vlugt.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/pore_size_distribution_ban_vlugt.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/pressure.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/pressure.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/property_block_average.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/property_partial_molar_properties.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/property_partial_molar_properties.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/radial_distribution_function.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/radial_distribution_function.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/sample_movies.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/sample_movies.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/simulationbox.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/temperature.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/temperature.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/transition_matrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/transition_matrix.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/velocity_autocorrelation_function.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/velocity_autocorrelation_function.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/velocity_autocorrelation_function_data.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/velocity_autocorrelation_function_data.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/widom.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties/widom.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties_time_evolution/conserved_energy.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties_time_evolution/conserved_energy.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties_time_evolution/number_of_molecules_evolution.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties_time_evolution/number_of_molecules_evolution.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties_time_evolution/volume_evolution.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/properties_time_evolution/volume_evolution.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/reaction.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/reaction.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/reactions.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/reactions.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/rigid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/rigid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/running_energy.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/running_energy.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/scaling.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/scaling.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/simulationbox.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/simulationbox.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/system.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/system.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/system_fractional.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/system_interpolation_grids.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/system_layout.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/system_molecules.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/system_output.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/thermobarostat.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/thermobarostat.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/thermostat.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/thermostat.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/units.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/utilities/charge_equilibration_wilmer_snurr.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/utilities/charge_equilibration_wilmer_snurr.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/utilities/equation_of_states.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/utilities/equation_of_states.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/utilities/janaf.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/utilities/janaf.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/utilities/nasa_polynomials.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/utilities/nasa_polynomials.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/utilities/partition_function.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/raspakit/utilities/partition_function.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structure_input/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "src/structure_input/structure_input.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structure_input/structure_input.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/blocking_pockets.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/blocking_pockets.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/diameters.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/diameters.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/pore_volume.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/pore_volume.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/solvent_excluded.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/solvent_excluded.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/structure.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/structure.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/surface_area.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/surface_area.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/validation.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/validation.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/voxel_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/brute_force/voxel_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/accessibility/pore_accessibility.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/accessibility/pore_accessibility.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/accessibility.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/accessibility.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/accessible_volume.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/accessible_volume.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/apollonius_network.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/apollonius_network.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/blocking_spheres.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/blocking_spheres.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/pore_analysis.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/pore_analysis.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/pore_size_distribution.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/pore_size_distribution.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/surface_area.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/apollonius/surface_area.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/boundary_components.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/boundary_components.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/parallel.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/parallel.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/pore_size_distribution.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/pore_size_distribution.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/solvent_excluded.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/solvent_excluded.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/sphere_sweep.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/sphere_sweep.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/surface_patches.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/surface_patches.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/union_volume.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/union_volume.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/void_split.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/exact/void_split.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/blocking_spheres.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/blocking_spheres.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/clearance_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/clearance_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/pore_analysis.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/pore_analysis.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/pore_size_distribution.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/pore_size_distribution.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/surface_area.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/surface_area.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/void_fraction.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/grid_opencl/void_fraction.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/accessible_volume.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/accessible_volume.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/blocking_spheres.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/blocking_spheres.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/channel_analysis.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/channel_analysis.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/pore_diameters.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/pore_diameters.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/pore_size_distribution.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/pore_size_distribution.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/pore_window.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/pore_window.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/surface_area.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/surface_area.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/voronoi_network.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/diagrams/voronoi/voronoi_network.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/backend.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/backend.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/electrostatic_potential_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/electrostatic_potential_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/isosurface.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/isosurface.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/molecular_energy_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/molecular_energy_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/probe_energy_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/probe_energy_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/void_fraction.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy/void_fraction.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/backend.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/backend.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/electrostatic_potential_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/electrostatic_potential_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/molecular_energy_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/molecular_energy_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/probe_energy_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/probe_energy_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/surface_area.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/surface_area.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/void_fraction.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/energy_opencl/void_fraction.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/blocking_spheres.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/blocking_spheres.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/electrostatic_potential_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/electrostatic_potential_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/energy_backend.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/energy_backend.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/energy_barrier.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/energy_barrier.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/ewald.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/ewald.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/isosurface.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/isosurface.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/linear_probe.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/linear_probe.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/molecular_energy_barrier.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/molecular_energy_barrier.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/molecular_energy_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/molecular_energy_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/molecular_surface_area.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/molecular_surface_area.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/molecular_void_fraction.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/molecular_void_fraction.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/pore_analysis.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/pore_analysis.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/pore_size_distribution.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/pore_size_distribution.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/pore_volume.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/pore_volume.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/probe_energy_grid.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/probe_energy_grid.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/tessellation.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/energy_based/shared/tessellation.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/integration/surface_area.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/integration/surface_area.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/integration_opencl/surface_area.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/integration_opencl/surface_area.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/backend.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/backend.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/blocking_pockets.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/blocking_pockets.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/channels.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/channels.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/pore_diameters.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/pore_diameters.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/pore_size_distribution.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/pore_size_distribution.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/pore_volume.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/pore_volume.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/surface_area.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/surface_area.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/window_shape.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo/window_shape.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/backend.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/backend.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/blocking_pockets.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/blocking_pockets.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/channels.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/channels.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/pore_diameters.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/pore_diameters.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/pore_size_distribution.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/pore_size_distribution.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/pore_volume.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/pore_volume.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/surface_area.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/surface_area.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/window_shape.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/monte_carlo_opencl/window_shape.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/shared/roadmap.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/shared/roadmap.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/monte_carlo_sampling/shared/sampling_backend.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/area_curve.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/area_curve.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/blocking_cover.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/blocking_cover.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/blocking_spheres.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/blocking_spheres.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/channel_analysis.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/channel_analysis.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/connected_components.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/connected_components.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/crystal.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/crystal.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/pair_interactions.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/pair_interactions.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/percolation.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/percolation.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/pore_diameters.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/pore_diameters.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/pore_size.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/pore_size.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/sampled_structure.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/sampled_structure.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/unit_cell.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared/unit_cell.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared_opencl/pore_size.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/structurekit/shared_opencl/pore_size.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skapolloniusdiagram.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skapolloniusdiagram.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skasymmetricatom.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skasymmetricunit.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skasymmetricunit.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skatom.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skatomcopy.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skbandpath.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skbandpath.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skboundingbox.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skboundingbox.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skcell.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skcell.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skdefinitions.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skdefinitions.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skelement.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skelement.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skintegerchangeofbasis.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skintegerchangeofbasis.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skintegersymmetryoperationset.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skintegersymmetryoperationset.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skonethirdseitzmatrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skonethirdseitzmatrix.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skparser.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skparser.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skpointgroup.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skpointgroup.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skpointsymmetryset.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skpointsymmetryset.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skposcarparser.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skposcarparser.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skrotationalchangeofbasis.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skrotationalchangeofbasis.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skrotationaloccurancetable.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skrotationaloccurancetable.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skrotationmatrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skrotationmatrix.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skseitzintegermatrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skseitzintegermatrix.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skseitzmatrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skseitzmatrix.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skspacegroup.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skspacegroup.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skspacegroupdatabase.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skspacegroupdatabase.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skspacegroupsetting.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skspacegroupsetting.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skstructure.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skstructure.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/sksymmetrycell.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/sksymmetrycell.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/sksymmetryoperationset.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/sksymmetryoperationset.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/sktransformationmatrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/sktransformationmatrix.ixx",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skvoronoi.cpp",
+      "matches": true
+    },
+    {
+      "file": "src/symmetrykit/skvoronoi.ixx",
+      "matches": true
+    },
+    {
+      "file": "tests/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "tests/check_cpp_format.py",
+      "matches": true
+    },
+    {
+      "file": "tests/foundationkit-tests/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "tests/foundationkit-tests/archive.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/foundationkit-tests/foundationkit-tests.vcxproj",
+      "matches": true
+    },
+    {
+      "file": "tests/foundationkit-tests/main.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/foundationkit-tests/packages.config",
+      "matches": true
+    },
+    {
+      "file": "tests/foundationkit-tests/test.bin",
+      "matches": true
+    },
+    {
+      "file": "tests/mathkit-tests/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "tests/mathkit-tests/double3.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/mathkit-tests/double3x3.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/mathkit-tests/main.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/mathkit-tests/mathkit-tests.vcxproj",
+      "matches": true
+    },
+    {
+      "file": "tests/mathkit-tests/packages.config",
+      "matches": true
+    },
+    {
+      "file": "tests/mathkit-tests/random.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/mathkit-tests/symmetric_eigensolver.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/mbx-tests/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "tests/mbx-tests/README.md",
+      "matches": true
+    },
+    {
+      "file": "tests/mbx-tests/component_validation.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/mbx-tests/main.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/mbx-tests/mbx.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/mbx-tests/mbx.json",
+      "matches": true
+    },
+    {
+      "file": "tests/mbx-tests/reporting.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/mbx-tests/volume_integration.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/input_reader_fixtures.hpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/input_reader_tmmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/main.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_component_moves.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_cyclic_cbmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_fractional_molecule_order.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_gibbs_drift.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_muvt_drift.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_muvt_grids_drift.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_npt_drift.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_nvt_drift.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_nvt_grids_drift.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_nvt_polarization_drift.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_reaction_drift.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_semi_flexible_cbmc.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/mc_thermodynamic_integration_drift.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/molecule_fixtures.hpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspa3-tests/transition_matrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/RASPA2-ReferenceData/raspa2_modification.txt",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/apollonius.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/apollonius_pore_analysis.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/apollonius_surface_area.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/boundary_components.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/cbmc_interactions.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/component_explicit_intra_pairs.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/coulomb_real_space_methods.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/dudlambda.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/elastic_constants.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/electrostatic_field.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/electrostatic_polarization.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/electrostatic_potential.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/energy_decomposition.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/ewald.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/exact_parallel.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/exact_pore_size_distribution.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/exact_regression.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/exact_solvent_excluded.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/exact_sphere_sweep.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/exact_union_volume.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/exact_void_split.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/force_constants.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/forcefield_options.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/framework_intramolecular_reader.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/framework_vdw_replicas.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/gradients.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/grid_area_curve.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/grid_blocking_cover.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/grid_percolation.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/grid_pore_size.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/grids.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/hessian_inter_lennard_jones.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/hessian_inter_real_ewald.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/insertion_deletion.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/integrators.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/internal_potentials.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/intramolecular_energy_gradient_strain_bends.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/intramolecular_energy_gradient_strain_bonds.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/irmof_fixtures.hpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/janaf.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/main.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/mc.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_driver.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_hessian_bend.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_hessian_bond.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_hessian_cross.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_hessian_ewald.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_hessian_framework.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_hessian_intermolecular.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_hessian_intermolecular_rigid.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_hessian_mixed_framework.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_hessian_torsion.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_hessian_wolf.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/minimization_variable_cell.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/nasa_polynomials.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/nist_water_1.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/nist_water_2.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/nist_water_3.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/nist_water_4.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/normal_modes.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/partition_function.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/pbc.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/phonon_dispersion.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/polarization_phonon.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/pressure.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/raspakit-tests.vcxproj",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/rigid_gradient.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/rotation_matrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/spacegroup.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/static_energy.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/translation_rotation_smart_mc.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/translation_smart_mc.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/tricubic_derivative_inter_lennard_jones.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/tricubic_derivative_inter_real_ewald.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/triquintic_derivative_inter_lennard_jones.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/triquintic_derivative_inter_real_ewald.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/vdw_potentials.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/voronoi.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/voronoi_analysis.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/wolf_exclusion.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/raspakit-tests/wolf_strain_polarization.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/run_mbx_examples.py",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/CMakeLists.txt",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/band_path.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/cif_symmetry.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/find_pointgroup.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/find_pointgroup_no_partial_occupancies.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/find_smallest_primitive_cell.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/find_smallest_primitive_cell_no_partial_occupancies.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/find_spacegroup.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/find_spacegroup_no_partial_occupancies.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/find_spacegroup_symmetry_metric.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/main.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/niggli_reduction.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/packages.config",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/poscar_parser.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/space_group_database.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-195",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-195-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-196",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-196-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-197",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-197-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-198",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-198-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-199",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-199-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-200",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-200-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-205",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-205-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-206",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-206-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-207",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-208",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-208-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-209",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-210",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-210-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-211",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-212",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-212-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-213",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-213-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-214",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-214-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-215",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-215-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-216",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-216-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-217",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-217-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-218",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-218-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-219",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-219-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-220",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-220-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-221",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-221-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-222",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-222-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-223",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-223-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-224",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-224-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-225",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-225-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-226",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-226-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-227",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-227-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-228",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-228-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-229",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-229-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-230",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-230-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-230-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/cubic/POSCAR-230-4",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/distorted/POSCAR-161-1",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/distorted/POSCAR-161-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/distorted/POSCAR-36",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/distorted/POSCAR-5",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/distorted/POSCAR-6",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/distorted/POSCAR-7-1",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/distorted/POSCAR-7-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/distorted/POSCAR-8",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-168",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-169",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-169-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-170",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-170-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-171",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-171-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-172",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-173",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-173-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-174",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-174-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-175",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-175-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-176",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-176-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-177",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-179",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-179-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-180",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-180-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-181",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-181-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-182",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-182-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-183",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-183-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-184",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-184-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-185",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-185-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-186",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-186-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-187",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-187-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-188",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-188-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-189",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-189-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-190",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-190-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-191",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-191-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-192",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-192-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-193",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-193-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-194",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/hexagonal/POSCAR-194-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-003",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-004",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-004-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-005",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-005-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-006",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-006-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-007",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-007-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-008",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-008-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-009",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-009-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-010",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-010-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-011",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-011-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-012",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-012-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-012-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-013",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-013-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-013-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-014",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-014-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-015",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-015-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/monoclinic/POSCAR-015-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-016",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-016-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-017-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-018",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-018-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-019",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-019-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-020",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-021",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-021-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-022",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-023",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-023-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-024",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-024-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-025",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-025-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-026",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-026-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-027",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-027-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-028",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-028-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-029",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-029-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-030",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-030-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-031",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-031-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-032",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-032-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-033",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-033-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-033-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-034",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-034-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-035",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-035-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-036",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-036-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-037",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-037-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-038",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-038-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-039",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-039-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-040",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-040-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-041",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-041-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-042",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-043",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-043-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-044",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-044-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-045",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-045-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-046",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-046-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-047",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-047-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-048",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-048-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-049",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-049-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-050",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-050-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-051",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-051-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-051-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-052",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-052-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-053",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-053-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-054",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-054-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-055",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-055-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-056",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-056-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-057",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-057-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-058",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-058-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-058-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-059",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-059-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-060",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-060-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-060-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-061",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-061-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-062",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-062-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-063",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-063-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-063-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-064",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-064-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-064-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-065",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-065-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-065-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-066",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-066-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-067",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-067-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-067-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-068",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-068-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-069",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-069-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-070",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-070-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-071",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-071-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-072",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-072-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-073",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-073-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-074",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/orthorhombic/POSCAR-074-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/reduction/Delaunay2D_A.data",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/reduction/Delaunay2D_B.data",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/reduction/Delaunay2D_C.data",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/reduction/Delaunay3D.data",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/reduction/Niggli.data",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-075",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-075-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-076",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-076-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-077",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-077-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-077-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-078",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-078-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-079",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-079-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-080",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-080-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-081",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-081-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-082",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-082-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-083",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-083-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-083-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-084",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-084-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-085",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-085-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-086",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-086-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-087",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-087-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-088",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-088-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-090",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-090-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-091",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-091-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-092",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-092-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-092-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-094",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-094-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-094-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-095",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-095-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-096",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-096-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-097",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-097-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-098",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-098-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-099",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-099-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-100",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-100-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-102",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-102-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-103",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-103-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-104",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-104-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-105",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-105-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-106",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-107",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-107-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-107-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-108",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-108-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-109",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-109-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-110",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-110-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-111",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-111-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-112",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-112-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-113",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-113-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-114",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-114-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-115",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-115-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-115-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-115-4",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-115-5",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-116",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-116-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-117",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-117-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-118",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-118-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-119",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-119-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-120",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-120-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-121",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-121-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-122",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-122-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-122-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-123",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-123-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-123-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-124",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-124-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-125",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-125-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-126",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-126-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-127",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-127-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-128",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-128-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-129",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-129-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-129-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-130",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-130-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-131",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-131-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-132",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-132-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-133",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-133-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-134",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-134-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-135",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-135-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-136",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-136-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-136-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-136-4",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-136-5",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-137",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-137-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-137-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-138",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-138-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-139",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-139-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-140",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-140-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-141",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-141-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-142",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-142-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/tetragonal/POSCAR-142-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/triclinic/POSCAR-001",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/triclinic/POSCAR-002",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-143",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-143-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-144",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-144-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-145",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-145-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-146",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-146-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-147",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-147-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-148",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-148-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-149",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-149-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-150",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-150-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-151",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-151-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-152",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-152-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-153",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-154",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-154-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-154-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-155",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-155-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-156",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-156-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-157",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-157-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-158",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-158-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-159",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-159-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-160",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-160-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-161",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-161-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-162",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-162-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-163",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-163-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-164",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-164-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-165",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-165-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-166",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-166-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-167",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-167-2",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/trigonal/POSCAR-167-3",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-1-221-33",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-1-222-33",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-1-223-33",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-1-224-33",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-1-227-73",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-1-227-93",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-1-227-99",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-1-230-conv-56",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-1-230-prim-33",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-1-bcc-33",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-10-221-18",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-10-223-18",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-10-227-50",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-102-224-13",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-104-222-13",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-105-223-13",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-109-227-13",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-11-227-48",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-110-230-conv-15",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-110-230-prim-13",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-111-221-11",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-111-224-11",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-111-227-66",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-112-222-11",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-112-223-11",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-113-227-68",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-115-221-14",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-115-223-14",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-115-227-33",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-116-230-conv-34",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-117-230-conv-33",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-118-222-14",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-118-224-14",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-12-221-19",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-12-224-19",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-12-227-21",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-12-227-83",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-120-230-conv-16",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-120-230-prim-14",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-122-230-conv-13",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-122-230-prim-11",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-123-221-05",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-126-222-05",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-13-222-18",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-13-224-18",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-13-227-49",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-13-230-conv-44",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-131-223-05",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-134-224-05",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-14-227-47",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-14-227-51",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-14-230-conv-45",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-142-230-conv-05",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-142-230-prim-05",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-146-221-27",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-146-222-27",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-146-223-27",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-146-224-27",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-146-227-92",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-146-230-conv-36",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-146-230-conv-55",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-146-230-prim-27",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-146-bcc-27",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-148-221-15",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-148-222-15",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-148-223-15",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-148-224-15",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-148-227-70",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-148-230-conv-17",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-148-230-conv-37",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-148-230-prim-15",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-148-bcc-15",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-15-222-19",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-15-223-19",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-15-230-conv-21",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-15-230-conv-22",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-15-230-prim-18",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-15-230-prim-19",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-15-bcc-18",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-15-bcc-19",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-155-221-17",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-155-222-17",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-155-223-17",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-155-224-17",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-155-227-72",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-155-230-conv-19",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-155-230-conv-38",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-155-230-prim-17",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-155-bcc-17",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-16-221-20",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-16-222-20",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-16-223-20",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-16-224-20",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-16-227-84",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-160-221-16",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-160-224-16",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-160-227-16",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-160-227-71",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-160-fcc",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-161-222-16",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-161-223-16",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-161-230-conv-18",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-161-230-prim-16",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-161-bcc-16",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-166-221-06",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-166-224-06",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-166-227-06",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-166-227-38",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-167-222-06",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-167-223-06",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-167-230-conv-06",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-167-230-prim-06",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-167-bcc-6",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-17-227-60",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-17-227-85",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-17-230-conv-46",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-18-227-86",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-19-227-59",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-19-227-89",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-19-230-conv-51",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-195-221-07",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-195-222-07",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-195-223-07",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-195-224-07",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-198-227-40",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-198-230-conv-20",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-199-230-conv-07",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-199-230-prim-07",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-2-221-28",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-2-222-28",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-2-223-28",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-2-224-28",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-2-227-41",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-2-227-74",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-2-227-94",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-2-230-conv-39",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-2-230-conv-57",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-2-230-prim-28",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-2-bcc-28",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-20-227-53",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-20-227-90",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-20-230-conv-53",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-200-221-02",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-200-223-02",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-201-222-02",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-201-224-02",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-205-230-conv-08",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-206-230-conv-02",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-206-230-prim-02",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-207-221-04",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-207-222-04",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-208-223-04",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-208-224-04",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-21-221-23",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-21-222-23",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-21-223-23",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-21-224-23",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-21-230-conv-49",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-212-227-19",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-213-230-conv-09",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-214-230-conv-04",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-214-230-prim-04",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-215-221-03",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-215-224-03",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-215-227-18",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-216-227-03",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-218-222-03",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-218-223-03",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-22-230-conv-26",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-22-230-prim-23",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-220-230-conv-03",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-220-230-prim-03",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-221-221-01",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-222-222-01",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-223-223-01",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-224-224-01",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-227-227-01",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-230-230-conv-01",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-230-230-conv-62",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-230-230-prim-01",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-24-230-conv-23",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-24-230-prim-20",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-25-221-21",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-25-223-21",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-25-227-54",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-26-227-64",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-27-230-conv-48",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-28-227-62",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-29-230-conv-52",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-3-221-29",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-3-222-29",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-3-223-29",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-3-224-29",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-3-227-82",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-3-227-95",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-3-230-conv-58",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-30-227-65",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-31-227-58",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-32-230-conv-47",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-33-227-63",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-34-222-21",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-34-224-21",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-35-221-22",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-35-224-22",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-35-227-87",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-37-222-22",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-37-223-22",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-38-221-26",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-39-224-26",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-4-227-77",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-4-227-81",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-4-227-96",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-4-230-conv-59",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-40-223-26",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-41-222-26",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-43-230-conv-25",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-43-230-conv-29",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-43-230-prim-22",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-43-230-prim-26",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-43-bcc-22",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-43-bcc-26",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-44-227-24",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-45-230-conv-24",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-45-230-prim-21",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-46-227-28",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-47-221-08",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-47-223-08",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-48-222-08",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-48-224-08",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-221-32",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-222-32",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-223-32",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-224-32",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-227-45",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-227-75",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-227-98",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-230-conv-40",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-230-conv-43",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-230-conv-61",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-230-prim-29",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-230-prim-32",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-bcc-29",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-5-bcc-32",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-51-227-29",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-53-227-32",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-54-230-conv-30",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-6-221-30",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-6-223-30",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-6-227-79",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-61-230-conv-31",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-62-227-31",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-65-221-09",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-66-223-09",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-67-224-09",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-68-222-09",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-7-222-30",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-7-224-30",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-7-227-78",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-7-227-80",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-7-230-conv-60",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-70-230-conv-11",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-70-230-prim-09",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-70-bcc-9",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-73-230-conv-10",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-73-230-prim-08",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-74-227-09",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-75-221-25",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-75-222-25",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-76-227-61",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-77-223-25",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-77-224-25",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-78-227-91",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-78-230-conv-54",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-8-221-31",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-8-224-31",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-8-227-44",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-8-227-97",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-80-230-conv-28",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-80-230-prim-25",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-81-221-24",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-81-222-24",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-81-223-24",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-81-224-24",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-81-227-88",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-81-230-conv-50",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-82-230-conv-27",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-82-230-prim-24",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-83-221-10",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-84-223-10",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-85-222-10",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-86-224-10",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-88-230-conv-12",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-88-230-prim-10",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-89-221-12",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-89-222-12",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-9-222-31",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-9-223-31",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-9-227-43",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-9-230-conv-41",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-9-230-conv-42",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-9-230-prim-30",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-9-230-prim-31",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-9-bcc-30",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-9-bcc-31",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-91-227-67",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-92-227-35",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-92-230-conv-35",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-93-223-12",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-93-224-12",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-95-227-36",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-95-230-conv-32",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-96-227-69",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-98-230-conv-14",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-98-230-prim-12",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/spglibtestdata/virtual_structure/POSCAR-99-221-13",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/symmetrykit-tests.vcxproj",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/testdata/LTN_symmetry.cif",
+      "matches": true
+    },
+    {
+      "file": "tests/symmetrykit-tests/transformation_matrix.cpp",
+      "matches": true
+    },
+    {
+      "file": "tests/test_support.hpp",
+      "matches": true
+    }
+  ]
+}

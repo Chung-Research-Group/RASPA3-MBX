@@ -84,8 +84,16 @@ void pruneContainedDiscs(std::vector<Circle>& circles)
     for (std::size_t j = 0; j < circles.size(); ++j)
     {
       if (i == j || redundant[j]) continue;
-      if (discWithinDisc(double3::dot(circles[i].axis, circles[j].axis), circles[i].cosineHalfAngle,
-                         circles[i].sineHalfAngle, circles[j].cosineHalfAngle, circles[j].sineHalfAngle))
+      // Concentric caps need no trigonometry: roundoff in cos^2 + sin^2 or in the axis norm must not
+      // prevent identical discs from being pruned. Equal proper caps with different axes cannot contain
+      // one another, even when their dot product rounds to one. A whole-sphere cap contains every disc.
+      const bool sameAxis = circles[i].axis == circles[j].axis;
+      const bool sameHalfAngle = circles[i].cosineHalfAngle == circles[j].cosineHalfAngle;
+      if (circles[j].cosineHalfAngle <= -1.0 ||
+          (sameAxis && circles[j].cosineHalfAngle <= circles[i].cosineHalfAngle) ||
+          (!sameAxis && !sameHalfAngle &&
+           discWithinDisc(double3::dot(circles[i].axis, circles[j].axis), circles[i].cosineHalfAngle,
+                          circles[i].sineHalfAngle, circles[j].cosineHalfAngle, circles[j].sineHalfAngle)))
       {
         redundant[i] = true;
         break;

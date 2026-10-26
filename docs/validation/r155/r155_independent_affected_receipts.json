@@ -1,0 +1,123 @@
+[
+  {
+    "label": "df7_affected",
+    "command": [
+      "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/build-mbx/tests/raspakit-tests/unit_tests_raspakit",
+      "--gtest_filter=hybrid_mc.*:minimization_variable_cell.*:normal_modes.*:vdw_potentials.*:exact_sphere_sweep.*",
+      "--gtest_output=xml:/home/yuc/calculation/RASPA-MBX/manuscript/20261025_final_review_r155/new/reviews/N3/scratch/native/df7_affected/tests.xml"
+    ],
+    "cwd": "/home/yuc/calculation/RASPA-MBX/manuscript/20261025_final_review_r155/new/reviews/N3/scratch/native/df7_affected",
+    "returncode": 1,
+    "seconds": 42.55402874946594,
+    "binary_sha256": "1a7be3845793f1b8e169655046c30495b850116d2610c325b664ea6f915f3c01",
+    "source_head": "df7a90656e8e2a8ad276ca8310b161ec61f506af",
+    "source_status": "",
+    "summary": {
+      "tests": "56",
+      "failures": "6",
+      "disabled": "0",
+      "errors": "0",
+      "time": "42.302",
+      "timestamp": "2026-10-25T23:51:47.918",
+      "name": "AllTests"
+    },
+    "failures": [
+      {
+        "suite": "hybrid_mc",
+        "name": "flexible_framework_only_does_not_throw_and_restores_on_reject",
+        "failures": [
+          "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:710\nValue of: accepted.has_value()\n  Actual: true\nExpected: false\n",
+          "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:398\nThe difference between a.x and b.x is 1.2035809695216262, which exceeds tol, where\na.x evaluates to 6.2035809695216262,\nb.x evaluates to 5, and\ntol evaluates to 1e-14.\n",
+          "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:399\nThe difference between a.y and b.y is 0.54647063211545177, which exceeds tol, where\na.y evaluates to 5.5464706321154518,\nb.y evaluates to 5, and\ntol evaluates to 1e-14.\n",
+          "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:400\nThe difference between a.z and b.z is 0.083783939100998239, which exceeds tol, where\na.z evaluates to 5.0837839391009982,\nb.z evaluates to 5, and\ntol evaluates to 1e-14.\n",
+          "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:398\nThe difference between a.x and b.x is 0.48143238780865083, which exceeds tol, where\na.x evaluates to 5.6185676121913488,\nb.x evaluates to 6.0999999999999996, and\ntol evaluates to 1e-14.\n",
+          "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:399\nThe difference between a.y and b.y is 0.21858825284618089, which exceeds tol, where\na.y evaluates to 4.7814117471538191,\nb.y evaluates to 5, and\ntol evaluates to 1e-14.\n",
+          "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:400\nThe difference between a.z and b.z is 0.033513575640399473, which exceeds tol, where\na.z evaluates to 4.9664864243596005,\nb.z evaluates to 5, and\ntol evaluates to 1e-14.\n"
+        ]
+      },
+      {
+        "suite": "minimization_variable_cell",
+        "name": "rigid_charged_mixed_blocks_match_finite_difference",
+        "failures": [
+          "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp:427\nThe difference between analyticHessian and numericalHessian is 0.0090372154204487725, which exceeds hessianTolerance * hessianScale, where\nanalyticHessian evaluates to 0,\nnumericalHessian evaluates to 0.0090372154204487725, and\nhessianTolerance * hessianScale evaluates to 0.0050000000000000001.\nrow=11 cell coordinate=2\n"
+        ]
+      },
+      {
+        "suite": "minimization_variable_cell",
+        "name": "polarization_rigid_molecule_real_space_matches_finite_difference",
+        "failures": [
+          "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp:427\nThe difference between analyticHessian and numericalHessian is 0.0090394358664980228, which exceeds hessianTolerance * hessianScale, where\nanalyticHessian evaluates to 0,\nnumericalHessian evaluates to 0.0090394358664980228, and\nhessianTolerance * hessianScale evaluates to 0.0050000000000000001.\nrow=11 cell coordinate=2\n"
+        ]
+      },
+      {
+        "suite": "normal_modes",
+        "name": "writes_one_pdb_movie_per_mode",
+        "failures": [
+          "unknown file\nC++ exception with description \"filesystem error: cannot remove: Directory not empty [normal_modes_test_output]\" thrown in the test body.\n"
+        ]
+      },
+      {
+        "suite": "vdw_potentials",
+        "name": "second_order_taylor_shifted_spatial_derivatives_match_finite_difference",
+        "failures": [
+          "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp:354\nThe difference between hessian.firstDerivativeFactor + hessian.secondDerivativeFactor * r * r and numericalSecond is 0.00059479761898018069, which exceeds 1e-5 * std::max(1.0, std::abs(numericalSecond)), where\nhessian.firstDerivativeFactor + hessian.secondDerivativeFactor * r * r evaluates to -41.969156756657171,\nnumericalSecond evaluates to -41.96856195903819, and\n1e-5 * std::max(1.0, std::abs(numericalSecond)) evaluates to 0.00041968561959038192.\nr = 5\n"
+        ]
+      },
+      {
+        "suite": "exact_sphere_sweep",
+        "name": "pruning_keeps_one_of_a_pair_of_equals_and_the_order_of_the_rest",
+        "failures": [
+          "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp:249\nExpected equality of these values:\n  circles.size()\n    Which is: 3\n  2uz\n    Which is: 2\n"
+        ]
+      }
+    ]
+  },
+  {
+    "label": "r153_affected_on",
+    "command": [
+      "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX-r153-tests/build-mbx/tests/raspakit-tests/unit_tests_raspakit",
+      "--gtest_filter=hybrid_mc.*:minimization_variable_cell.*:normal_modes.*:vdw_potentials.*:exact_sphere_sweep.*",
+      "--gtest_output=xml:/home/yuc/calculation/RASPA-MBX/manuscript/20261025_final_review_r155/new/reviews/N3/scratch/native/r153_affected_on/tests.xml"
+    ],
+    "cwd": "/home/yuc/calculation/RASPA-MBX/manuscript/20261025_final_review_r155/new/reviews/N3/scratch/native/r153_affected_on",
+    "returncode": 0,
+    "seconds": 42.59378671646118,
+    "binary_sha256": "a95486d8050c644602e1fd3a271570abcd2b5117441bb8cc23e1f66ad8fdd349",
+    "source_head": "281772cbd61c805f1a1b713b5dd290187bd0cff9",
+    "source_status": "",
+    "summary": {
+      "tests": "59",
+      "failures": "0",
+      "disabled": "0",
+      "errors": "0",
+      "time": "42.363",
+      "timestamp": "2026-10-25T23:52:30.863",
+      "name": "AllTests"
+    },
+    "failures": []
+  },
+  {
+    "label": "r153_affected_off",
+    "command": [
+      "/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX-r153-tests/build-classical/tests/raspakit-tests/unit_tests_raspakit",
+      "--gtest_filter=hybrid_mc.*:minimization_variable_cell.*:normal_modes.*:vdw_potentials.*:exact_sphere_sweep.*",
+      "--gtest_output=xml:/home/yuc/calculation/RASPA-MBX/manuscript/20261025_final_review_r155/new/reviews/N3/scratch/native/r153_affected_off/tests.xml"
+    ],
+    "cwd": "/home/yuc/calculation/RASPA-MBX/manuscript/20261025_final_review_r155/new/reviews/N3/scratch/native/r153_affected_off",
+    "returncode": 0,
+    "seconds": 44.207443952560425,
+    "binary_sha256": "0e294251d3e73c01b0988d3aa4d0641f41cf81786402f1b77ef6dfaecab99527",
+    "source_head": "281772cbd61c805f1a1b713b5dd290187bd0cff9",
+    "source_status": "",
+    "summary": {
+      "tests": "59",
+      "failures": "0",
+      "disabled": "0",
+      "errors": "0",
+      "time": "43.876",
+      "timestamp": "2026-10-25T23:53:13.895",
+      "name": "AllTests"
+    },
+    "failures": []
+  }
+]

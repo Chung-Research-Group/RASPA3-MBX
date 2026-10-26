@@ -700,16 +700,38 @@ TEST(hybrid_mc, flexible_framework_only_does_not_throw_and_restores_on_reject)
   system.spanOfFrameworkAtoms()[0].position = {5.0, 5.0, 5.0};
   system.spanOfFrameworkAtoms()[1].position = {6.1, 5.0, 5.0};
   system.numberOfHybridMCSteps = 5;
-  // Large timestep makes energy drift large so the move is almost surely rejected.
+  // This timestep produces a finite energy drift, not certain rejection.
   system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 0.05);
 
   const double3 initial0 = system.spanOfFrameworkAtoms()[0].position;
   const double3 initial1 = system.spanOfFrameworkAtoms()[1].position;
+  const std::vector<AtomDynamics> initialDynamics(system.spanOfFrameworkDynamics().begin(),
+                                                 system.spanOfFrameworkDynamics().end());
+  const double initialTimeStep = system.timeStep;
+
+  // Exercise both branches with the same Gaussian velocities and proposal. Only the
+  // final uniform acceptance draw is conditioned; do not rely on a lucky rejecting seed.
+  System acceptedSystem = system;
+  RandomNumber acceptanceRandom(12);
+  acceptanceRandom.uniformDistribution = std::uniform_real_distribution<double>(0.0, 0.01);
+  ASSERT_TRUE(MC_Moves::hybridMCMove(acceptanceRandom, acceptedSystem).has_value());
+  EXPECT_GT(std::abs(acceptedSystem.spanOfFrameworkAtoms()[0].position.x - initial0.x), 1.0e-5);
+
   RandomNumber random(12);
+  random.uniformDistribution = std::uniform_real_distribution<double>(0.99, 1.0);
   const std::optional<RunningEnergy> accepted = MC_Moves::hybridMCMove(random, system);
   EXPECT_FALSE(accepted.has_value());
+  // Six Gaussian velocity draws and one uniform acceptance draw in either branch.
+  EXPECT_EQ(random.count, 7u);
+  EXPECT_EQ(acceptanceRandom.count, random.count);
   DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkAtoms()[0].position, initial0, 1.0e-14);
   DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkAtoms()[1].position, initial1, 1.0e-14);
+  for (std::size_t i = 0; i != initialDynamics.size(); ++i)
+  {
+    DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkDynamics()[i].velocity, initialDynamics[i].velocity, 1.0e-14);
+    DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkDynamics()[i].gradient, initialDynamics[i].gradient, 1.0e-14);
+  }
+  EXPECT_DOUBLE_EQ(system.timeStep, initialTimeStep);
 }
 
 TEST(hybrid_mc, rigid_molecules_in_rigid_framework_does_not_throw)

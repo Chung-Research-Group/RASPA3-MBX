@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites tests="6" failures="6" disabled="0" errors="0" time="21.923" timestamp="2026-10-23T01:40:33.053" name="AllTests">
+  <testsuite name="hybrid_mc" tests="1" failures="1" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-10-23T01:40:33.053">
+    <testcase name="flexible_framework_only_does_not_throw_and_restores_on_reject" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp" line="693" status="run" result="completed" time="0." timestamp="2026-10-23T01:40:33.053" classname="hybrid_mc">
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:710&#x0A;Value of: accepted.has_value()&#x0A;  Actual: true&#x0A;Expected: false&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:710
+Value of: accepted.has_value()
+  Actual: true
+Expected: false
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:398&#x0A;The difference between a.x and b.x is 1.2035809695216262, which exceeds tol, where&#x0A;a.x evaluates to 6.2035809695216262,&#x0A;b.x evaluates to 5, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:398
+The difference between a.x and b.x is 1.2035809695216262, which exceeds tol, where
+a.x evaluates to 6.2035809695216262,
+b.x evaluates to 5, and
+tol evaluates to 1e-14.
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:399&#x0A;The difference between a.y and b.y is 0.54647063211545177, which exceeds tol, where&#x0A;a.y evaluates to 5.5464706321154518,&#x0A;b.y evaluates to 5, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:399
+The difference between a.y and b.y is 0.54647063211545177, which exceeds tol, where
+a.y evaluates to 5.5464706321154518,
+b.y evaluates to 5, and
+tol evaluates to 1e-14.
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:400&#x0A;The difference between a.z and b.z is 0.083783939100998239, which exceeds tol, where&#x0A;a.z evaluates to 5.0837839391009982,&#x0A;b.z evaluates to 5, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:400
+The difference between a.z and b.z is 0.083783939100998239, which exceeds tol, where
+a.z evaluates to 5.0837839391009982,
+b.z evaluates to 5, and
+tol evaluates to 1e-14.
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:398&#x0A;The difference between a.x and b.x is 0.48143238780865083, which exceeds tol, where&#x0A;a.x evaluates to 5.6185676121913488,&#x0A;b.x evaluates to 6.0999999999999996, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:398
+The difference between a.x and b.x is 0.48143238780865083, which exceeds tol, where
+a.x evaluates to 5.6185676121913488,
+b.x evaluates to 6.0999999999999996, and
+tol evaluates to 1e-14.
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:399&#x0A;The difference between a.y and b.y is 0.21858825284618089, which exceeds tol, where&#x0A;a.y evaluates to 4.7814117471538191,&#x0A;b.y evaluates to 5, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:399
+The difference between a.y and b.y is 0.21858825284618089, which exceeds tol, where
+a.y evaluates to 4.7814117471538191,
+b.y evaluates to 5, and
+tol evaluates to 1e-14.
+]]></failure>
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:400&#x0A;The difference between a.z and b.z is 0.033513575640399473, which exceeds tol, where&#x0A;a.z evaluates to 4.9664864243596005,&#x0A;b.z evaluates to 5, and&#x0A;tol evaluates to 1e-14.&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/integrators.cpp:400
+The difference between a.z and b.z is 0.033513575640399473, which exceeds tol, where
+a.z evaluates to 4.9664864243596005,
+b.z evaluates to 5, and
+tol evaluates to 1e-14.
+]]></failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="minimization_variable_cell" tests="2" failures="2" disabled="0" skipped="0" errors="0" time="21.83" timestamp="2026-10-23T01:40:33.053">
+    <testcase name="rigid_charged_mixed_blocks_match_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="562" status="run" result="completed" time="10.906" timestamp="2026-10-23T01:40:33.053" classname="minimization_variable_cell">
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp:427&#x0A;The difference between analyticHessian and numericalHessian is 0.0090372154204487725, which exceeds hessianTolerance * hessianScale, where&#x0A;analyticHessian evaluates to 0,&#x0A;numericalHessian evaluates to 0.0090372154204487725, and&#x0A;hessianTolerance * hessianScale evaluates to 0.0050000000000000001.&#x0A;row=11 cell coordinate=2&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp:427
+The difference between analyticHessian and numericalHessian is 0.0090372154204487725, which exceeds hessianTolerance * hessianScale, where
+analyticHessian evaluates to 0,
+numericalHessian evaluates to 0.0090372154204487725, and
+hessianTolerance * hessianScale evaluates to 0.0050000000000000001.
+row=11 cell coordinate=2
+]]></failure>
+    </testcase>
+    <testcase name="polarization_rigid_molecule_real_space_matches_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp" line="577" status="run" result="completed" time="10.923" timestamp="2026-10-23T01:40:43.960" classname="minimization_variable_cell">
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp:427&#x0A;The difference between analyticHessian and numericalHessian is 0.0090394358664980228, which exceeds hessianTolerance * hessianScale, where&#x0A;analyticHessian evaluates to 0,&#x0A;numericalHessian evaluates to 0.0090394358664980228, and&#x0A;hessianTolerance * hessianScale evaluates to 0.0050000000000000001.&#x0A;row=11 cell coordinate=2&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/minimization_variable_cell.cpp:427
+The difference between analyticHessian and numericalHessian is 0.0090394358664980228, which exceeds hessianTolerance * hessianScale, where
+analyticHessian evaluates to 0,
+numericalHessian evaluates to 0.0090394358664980228, and
+hessianTolerance * hessianScale evaluates to 0.0050000000000000001.
+row=11 cell coordinate=2
+]]></failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="normal_modes" tests="1" failures="1" disabled="0" skipped="0" errors="0" time="0.092" timestamp="2026-10-23T01:40:54.884">
+    <testcase name="writes_one_pdb_movie_per_mode" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/normal_modes.cpp" line="125" status="run" result="completed" time="0.092" timestamp="2026-10-23T01:40:54.884" classname="normal_modes">
+      <failure message="unknown file&#x0A;C++ exception with description &quot;filesystem error: cannot remove: Directory not empty [normal_modes_test_output]&quot; thrown in the test body.&#x0A;" type=""><![CDATA[unknown file
+C++ exception with description "filesystem error: cannot remove: Directory not empty [normal_modes_test_output]" thrown in the test body.
+]]></failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="vdw_potentials" tests="1" failures="1" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-10-23T01:40:54.976">
+    <testcase name="second_order_taylor_shifted_spatial_derivatives_match_finite_difference" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp" line="327" status="run" result="completed" time="0." timestamp="2026-10-23T01:40:54.976" classname="vdw_potentials">
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp:354&#x0A;The difference between hessian.firstDerivativeFactor + hessian.secondDerivativeFactor * r * r and numericalSecond is 0.00059479761898018069, which exceeds 1e-5 * std::max(1.0, std::abs(numericalSecond)), where&#x0A;hessian.firstDerivativeFactor + hessian.secondDerivativeFactor * r * r evaluates to -41.969156756657171,&#x0A;numericalSecond evaluates to -41.96856195903819, and&#x0A;1e-5 * std::max(1.0, std::abs(numericalSecond)) evaluates to 0.00041968561959038192.&#x0A;r = 5&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/vdw_potentials.cpp:354
+The difference between hessian.firstDerivativeFactor + hessian.secondDerivativeFactor * r * r and numericalSecond is 0.00059479761898018069, which exceeds 1e-5 * std::max(1.0, std::abs(numericalSecond)), where
+hessian.firstDerivativeFactor + hessian.secondDerivativeFactor * r * r evaluates to -41.969156756657171,
+numericalSecond evaluates to -41.96856195903819, and
+1e-5 * std::max(1.0, std::abs(numericalSecond)) evaluates to 0.00041968561959038192.
+r = 5
+]]></failure>
+    </testcase>
+  </testsuite>
+  <testsuite name="exact_sphere_sweep" tests="1" failures="1" disabled="0" skipped="0" errors="0" time="0." timestamp="2026-10-23T01:40:54.976">
+    <testcase name="pruning_keeps_one_of_a_pair_of_equals_and_the_order_of_the_rest" file="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp" line="236" status="run" result="completed" time="0." timestamp="2026-10-23T01:40:54.976" classname="exact_sphere_sweep">
+      <failure message="/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp:249&#x0A;Expected equality of these values:&#x0A;  circles.size()&#x0A;    Which is: 3&#x0A;  2uz&#x0A;    Which is: 2&#x0A;" type=""><![CDATA[/home/yuc/calculation/RASPA-MBX/development/RASPA3-MBX/tests/raspakit-tests/exact_sphere_sweep.cpp:249
+Expected equality of these values:
+  circles.size()
+    Which is: 3
+  2uz
+    Which is: 2
+]]></failure>
+    </testcase>
+  </testsuite>
+</testsuites>

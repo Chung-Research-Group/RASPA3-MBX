@@ -1,0 +1,221 @@
+From 281772cbd61c805f1a1b713b5dd290187bd0cff9 Mon Sep 17 00:00:00 2001
+From: DrakeChan <yuchen.drake@gmail.com>
+Date: Fri, 23 Oct 2026 01:58:39 +0900
+Subject: [PATCH] Fix general test stability and concentric spherical-cap
+ pruning
+
+---
+ .../diagrams/exact/sphere_sweep.ixx           | 12 +++-
+ tests/raspakit-tests/exact_sphere_sweep.cpp   | 63 +++++++++++++++++++
+ tests/raspakit-tests/integrators.cpp          | 24 ++++++-
+ .../minimization_variable_cell.cpp            |  5 +-
+ tests/raspakit-tests/normal_modes.cpp         |  2 +
+ tests/raspakit-tests/vdw_potentials.cpp       | 15 ++++-
+ 6 files changed, 114 insertions(+), 7 deletions(-)
+
+diff --git a/src/structurekit/diagrams/exact/sphere_sweep.ixx b/src/structurekit/diagrams/exact/sphere_sweep.ixx
+index e884439..f643097 100644
+--- a/src/structurekit/diagrams/exact/sphere_sweep.ixx
++++ b/src/structurekit/diagrams/exact/sphere_sweep.ixx
+@@ -84,8 +84,16 @@ void pruneContainedDiscs(std::vector<Circle>& circles)
+     for (std::size_t j = 0; j < circles.size(); ++j)
+     {
+       if (i == j || redundant[j]) continue;
+-      if (discWithinDisc(double3::dot(circles[i].axis, circles[j].axis), circles[i].cosineHalfAngle,
+-                         circles[i].sineHalfAngle, circles[j].cosineHalfAngle, circles[j].sineHalfAngle))
++      // Concentric caps need no trigonometry: roundoff in cos^2 + sin^2 or in the axis norm must not
++      // prevent identical discs from being pruned. Equal proper caps with different axes cannot contain
++      // one another, even when their dot product rounds to one. A whole-sphere cap contains every disc.
++      const bool sameAxis = circles[i].axis == circles[j].axis;
++      const bool sameHalfAngle = circles[i].cosineHalfAngle == circles[j].cosineHalfAngle;
++      if (circles[j].cosineHalfAngle <= -1.0 ||
++          (sameAxis && circles[j].cosineHalfAngle <= circles[i].cosineHalfAngle) ||
++          (!sameAxis && !sameHalfAngle &&
++           discWithinDisc(double3::dot(circles[i].axis, circles[j].axis), circles[i].cosineHalfAngle,
++                          circles[i].sineHalfAngle, circles[j].cosineHalfAngle, circles[j].sineHalfAngle)))
+       {
+         redundant[i] = true;
+         break;
+diff --git a/tests/raspakit-tests/exact_sphere_sweep.cpp b/tests/raspakit-tests/exact_sphere_sweep.cpp
+index d2060f0..3abde18 100644
+--- a/tests/raspakit-tests/exact_sphere_sweep.cpp
++++ b/tests/raspakit-tests/exact_sphere_sweep.cpp
+@@ -260,6 +260,69 @@ TEST(exact_sphere_sweep, pruning_keeps_one_of_a_pair_of_equals_and_the_order_of_
+ }
+ 
+ 
++TEST(exact_sphere_sweep, pruning_concentric_caps_does_not_depend_on_rounded_norms)
++{
++  // Neither a normalized axis nor the sine/cosine pair is guaranteed to have squared norm exactly one.
++  // Concentric containment follows from the ordered half angles, including caps close to a whole sphere.
++  for (const double3& axis : {double3(0.0, 0.0, 1.0), double3(1.0, 1.0, 1.0), double3(1.0, 2.0, 3.0)})
++  {
++    for (double halfAngle : {0.1, 0.5, 0.9, std::numbers::pi - 1.0e-6})
++    {
++      const SweepCircle outer = capOf(axis, halfAngle);
++      std::vector<SweepCircle> circles = {outer, capOf(axis, 0.5 * halfAngle), outer};
++      pruneContainedDiscs(circles);
++      ASSERT_EQ(circles.size(), 1uz);
++      EXPECT_EQ(circles[0].axis, outer.axis);
++      EXPECT_EQ(circles[0].cosineHalfAngle, outer.cosineHalfAngle);
++
++      // Even a one-ulp radius difference must retain the larger cap, rather than treating it as a tie.
++      const std::optional<SweepCircle> larger =
++          makeSweepCircle(outer.axis, std::nextafter(outer.cosineHalfAngle, -1.0));
++      ASSERT_TRUE(larger.has_value());
++      circles = {larger.value(), outer};
++      pruneContainedDiscs(circles);
++      ASSERT_EQ(circles.size(), 1uz);
++      EXPECT_EQ(circles[0].cosineHalfAngle, larger->cosineHalfAngle);
++    }
++  }
++}
++
++
++TEST(exact_sphere_sweep, pruning_preserves_nearby_distinct_caps_of_equal_radius)
++{
++  // The axes are distinct even when their dot product rounds to one. An epsilon on the containment
++  // threshold would merge these discs, although each has a boundary region not covered by the other.
++  for (double separation : {1.0e-10, 1.0e-8, 1.0e-6})
++  {
++    for (double halfAngle : {0.5, 0.9, std::numbers::pi - 1.0e-6})
++    {
++      const SweepCircle first = capOf(double3(0.0, 0.0, 1.0), halfAngle);
++      const SweepCircle second = capOf(double3(separation, 0.0, 1.0), halfAngle);
++      ASSERT_FALSE(first.axis == second.axis);
++      std::vector<SweepCircle> circles = {first, second};
++      pruneContainedDiscs(circles);
++      ASSERT_EQ(circles.size(), 2uz);
++      EXPECT_EQ(circles[0].axis, first.axis);
++      EXPECT_EQ(circles[1].axis, second.axis);
++    }
++  }
++}
++
++
++TEST(exact_sphere_sweep, pruning_keeps_the_last_whole_sphere_cap_regardless_of_axis)
++{
++  const std::optional<SweepCircle> first = makeSweepCircle(double3(0.0, 0.0, 1.0), -1.0);
++  const std::optional<SweepCircle> last = makeSweepCircle(double3(1.0, 0.0, 0.0), -1.0);
++  ASSERT_TRUE(first.has_value());
++  ASSERT_TRUE(last.has_value());
++  std::vector<SweepCircle> circles = {first.value(), capOf(double3(0.0, 1.0, 0.0), 0.9), last.value()};
++  pruneContainedDiscs(circles);
++  ASSERT_EQ(circles.size(), 1uz);
++  EXPECT_EQ(circles[0].axis, last->axis);
++  EXPECT_EQ(circles[0].cosineHalfAngle, -1.0);
++}
++
++
+ TEST(exact_sphere_sweep, a_crossing_lies_on_both_of_the_circles_that_made_it)
+ {
+   RandomNumber random{std::optional<std::size_t>(5)};
+diff --git a/tests/raspakit-tests/integrators.cpp b/tests/raspakit-tests/integrators.cpp
+index 4c6d11e..84e5f35 100644
+--- a/tests/raspakit-tests/integrators.cpp
++++ b/tests/raspakit-tests/integrators.cpp
+@@ -700,16 +700,38 @@ TEST(hybrid_mc, flexible_framework_only_does_not_throw_and_restores_on_reject)
+   system.spanOfFrameworkAtoms()[0].position = {5.0, 5.0, 5.0};
+   system.spanOfFrameworkAtoms()[1].position = {6.1, 5.0, 5.0};
+   system.numberOfHybridMCSteps = 5;
+-  // Large timestep makes energy drift large so the move is almost surely rejected.
++  // This timestep produces a finite energy drift, not certain rejection.
+   system.mc_moves_statistics.setMaxChange(Move::Types::HybridMC, 0.05);
+ 
+   const double3 initial0 = system.spanOfFrameworkAtoms()[0].position;
+   const double3 initial1 = system.spanOfFrameworkAtoms()[1].position;
++  const std::vector<AtomDynamics> initialDynamics(system.spanOfFrameworkDynamics().begin(),
++                                                 system.spanOfFrameworkDynamics().end());
++  const double initialTimeStep = system.timeStep;
++
++  // Exercise both branches with the same Gaussian velocities and proposal. Only the
++  // final uniform acceptance draw is conditioned; do not rely on a lucky rejecting seed.
++  System acceptedSystem = system;
++  RandomNumber acceptanceRandom(12);
++  acceptanceRandom.uniformDistribution = std::uniform_real_distribution<double>(0.0, 0.01);
++  ASSERT_TRUE(MC_Moves::hybridMCMove(acceptanceRandom, acceptedSystem).has_value());
++  EXPECT_GT(std::abs(acceptedSystem.spanOfFrameworkAtoms()[0].position.x - initial0.x), 1.0e-5);
++
+   RandomNumber random(12);
++  random.uniformDistribution = std::uniform_real_distribution<double>(0.99, 1.0);
+   const std::optional<RunningEnergy> accepted = MC_Moves::hybridMCMove(random, system);
+   EXPECT_FALSE(accepted.has_value());
++  // Six Gaussian velocity draws and one uniform acceptance draw in either branch.
++  EXPECT_EQ(random.count, 7u);
++  EXPECT_EQ(acceptanceRandom.count, random.count);
+   DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkAtoms()[0].position, initial0, 1.0e-14);
+   DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkAtoms()[1].position, initial1, 1.0e-14);
++  for (std::size_t i = 0; i != initialDynamics.size(); ++i)
++  {
++    DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkDynamics()[i].velocity, initialDynamics[i].velocity, 1.0e-14);
++    DOUBLE3_EXPECT_NEAR(system.spanOfFrameworkDynamics()[i].gradient, initialDynamics[i].gradient, 1.0e-14);
++  }
++  EXPECT_DOUBLE_EQ(system.timeStep, initialTimeStep);
+ }
+ 
+ TEST(hybrid_mc, rigid_molecules_in_rigid_framework_does_not_throw)
+diff --git a/tests/raspakit-tests/minimization_variable_cell.cpp b/tests/raspakit-tests/minimization_variable_cell.cpp
+index 8019355..85112ea 100644
+--- a/tests/raspakit-tests/minimization_variable_cell.cpp
++++ b/tests/raspakit-tests/minimization_variable_cell.cpp
+@@ -370,7 +370,10 @@ void expectCellDerivativesMatchFiniteDifference(System system, double gradientTo
+   const MinimizationDofLayout layout =
+       buildMinimizationDofLayout(system.moleculeData, system.components, frameworkDofs, cellLayout.size());
+   const Evaluation reference = evaluate(system, layout);
+-  constexpr double delta = 2.0e-5;
++  // A second energy difference amplifies coordinate/energy roundoff by 1 / delta^2.
++  // Balance that error against the O(delta^2) truncation error. In particular, a null
++  // rotation of a linear molecule must not amplify quaternion roundoff into curvature.
++  const double delta = std::pow(std::numeric_limits<double>::epsilon(), 0.25);
+ 
+   for (std::size_t cellCoordinate = 0; cellCoordinate < cellLayout.size(); ++cellCoordinate)
+   {
+diff --git a/tests/raspakit-tests/normal_modes.cpp b/tests/raspakit-tests/normal_modes.cpp
+index 3228bea..a197e4b 100644
+--- a/tests/raspakit-tests/normal_modes.cpp
++++ b/tests/raspakit-tests/normal_modes.cpp
+@@ -162,6 +162,8 @@ TEST(normal_modes, writes_one_pdb_movie_per_mode)
+   std::ifstream movie(directory / "mode_0011.s0.pdb");
+   ASSERT_TRUE(movie.is_open());
+   const std::string contents((std::istreambuf_iterator<char>(movie)), std::istreambuf_iterator<char>());
++  // NFS retains an unlinked open file as .nfs*, preventing removal of its directory.
++  movie.close();
+   EXPECT_TRUE(contents.contains("MODEL"));
+   EXPECT_TRUE(contents.contains("ATOM"));
+   EXPECT_TRUE(contents.contains("ENDMDL"));
+diff --git a/tests/raspakit-tests/vdw_potentials.cpp b/tests/raspakit-tests/vdw_potentials.cpp
+index e54c0c6..5e6acf8 100644
+--- a/tests/raspakit-tests/vdw_potentials.cpp
++++ b/tests/raspakit-tests/vdw_potentials.cpp
+@@ -331,7 +331,9 @@ TEST(vdw_potentials, second_order_taylor_shifted_spatial_derivatives_match_finit
+ 
+   for (double r : {3.0, 3.405, 3.8, 5.0, 11.0})
+   {
+-    constexpr double delta = 1e-5;
++    // Use the same fourth-order stencil as the general spatial-derivative test.
++    // A tiny three-point step loses precision when subtracting nearly equal energies.
++    const double delta = 1e-4 * std::max(1.0, r);
+     const Potentials::PairDerivatives<1> gradient =
+         Potentials::potentialVDW<1>(forceField, 1.0, 1.0, r * r, 0, 0);
+     const Potentials::PairDerivatives<2> hessian =
+@@ -344,8 +346,15 @@ TEST(vdw_potentials, second_order_taylor_shifted_spatial_derivatives_match_finit
+     const double minus = Potentials::potentialVDW<0>(
+                              forceField, 1.0, 1.0, (r - delta) * (r - delta), 0, 0)
+                              .energy;
+-    const double numericalFirst = (plus - minus) / (2.0 * delta);
+-    const double numericalSecond = (plus - 2.0 * center + minus) / (delta * delta);
++    const double plus2 = Potentials::potentialVDW<0>(
++                             forceField, 1.0, 1.0, (r + 2.0 * delta) * (r + 2.0 * delta), 0, 0)
++                             .energy;
++    const double minus2 = Potentials::potentialVDW<0>(
++                              forceField, 1.0, 1.0, (r - 2.0 * delta) * (r - 2.0 * delta), 0, 0)
++                              .energy;
++    const double numericalFirst = (minus2 - 8.0 * minus + 8.0 * plus - plus2) / (12.0 * delta);
++    const double numericalSecond =
++        (-plus2 + 16.0 * plus - 30.0 * center + 16.0 * minus - minus2) / (12.0 * delta * delta);
+ 
+     EXPECT_NEAR(gradient.firstDerivativeFactor * r, numericalFirst,
+                 1e-5 * std::max(1.0, std::abs(numericalFirst)))
+-- 
+2.43.5
+

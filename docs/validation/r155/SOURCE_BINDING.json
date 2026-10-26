@@ -1,0 +1,25 @@
+{
+  "tested_maintenance_commit": "281772cbd61c805f1a1b713b5dd290187bd0cff9",
+  "tested_tree": "797f35b435916d446cc93b2c434ec9fd055623d0",
+  "parent": "df7a90656e8e2a8ad276ca8310b161ec61f506af",
+  "changed_files": [
+    "src/structurekit/diagrams/exact/sphere_sweep.ixx",
+    "tests/raspakit-tests/exact_sphere_sweep.cpp",
+    "tests/raspakit-tests/integrators.cpp",
+    "tests/raspakit-tests/minimization_variable_cell.cpp",
+    "tests/raspakit-tests/normal_modes.cpp",
+    "tests/raspakit-tests/vdw_potentials.cpp"
+  ],
+  "production_changes": [
+    "src/structurekit/diagrams/exact/sphere_sweep.ixx"
+  ],
+  "source_hashes": {
+    "src/structurekit/diagrams/exact/sphere_sweep.ixx": "bd53fe7ec125be153c0b620f1719aa311a3f6d21438d9515ac1232d1aa1a69d1",
+    "tests/raspakit-tests/exact_sphere_sweep.cpp": "0815e3898bb895fa317d550e569bbdfe5a2dc669cfeb7691527703ac4e78a078",
+    "tests/raspakit-tests/integrators.cpp": "c9100e1e04edb805cbacbee49983668f234ea05104ef590c7c402ea5876e6be0",
+    "tests/raspakit-tests/minimization_variable_cell.cpp": "12daa8b876d645cc636be8dafa859ff0cd59524afd2c7a7fd63864389f8972db",
+    "tests/raspakit-tests/normal_modes.cpp": "1e6516205ca4f529ca888d5d7c73e2230ca2612b7661fdb1b3ed7d4cf8c20a31",
+    "tests/raspakit-tests/vdw_potentials.cpp": "217c41f5d3416a22f034e2e209d915eadb3bc3764bc11be22c473c588ed14c38"
+  },
+  "scope": "R155 delivery adds documentation only to tested maintenance code. No simulation, MBX/MC/model change or module deployment."
+}

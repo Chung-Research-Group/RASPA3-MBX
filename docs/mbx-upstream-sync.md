@@ -219,7 +219,7 @@ The public dependency comparison and clean-build recipe are recorded in the
 
 ## Verification performed
 
-The integration was validated in the prepared Carbon environment as follows:
+This table is the historical synchronization-stage record, not the current test receipt. See [Maintained verification](validation-current.md) for the later source-bound results and repairs. The integration was validated in the prepared Carbon environment as follows:
 
 | Check | Result |
 |---|---|
