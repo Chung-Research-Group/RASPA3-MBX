@@ -8,6 +8,7 @@ import importlib
 import ctypes.util
 import warnings
 
+
 def _has_opencl():
     # 1. Standard search (Windows/macOS/Linux dev)
     if ctypes.util.find_library("OpenCL"):
@@ -16,15 +17,16 @@ def _has_opencl():
     # 2. Linux-specific deep search for runtime versions
     if platform.system() == "Linux":
         patterns = [
-            "libOpenCL.so.1", # Try loading by name via OS loader
+            "libOpenCL.so.1",  # Try loading by name via OS loader
             "/usr/lib/x86_64-linux-gnu/libOpenCL.so.1",
             "/usr/lib64/libOpenCL.so.1",
-            "/usr/lib/libOpenCL.so.1"
+            "/usr/lib/libOpenCL.so.1",
         ]
         for p in patterns:
-            if p.startswith("/"): # Absolute path check
-                if os.path.exists(p): return True
-            else: # Name-only check using OS dynamic loader
+            if p.startswith("/"):  # Absolute path check
+                if os.path.exists(p):
+                    return True
+            else:  # Name-only check using OS dynamic loader
                 try:
                     ctypes.CDLL(p)
                     return True
@@ -42,38 +44,48 @@ def _get_cpu_feature_level():
         sys_name = platform.system()
         if sys_name == "Windows":
             k32 = ctypes.windll.kernel32
-            if k32.IsProcessorFeaturePresent(41): return "avx512"
+            if k32.IsProcessorFeaturePresent(41):
+                return "avx512"
             # On Windows, AVX2 (40) implies FMA for all supported hardware
-            if k32.IsProcessorFeaturePresent(40): return "avx2"
-            if k32.IsProcessorFeaturePresent(19): return "avx"
+            if k32.IsProcessorFeaturePresent(40):
+                return "avx2"
+            if k32.IsProcessorFeaturePresent(19):
+                return "avx"
             return "base"
         elif sys_name == "Linux":
             with open("/proc/cpuinfo", "r") as f:
                 for line in f:
                     if line.startswith("flags"):
                         l_line = line.lower()
-                        if "avx512f" in l_line: return "avx512"
-                        if "avx2" in l_line and "fma" in l_line: return "avx2"
-                        if "avx" in l_line: return "avx"
+                        if "avx512f" in l_line:
+                            return "avx512"
+                        if "avx2" in l_line and "fma" in l_line:
+                            return "avx2"
+                        if "avx" in l_line:
+                            return "avx"
                         return "base"
         elif sys_name == "Darwin":
             cmd = ["sysctl", "-n", "machdep.cpu.leaf7_features", "machdep.cpu.features"]
             output = subprocess.check_output(cmd, stderr=subprocess.DEVNULL).decode().lower()
-            if "avx512f" in output: return "avx512"
-            if "avx2" in output and "fma" in output: return "avx2"
-            if "avx" in output: return "avx"
+            if "avx512f" in output:
+                return "avx512"
+            if "avx2" in output and "fma" in output:
+                return "avx2"
+            if "avx" in output:
+                return "avx"
             return "base"
-            
+
     except Exception:
         pass
     return "base"
+
 
 __has_opencl__ = _has_opencl()
 
 if not __has_opencl__ and os.environ.get("RASPALIB_QUIET") != "1":
     distro_cmd = "Please install OpenCL drivers."
     sys_name = platform.system()
-    
+
     if sys_name == "Windows":
         distro_cmd = "Please update your GPU drivers (NVIDIA, AMD, or Intel) to install OpenCL.dll."
     elif sys_name == "Linux":
@@ -91,10 +103,7 @@ if not __has_opencl__ and os.environ.get("RASPALIB_QUIET") != "1":
     elif sys_name == "Darwin":
         distro_cmd = "OpenCL should be included with macOS. Check your system updates."
 
-    warnings.warn(
-        f"OpenCL library not found. GPU acceleration is non-functional. {distro_cmd}",
-        RuntimeWarning
-    )
+    warnings.warn(f"OpenCL library not found. GPU acceleration is non-functional. {distro_cmd}", RuntimeWarning)
 
 force = os.environ.get("RASPALIB_FORCE")
 level = force if force in ["avx512", "avx2", "avx", "base"] else _get_cpu_feature_level()
@@ -106,14 +115,11 @@ try:
 except ImportError:
     warnings.warn("Import failed, falling back to base-version", RuntimeWarning)
     _module = importlib.import_module("raspalib.raspalib_base", package=__package__)
-globals().update({
-    name: export 
-    for name, export in _module.__dict__.items() 
-    if not name.startswith('_')
-})
+globals().update({name: export for name, export in _module.__dict__.items() if not name.startswith("_")})
 __cpu_level__ = level
 __file_imported__ = _module.__file__
 del _module
+
 
 def print_debug_info():
     print(f"Raspalib Info:")
@@ -166,6 +172,5 @@ __all__ = [
     "PropertyMeanSquaredDisplacement",
     "PropertyVelocityAutoCorrelationFunction",
     "PropertyEnthalpy",
-    "EnthalpyOfAdsorptionData"
+    "EnthalpyOfAdsorptionData",
 ]
-

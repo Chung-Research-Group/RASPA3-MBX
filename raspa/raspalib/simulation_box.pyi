@@ -1,7 +1,7 @@
 from typing import overload
 import enum
 
-class SimulationBox():
+class SimulationBox:
     """
     Represent simulation-cell geometry used by RASPA.
 
@@ -46,4 +46,3 @@ class SimulationBox():
     def volume(self) -> float:
         """Return the simulation-box volume."""
         ...
-

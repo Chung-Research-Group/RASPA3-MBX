@@ -8,10 +8,7 @@ class PropertyMeanSquaredDisplacement:
     series used for diffusion analysis.
     """
 
-    def __init__(self,
-                 sample_every: int,
-                 write_every: int | None,
-                 number_of_block_elements_msd: int = 25) -> None:
+    def __init__(self, sample_every: int, write_every: int | None, number_of_block_elements_msd: int = 25) -> None:
         ...
         """
         Initialize a :class:`PropertyMeanSquaredDisplacement`.
@@ -23,8 +20,6 @@ class PropertyMeanSquaredDisplacement:
         """
 
     @property
-    def result(self) -> tuple[collections.abc.Sequence[float],
-                              collections.abc.Sequence[float]]:
+    def result(self) -> tuple[collections.abc.Sequence[float], collections.abc.Sequence[float]]:
         """Return sampled time points and mean-squared-displacement values."""
         ...
-

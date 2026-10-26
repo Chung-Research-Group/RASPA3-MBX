@@ -25,8 +25,7 @@ from raspalib.property_number_of_molecules_evolution import *
 from raspalib.property_volume_evolution import *
 from raspalib.property_conserved_energy_evolution import *
 
-
-class System():
+class System:
     """
     Represent a full simulation system configuration in RASPA.
 
@@ -48,7 +47,7 @@ class System():
         initial_positions: collections.abc.Sequence[tuple[float, float, float]] = [],
         initial_number_of_molecules: collections.abc.Sequence[int] = [],
         number_of_blocks: int = 5,
-        system_probabilities: MCMoveProbabilities = MCMoveProbabilities()
+        system_probabilities: MCMoveProbabilities = MCMoveProbabilities(),
     ) -> None:
         ...
         """
@@ -124,6 +123,7 @@ class System():
     def average_energies(self) -> PropertyEnergy:
         """Return the average-energy property accessor."""
         ...
+
     @property
     def average_pressure(self) -> PropertyPressure:
         """Return the average-pressure property accessor."""
@@ -221,4 +221,3 @@ class System():
     def set_property_msd(self, property: PropertyVelocityAutoCorrelationFunction) -> None:
         """Attach velocity-autocorrelation property configuration."""
         ...
-

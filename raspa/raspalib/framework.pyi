@@ -4,7 +4,7 @@ from raspalib.atom import *
 from raspalib.simulation_box import *
 from raspalib.force_field import *
 
-class Framework():
+class Framework:
     """
     Represent a (typically porous) host framework in RASPA.
 

@@ -1,6 +1,6 @@
 import collections.abc
 
-class PropertyLambdaProbabilityHistogram():
+class PropertyLambdaProbabilityHistogram:
     """
     Configure and access lambda-probability histogram statistics in RASPA.
 
@@ -8,11 +8,7 @@ class PropertyLambdaProbabilityHistogram():
     expanded-ensemble or free-energy style workflows.
     """
 
-    def __init__(
-        self,
-        number_of_blocks: int,
-        number_of_sample_points: int
-    ) -> None:
+    def __init__(self, number_of_blocks: int, number_of_sample_points: int) -> None:
         ...
         """
         Initialize a :class:`PropertyLambdaProbabilityHistogram`.
@@ -22,7 +18,9 @@ class PropertyLambdaProbabilityHistogram():
             number_of_sample_points: Number of lambda sample points/bins.
         """
 
-    def normalized_average_probability_histogram(self) -> tuple[collections.abc.Sequence[float], collections.abc.Sequence[float]]:
+    def normalized_average_probability_histogram(
+        self,
+    ) -> tuple[collections.abc.Sequence[float], collections.abc.Sequence[float]]:
         """Return lambda grid points and normalized average probabilities."""
         ...
 
@@ -50,4 +48,3 @@ class PropertyLambdaProbabilityHistogram():
     def occupancy_total(self) -> float:
         """Return the total occupancy accumulator for normalization."""
         ...
-

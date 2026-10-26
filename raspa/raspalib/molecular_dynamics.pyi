@@ -2,7 +2,7 @@ import collections.abc
 
 from raspalib.system import *
 
-class MolecularDynamics():
+class MolecularDynamics:
     """
     Configure and run molecular-dynamics workflows in RASPA.
 
@@ -22,7 +22,7 @@ class MolecularDynamics():
         systems: collections.abc.Sequence[System] = [],
         random_seed: int | None = None,
         number_of_blocks: int = 5,
-        output_to_files: bool = False
+        output_to_files: bool = False,
     ) -> None:
         ...
         """
@@ -50,12 +50,15 @@ class MolecularDynamics():
             output_to_files: Whether output should be written to files.
                 Defaults to ``False``.
         """
+
     def setup(self) -> None:
         """Allocate and prepare simulation resources before running."""
         ...
+
     def tear_down(self) -> None:
         """Release simulation resources after completion."""
         ...
+
     def equilibrate(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
         """Run the equilibration stage.
 
@@ -63,6 +66,7 @@ class MolecularDynamics():
             call_back_function: Optional callback invoked during execution.
         """
         ...
+
     def initialize(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
         """Run the initialization stage.
 
@@ -70,6 +74,7 @@ class MolecularDynamics():
             call_back_function: Optional callback invoked during execution.
         """
         ...
+
     def production(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
         """Run the production stage.
 
@@ -82,4 +87,3 @@ class MolecularDynamics():
     def systems(self) -> collections.abc.Sequence[System]:
         """Return the configured list of simulation systems."""
         ...
-

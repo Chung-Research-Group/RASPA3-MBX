@@ -9,6 +9,7 @@ class MCMoveStatistics:
     Instances expose per-move acceptance/statistics records and are indexed by
     :class:`Move.Types`.
     """
+
     def __getitem__(self, arg0: Move.Types) -> MoveStatisticsDouble | MoveStatisticsDouble3:
         """Return statistics for the requested move type."""
         ...

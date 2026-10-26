@@ -1,6 +1,6 @@
 import collections.abc
 
-class PropertyNumberOfMoleculesHistogram():
+class PropertyNumberOfMoleculesHistogram:
     """
     Store number-of-molecules histogram statistics from RASPA.
 
@@ -13,14 +13,8 @@ class PropertyNumberOfMoleculesHistogram():
         number_of_blocks: int,
         value_range: tuple[float, float],
         sample_every: int = 1,
-        write_every: int | None = None
-    ) -> None:
-        ...
-
-
-    def result(self) -> tuple[list[collections.abc.Sequence[float]], \
-                              list[collections.abc.Sequence[float]]]:
+        write_every: int | None = None,
+    ) -> None: ...
+    def result(self) -> tuple[list[collections.abc.Sequence[float]], list[collections.abc.Sequence[float]]]:
         """Return histogram bin positions and averaged number of molecules contributions."""
         ...
-
-

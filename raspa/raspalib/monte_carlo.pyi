@@ -2,7 +2,7 @@ import collections.abc
 
 from raspalib.system import *
 
-class MonteCarlo():
+class MonteCarlo:
     """
     Configure and run Monte Carlo workflows in RASPA.
 
@@ -23,7 +23,7 @@ class MonteCarlo():
         systems: collections.abc.Sequence[System] = [],
         random_seed: int | None = None,
         number_of_blocks: int = 5,
-        output_to_files: bool = False
+        output_to_files: bool = False,
     ) -> None:
         ...
         """
@@ -54,12 +54,15 @@ class MonteCarlo():
                 cycles, run with only translation, rotation, reinsertion and
                 partial-reinsertion moves. Defaults to ``0``.
         """
+
     def setup(self) -> None:
         """Allocate and prepare simulation resources before running."""
         ...
+
     def tear_down(self) -> None:
         """Release simulation resources after completion."""
         ...
+
     def pre_initialize(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
         """Run the pre-initialization stage.
 
@@ -67,6 +70,7 @@ class MonteCarlo():
             call_back_function: Optional callback invoked during execution.
         """
         ...
+
     def equilibrate(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
         """Run the equilibration stage.
 
@@ -74,6 +78,7 @@ class MonteCarlo():
             call_back_function: Optional callback invoked during execution.
         """
         ...
+
     def initialize(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
         """Run the initialization stage.
 
@@ -81,6 +86,7 @@ class MonteCarlo():
             call_back_function: Optional callback invoked during execution.
         """
         ...
+
     def production(self, call_back_function: collections.abc.Callable[[], None] | None = None) -> None:
         """Run the production stage.
 
@@ -88,6 +94,7 @@ class MonteCarlo():
             call_back_function: Optional callback invoked during execution.
         """
         ...
+
     def run(self) -> None:
         """Execute the full configured Monte Carlo workflow."""
         ...
@@ -96,5 +103,3 @@ class MonteCarlo():
     def systems(self) -> collections.abc.Sequence[System]:
         """Return the configured list of simulation systems."""
         ...
-
-

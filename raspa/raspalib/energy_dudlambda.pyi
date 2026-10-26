@@ -1,4 +1,4 @@
-class EnergyDuDlambda():
+class EnergyDuDlambda:
     """
     Store an energy term and its thermodynamic-integration derivative.
 
@@ -6,11 +6,7 @@ class EnergyDuDlambda():
     and the corresponding ``dU/dlambda`` contribution together.
     """
 
-    def __init__(
-        self,
-        energy: float,
-        dudlambda: float
-    ) -> None:
+    def __init__(self, energy: float, dudlambda: float) -> None:
         ...
         """
         Initialize an :class:`EnergyDuDlambda`.

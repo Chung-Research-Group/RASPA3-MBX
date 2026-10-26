@@ -1,4 +1,4 @@
-class MCMoveProbabilities():
+class MCMoveProbabilities:
     """
     Store Monte Carlo move-selection probabilities for a component.
 
@@ -28,7 +28,7 @@ class MCMoveProbabilities():
         widom_cfcmc_probability: float = 0.0,
         widom_cbcfcmc_probability: float = 0.0,
         parallel_tempering_probability: float = 0.0,
-        hybrid_mc_probability: float = 0.0
+        hybrid_mc_probability: float = 0.0,
     ) -> None:
         ...
         """
@@ -68,5 +68,3 @@ class MCMoveProbabilities():
                 tempering exchanges.
             hybrid_mc_probability: Probability weight for hybrid MC moves.
         """
-
-

@@ -91,6 +91,5 @@ __all__ = [
     "PropertyMeanSquaredDisplacement",
     "PropertyVelocityAutoCorrelationFunction",
     "PropertyEnthalpy",
-    "EnthalpyOfAdsorptionData"
+    "EnthalpyOfAdsorptionData",
 ]
-

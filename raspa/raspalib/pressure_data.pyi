@@ -1,4 +1,4 @@
-class PressureData():
+class PressureData:
     """
     Store pressure contributions reported by RASPA.
 
@@ -26,5 +26,3 @@ class PressureData():
     def ideal_gas_pressure(self) -> float:
         """Return the ideal-gas pressure contribution."""
         ...
-
-

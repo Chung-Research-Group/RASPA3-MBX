@@ -59,13 +59,14 @@ jobs:
             -DBUILD_TESTING_RASPAKIT=ON \
             -DBUILD_TESTING_RASPA3=ON
       - name: Build RASPA3 and native tests
+        id: native_build
         run: cmake --build --preset mbx-local --parallel 2
       - name: Run all discovered native tests
         run: |
           ctest --preset mbx-local --show-only=json-v1 > ctest_inventory.json
           ctest --preset mbx-local --output-on-failure --timeout 180 --output-junit native-tests.xml
       - name: Run shipped examples with physical and output checks
-        if: always() && matrix.mbx == 'ON'
+        if: always() && matrix.mbx == 'ON' && steps.native_build.outcome == 'success'
         run: |
           python tests/run_mbx_examples.py --source "$GITHUB_WORKSPACE" \
             --executable "$GITHUB_WORKSPACE/build-mbx/app/raspa3" \

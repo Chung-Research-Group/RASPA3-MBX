@@ -1,6 +1,6 @@
 from raspalib.pressure_data import *
 
-class PropertyPressure():
+class PropertyPressure:
     """
     Configure and access pressure-property sampling in RASPA.
 
@@ -17,5 +17,3 @@ class PropertyPressure():
     def result(self) -> tuple[PressureData, PressureData]:
         """Return the computed pair of pressure-data aggregates."""
         ...
-
-

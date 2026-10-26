@@ -346,12 +346,10 @@ TEST(vdw_potentials, second_order_taylor_shifted_spatial_derivatives_match_finit
     const double minus = Potentials::potentialVDW<0>(
                              forceField, 1.0, 1.0, (r - delta) * (r - delta), 0, 0)
                              .energy;
-    const double plus2 = Potentials::potentialVDW<0>(
-                             forceField, 1.0, 1.0, (r + 2.0 * delta) * (r + 2.0 * delta), 0, 0)
-                             .energy;
-    const double minus2 = Potentials::potentialVDW<0>(
-                              forceField, 1.0, 1.0, (r - 2.0 * delta) * (r - 2.0 * delta), 0, 0)
-                              .energy;
+    const double plus2 =
+        Potentials::potentialVDW<0>(forceField, 1.0, 1.0, (r + 2.0 * delta) * (r + 2.0 * delta), 0, 0).energy;
+    const double minus2 =
+        Potentials::potentialVDW<0>(forceField, 1.0, 1.0, (r - 2.0 * delta) * (r - 2.0 * delta), 0, 0).energy;
     const double numericalFirst = (minus2 - 8.0 * minus + 8.0 * plus - plus2) / (12.0 * delta);
     const double numericalSecond =
         (-plus2 + 16.0 * plus - 30.0 * center + 16.0 * minus - minus2) / (12.0 * delta * delta);

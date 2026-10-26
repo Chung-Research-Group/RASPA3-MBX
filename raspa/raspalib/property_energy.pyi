@@ -1,6 +1,6 @@
 from raspalib.energy_status import *
 
-class PropertyEnergy():
+class PropertyEnergy:
     """
     Configure and access average-energy sampling in RASPA.
 
@@ -14,7 +14,7 @@ class PropertyEnergy():
         number_of_blocks: int,
         number_of_external_fields: int,
         number_of_frameworks: int,
-        number_of_components: int
+        number_of_components: int,
     ) -> None:
         ...
         """
@@ -30,4 +30,3 @@ class PropertyEnergy():
     def result(self) -> tuple[EnergyStatus, EnergyStatus]:
         """Return the computed pair of energy-status aggregates."""
         ...
-

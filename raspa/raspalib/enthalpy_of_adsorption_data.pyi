@@ -1,6 +1,6 @@
 import collections.abc
 
-class EnthalpyOfAdsorptionData():
+class EnthalpyOfAdsorptionData:
     """
     Store enthalpy-of-adsorption data reported by RASPA.
 
@@ -18,4 +18,3 @@ class EnthalpyOfAdsorptionData():
     def values(self) -> collections.abc.Sequence[float]:
         """Return the enthalpy-of-adsorption values."""
         ...
-

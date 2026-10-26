@@ -1,18 +1,13 @@
 import collections.abc
 
-class PropertyVolumeEvolution():
+class PropertyVolumeEvolution:
     """
     Configure and access volume-evolution sampling in RASPA.
 
     This property tracks simulation-box volume as a function of cycle.
     """
 
-    def __init__(
-        self,
-        number_of_production_cycles: int,
-        sample_every: int,
-        write_every: int | None = None
-    ) -> None:
+    def __init__(self, number_of_production_cycles: int, sample_every: int, write_every: int | None = None) -> None:
         ...
         """
         Initialize a :class:`PropertyVolumeEvolution`.
@@ -27,4 +22,3 @@ class PropertyVolumeEvolution():
     def result(self) -> collections.abc.Sequence[float]:
         """Return sampled volume values over the simulation trajectory."""
         ...
-

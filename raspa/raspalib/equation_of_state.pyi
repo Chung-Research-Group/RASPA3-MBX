@@ -1,7 +1,7 @@
 import enum
 import collections.abc
 
-class EquationOfState():
+class EquationOfState:
     """
     Equation-of-state utilities for fluid-property calculations in RASPA.
 
@@ -31,17 +31,18 @@ class EquationOfState():
         LIQUID: int = 3
         VAPOR_LIQUID: int = 4
 
-    class FluidInput():
+    class FluidInput:
         """
         Input properties for one fluid component in an EOS calculation.
         """
+
         def __init__(
             self,
             critical_temperature: float,
             critical_pressure: float,
             acentric_factor: float,
             mol_fraction: float = 1.0,
-            swappable: bool = True
+            swappable: bool = True,
         ) -> None:
             ...
             """
@@ -82,7 +83,7 @@ class EquationOfState():
         """Return whether the component is marked as swappable."""
         ...
 
-    class FluidResult():
+    class FluidResult:
         """
         EOS-computed output properties for a fluid component.
         """
@@ -107,12 +108,13 @@ class EquationOfState():
         ...
 
     @staticmethod
-    def compute_fluid_properties(temperature: float,
-                                 pressure: float,
-                                 properties: collections.abc.Sequence[FluidInput],
-                                 type: EquationOfStateType,
-                                 mixing_rules: MixingRules,
-                                 ) -> collections.abc.Sequence[FluidResult]:
+    def compute_fluid_properties(
+        temperature: float,
+        pressure: float,
+        properties: collections.abc.Sequence[FluidInput],
+        type: EquationOfStateType,
+        mixing_rules: MixingRules,
+    ) -> collections.abc.Sequence[FluidResult]:
         """Compute EOS properties for all provided fluid components.
 
         Args:

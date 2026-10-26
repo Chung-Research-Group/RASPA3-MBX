@@ -1,6 +1,6 @@
 import collections.abc
 
-class PartialMolarPropertiesData():
+class PartialMolarPropertiesData:
     """
     Store partial molar properties reported by RASPA.
 
@@ -8,10 +8,7 @@ class PartialMolarPropertiesData():
     partial molar volume obtained from energy(volume)-particle fluctuations.
     """
 
-    def __init__(
-        self,
-        number_of_components: int
-    ) -> None:
+    def __init__(self, number_of_components: int) -> None:
         ...
         """
         Initialize a :class:`PartialMolarPropertiesData`.

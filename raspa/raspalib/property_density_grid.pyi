@@ -1,7 +1,7 @@
 import enum
 import collections.abc
 
-class PropertyDensityGrid():
+class PropertyDensityGrid:
     """
     Configure and access spatial density-grid sampling in RASPA.
 
@@ -26,11 +26,11 @@ class PropertyDensityGrid():
         number_of_frameworks: int,
         number_of_components: int,
         number_of_grid_points: tuple[int, int, int] = (128, 128, 128),
-        sample_every: int  = 1,
+        sample_every: int = 1,
         write_every: int = 5000,
         density_grid_pseudo_atoms_list: collections.abc.Sequence[str] = [],
         normalization_type: Normalization = Normalization.MAX,
-        binning_mode: Binning = Binning.STANDARD
+        binning_mode: Binning = Binning.STANDARD,
     ) -> None:
         ...
         """
@@ -50,4 +50,3 @@ class PropertyDensityGrid():
             binning_mode: Density-grid binning mode. Defaults to
                 :attr:`Binning.STANDARD`.
         """
-

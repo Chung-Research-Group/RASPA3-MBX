@@ -1,4 +1,4 @@
-class VDWParameters():
+class VDWParameters:
     """
     Store Lennard-Jones/Van der Waals parameters for a pseudo-atom type.
     """

@@ -7,6 +7,7 @@ class Move:
     The nested :class:`Types` enumeration lists all supported move families
     used in move-probability and move-statistics APIs.
     """
+
     def __init__(self) -> None:
         """Initialize a :class:`Move` helper object."""
         ...

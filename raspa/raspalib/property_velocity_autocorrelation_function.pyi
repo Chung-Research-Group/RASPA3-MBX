@@ -7,14 +7,16 @@ class PropertyVelocityAutoCorrelationFunction:
     This property accumulates VACF data used for transport-property analysis.
     """
 
-    def __init__(self,
-                 number_of_components: int,
-                 number_of_molecules_per_component: collections.abc.Sequence[int],
-                 number_of_particles: int,
-                 number_of_buffers_vacf: int,
-                 buffer_length_vacf: int,
-                 sample_every: int,
-                 write_every: int) -> None:
+    def __init__(
+        self,
+        number_of_components: int,
+        number_of_molecules_per_component: collections.abc.Sequence[int],
+        number_of_particles: int,
+        number_of_buffers_vacf: int,
+        buffer_length_vacf: int,
+        sample_every: int,
+        write_every: int,
+    ) -> None:
         ...
         """
         Initialize a :class:`PropertyVelocityAutoCorrelationFunction`.
@@ -30,8 +32,6 @@ class PropertyVelocityAutoCorrelationFunction:
         """
 
     @property
-    def result(self) -> tuple[collections.abc.Sequence[float],
-                              collections.abc.Sequence[float]]:
+    def result(self) -> tuple[collections.abc.Sequence[float], collections.abc.Sequence[float]]:
         """Return time points and velocity-autocorrelation values."""
         ...
-
