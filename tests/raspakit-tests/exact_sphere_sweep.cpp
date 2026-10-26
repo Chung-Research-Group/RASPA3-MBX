@@ -259,7 +259,6 @@ TEST(exact_sphere_sweep, pruning_keeps_one_of_a_pair_of_equals_and_the_order_of_
   EXPECT_EQ(overlapping.size(), 3uz);
 }
 
-
 TEST(exact_sphere_sweep, pruning_concentric_caps_does_not_depend_on_rounded_norms)
 {
   // Neither a normalized axis nor the sine/cosine pair is guaranteed to have squared norm exactly one.
@@ -287,7 +286,6 @@ TEST(exact_sphere_sweep, pruning_concentric_caps_does_not_depend_on_rounded_norm
   }
 }
 
-
 TEST(exact_sphere_sweep, pruning_preserves_nearby_distinct_caps_of_equal_radius)
 {
   // The axes are distinct even when their dot product rounds to one. An epsilon on the containment
@@ -308,7 +306,6 @@ TEST(exact_sphere_sweep, pruning_preserves_nearby_distinct_caps_of_equal_radius)
   }
 }
 
-
 TEST(exact_sphere_sweep, pruning_keeps_the_last_whole_sphere_cap_regardless_of_axis)
 {
   const std::optional<SweepCircle> first = makeSweepCircle(double3(0.0, 0.0, 1.0), -1.0);
@@ -321,7 +318,6 @@ TEST(exact_sphere_sweep, pruning_keeps_the_last_whole_sphere_cap_regardless_of_a
   EXPECT_EQ(circles[0].axis, last->axis);
   EXPECT_EQ(circles[0].cosineHalfAngle, -1.0);
 }
-
 
 TEST(exact_sphere_sweep, a_crossing_lies_on_both_of_the_circles_that_made_it)
 {

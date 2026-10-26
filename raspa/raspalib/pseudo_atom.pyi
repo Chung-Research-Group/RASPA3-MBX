@@ -1,4 +1,4 @@
-class PseudoAtom():
+class PseudoAtom:
     """
     Represent a pseudo-atom type definition used by RASPA force fields.
 
@@ -15,7 +15,7 @@ class PseudoAtom():
         polarizability: float = 0.0,
         atomic_number: int = 8,
         print_to_pdb: bool = True,
-        source: str = "-"
+        source: str = "-",
     ) -> None:
         ...
         """
@@ -36,4 +36,3 @@ class PseudoAtom():
             source: Source label/annotation for the pseudo atom definition.
                 Defaults to ``"-"``.
         """
-

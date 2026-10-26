@@ -1,4 +1,4 @@
-class ConnectivityTable():
+class ConnectivityTable:
     """
     Store molecular connectivity information used by RASPA.
 
@@ -6,7 +6,7 @@ class ConnectivityTable():
     topological basis for bonded interactions (e.g., bonds, angles, and
     torsions) in a component.
     """
-        
+
     def __init__(self) -> None:
         ...
         """

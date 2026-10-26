@@ -32,5 +32,3 @@ class PropertyWidom:
             Fugacity in Pascal.
         """
         ...
-
-

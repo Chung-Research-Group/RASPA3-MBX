@@ -1,6 +1,6 @@
 from raspalib.enthalpy_of_adsorption_data import *
 
-class PropertyEnthalpy():
+class PropertyEnthalpy:
     """
     Configure and access enthalpy-related sampling in RASPA.
 
@@ -8,11 +8,7 @@ class PropertyEnthalpy():
     :class:`EnthalpyOfAdsorptionData` objects.
     """
 
-    def __init__(
-        self,
-        number_of_blocks: int,
-        number_of_components: int
-    ) -> None:
+    def __init__(self, number_of_blocks: int, number_of_components: int) -> None:
         ...
         """
         Initialize a :class:`PropertyEnthalpy`.
@@ -25,4 +21,3 @@ class PropertyEnthalpy():
     def result(self) -> tuple[EnthalpyOfAdsorptionData, EnthalpyOfAdsorptionData]:
         """Return the computed pair of enthalpy-of-adsorption aggregates."""
         ...
-

@@ -8,13 +8,15 @@ class PropertyConventionalRadialDistributionFunction:
     accumulated during simulation.
     """
 
-    def __init__(self,
-                 numberOf_blocks: int,
-                 number_of_pseudo_atoms: int,
-                 number_of_bins: int,
-                 range: float,
-                 sample_every: int,
-                 write_every: int) -> None:
+    def __init__(
+        self,
+        numberOf_blocks: int,
+        number_of_pseudo_atoms: int,
+        number_of_bins: int,
+        range: float,
+        sample_every: int,
+        write_every: int,
+    ) -> None:
         ...
         """
         Initialize a :class:`PropertyConventionalRadialDistributionFunction`.
@@ -29,9 +31,10 @@ class PropertyConventionalRadialDistributionFunction:
         """
 
     @property
-    def result(self) -> list[list[tuple[collections.abc.Sequence[float],
-                                        collections.abc.Sequence[float],
-                                        collections.abc.Sequence[float]]]]:
+    def result(
+        self,
+    ) -> list[
+        list[tuple[collections.abc.Sequence[float], collections.abc.Sequence[float], collections.abc.Sequence[float]]]
+    ]:
         """Return sampled RDF data for all pseudo-atom pair combinations."""
         ...
-

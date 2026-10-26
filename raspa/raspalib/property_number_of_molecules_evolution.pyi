@@ -1,6 +1,6 @@
 import collections.abc
 
-class PropertyNumberOfMoleculesEvolution():
+class PropertyNumberOfMoleculesEvolution:
     """
     Configure and access molecule-count evolution sampling in RASPA.
 
@@ -12,7 +12,7 @@ class PropertyNumberOfMoleculesEvolution():
         number_of_production_cycles: int,
         number_of_components: int,
         sample_every: int,
-        write_every: int | None = None
+        write_every: int | None = None,
     ) -> None:
         ...
         """
@@ -29,5 +29,3 @@ class PropertyNumberOfMoleculesEvolution():
     def result(self) -> collections.abc.Sequence[collections.abc.Sequence[int]]:
         """Return sampled molecule counts indexed by cycle and component."""
         ...
-
-

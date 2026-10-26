@@ -8,7 +8,7 @@ from raspalib.mc_move_statistics import *
 from raspalib.property_widom import *
 from raspalib.property_lambda_probability_histogram import *
 
-class Component():
+class Component:
     """
     Represent a simulation component in RASPA.
 
@@ -32,7 +32,7 @@ class Component():
         particle_probabilities: MCMoveProbabilities = MCMoveProbabilities(),
         fugacity_coefficient: float | None = None,
         thermodynamic_integration: bool = False,
-        blocking_pockets: collections.abc.Sequence[tuple[float, float, float, float]] = []
+        blocking_pockets: collections.abc.Sequence[tuple[float, float, float, float]] = [],
     ) -> None:
         ...
         """
@@ -101,8 +101,10 @@ class Component():
         ...
 
     @property
-    def average_dudlambda(self) -> tuple[collections.abc.Sequence[tuple[float, float, float]], collections.abc.Sequence[tuple[float, float, float]]]:
+    def average_dudlambda(
+        self,
+    ) -> tuple[
+        collections.abc.Sequence[tuple[float, float, float]], collections.abc.Sequence[tuple[float, float, float]]
+    ]:
         """Return average dU/dlambda data used in thermodynamic integration."""
         ...
-
-

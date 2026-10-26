@@ -5,10 +5,10 @@ class Thermostat:
     The thermostat parameters configure chain length and integrator detail for
     temperature control during molecular dynamics.
     """
-    def __init__(self,
-                 thermostat_chain_length: int,
-                 number_of_yoshida_suzuki_steps: int,
-                 time_scale_parameter: float) -> None:
+
+    def __init__(
+        self, thermostat_chain_length: int, number_of_yoshida_suzuki_steps: int, time_scale_parameter: float
+    ) -> None:
         ...
         """
         Initialize a :class:`Thermostat`.

@@ -62,6 +62,14 @@ class TemporaryFile
 
   [[nodiscard]] const std::filesystem::path &path() const noexcept { return path_; }
 
+  // Component readers append the JSON extension; keep the containing directory.
+  [[nodiscard]] std::filesystem::path stemPath() const
+  {
+    std::filesystem::path stem = path_;
+    stem.replace_extension();
+    return stem;
+  }
+
  private:
   void write(std::string_view contents)
   {

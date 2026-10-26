@@ -1,6 +1,6 @@
 import collections.abc
 
-class LoadingData():
+class LoadingData:
     """
     Store component-wise loading metrics produced by RASPA.
 
@@ -12,7 +12,7 @@ class LoadingData():
         self,
         number_of_molecules: collections.abc.Sequence[int],
         number_densities: collections.abc.Sequence[float],
-        inverse_number_densities: collections.abc.Sequence[float]
+        inverse_number_densities: collections.abc.Sequence[float],
     ) -> None:
         ...
         """

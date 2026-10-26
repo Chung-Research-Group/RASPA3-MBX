@@ -1,4 +1,4 @@
-class SampleMovie():
+class SampleMovie:
     """
     Configure trajectory/movie sampling for a RASPA system.
 
@@ -6,21 +6,15 @@ class SampleMovie():
     coordinates are wrapped to the simulation box.
     """
 
-    def __init__(
-        self,
-        system_id: int,
-        sample_every: int = 1,
-        restrict_to_box: bool = True,
-        tag: str | None
-    ) -> None:
+    def __init__(self, system_id: int, sample_every: int, restrict_to_box: bool = True, tag: str | None = None) -> None:
         ...
         """
         Initialize a :class:`SampleMovie`.
 
         Args:
             system_id: Identifier of the system to sample.
-            sample_every: Sampling interval in cycles. Defaults to ``1``.
+            sample_every: Sampling interval in cycles.
             restrict_to_box: Whether sampled coordinates are restricted/wrapped
                 to the simulation box. Defaults to ``True``.
-            tag: Optionally concat filename
+            tag: Optional filename tag. Defaults to ``None``.
         """

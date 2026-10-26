@@ -4,7 +4,7 @@ import collections.abc
 from raspalib.pseudo_atom import *
 from raspalib.vdw_parameters import *
 
-class ForceField():
+class ForceField:
     """
     Define non-bonded force-field settings used by RASPA.
 
@@ -16,6 +16,7 @@ class ForceField():
         """
         Mixing rule used to combine unlike Van der Waals parameters.
         """
+
         LORENTZ_BERTHELOT: int = 0
         JORGENSEN: int = 1
 
@@ -64,4 +65,3 @@ class ForceField():
     def vdw_parameters(self) -> collections.abc.Sequence[VDWParameters]:
         """Return the configured Van der Waals interaction parameters."""
         ...
-

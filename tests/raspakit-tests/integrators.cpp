@@ -706,7 +706,7 @@ TEST(hybrid_mc, flexible_framework_only_does_not_throw_and_restores_on_reject)
   const double3 initial0 = system.spanOfFrameworkAtoms()[0].position;
   const double3 initial1 = system.spanOfFrameworkAtoms()[1].position;
   const std::vector<AtomDynamics> initialDynamics(system.spanOfFrameworkDynamics().begin(),
-                                                 system.spanOfFrameworkDynamics().end());
+                                                  system.spanOfFrameworkDynamics().end());
   const double initialTimeStep = system.timeStep;
 
   // Exercise both branches with the same Gaussian velocities and proposal. Only the

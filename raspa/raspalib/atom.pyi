@@ -1,4 +1,4 @@
-class Atom():
+class Atom:
     """
     Represent a single atom in a simulation system.
 
@@ -16,7 +16,7 @@ class Atom():
         type: int = 0,
         component_id: int = 0,
         group_id: bool = 0,
-        is_fractional: bool = 0
+        is_fractional: bool = 0,
     ) -> None:
         ...
         """
@@ -36,4 +36,3 @@ class Atom():
                 coordinates instead of Cartesian coordinates. Defaults to ``0``
                 (``False``).
         """
-

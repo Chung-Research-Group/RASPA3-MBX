@@ -1,7 +1,7 @@
 import collections.abc
 from raspalib.running_energy import *
 
-class PropertyConservedEnergyEvolution():
+class PropertyConservedEnergyEvolution:
     """
     Configure and access conserved-energy evolution sampling in RASPA.
 
@@ -9,12 +9,7 @@ class PropertyConservedEnergyEvolution():
     exposes the sampled time-series as :class:`RunningEnergy` entries.
     """
 
-    def __init__(
-        self,
-        number_of_production_cycles: int,
-        sample_every: int,
-        write_every: int | None = None
-    ) -> None:
+    def __init__(self, number_of_production_cycles: int, sample_every: int, write_every: int | None = None) -> None:
         ...
         """
         Initialize a :class:`PropertyConservedEnergyEvolution`.
@@ -29,4 +24,3 @@ class PropertyConservedEnergyEvolution():
     def result(self) -> collections.abc.Sequence[RunningEnergy]:
         """Return sampled conserved-energy evolution data."""
         ...
-

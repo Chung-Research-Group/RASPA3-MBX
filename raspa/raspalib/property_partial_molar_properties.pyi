@@ -1,6 +1,6 @@
 from raspalib.partial_molar_properties_data import *
 
-class PropertyPartialMolarProperties():
+class PropertyPartialMolarProperties:
     """
     Configure and access partial-molar-property sampling in RASPA.
 
@@ -9,11 +9,7 @@ class PropertyPartialMolarProperties():
     particle-number covariance matrix as the enthalpy of adsorption.
     """
 
-    def __init__(
-        self,
-        number_of_blocks: int,
-        number_of_components: int
-    ) -> None:
+    def __init__(self, number_of_blocks: int, number_of_components: int) -> None:
         ...
         """
         Initialize a :class:`PropertyPartialMolarProperties`.

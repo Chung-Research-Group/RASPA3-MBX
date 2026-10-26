@@ -2,7 +2,7 @@ import collections.abc
 
 from raspalib.average_energy_type import *
 
-class PropertyEnergyHistogram():
+class PropertyEnergyHistogram:
     """
     Configure and access energy-histogram sampling in RASPA.
 
@@ -16,7 +16,7 @@ class PropertyEnergyHistogram():
         number_of_bins: int,
         value_range: tuple[float, float],
         sample_every: int = 1,
-        write_every: int = 5000
+        write_every: int = 5000,
     ) -> None:
         ...
         """
@@ -31,8 +31,12 @@ class PropertyEnergyHistogram():
             write_every: Output-write interval in cycles. Defaults to ``5000``.
         """
 
-    def result(self) -> tuple[collections.abc.Sequence[float], \
-                              collections.abc.Sequence[AverageEnergyType], \
-                              collections.abc.Sequence[AverageEnergyType]]:
+    def result(
+        self,
+    ) -> tuple[
+        collections.abc.Sequence[float],
+        collections.abc.Sequence[AverageEnergyType],
+        collections.abc.Sequence[AverageEnergyType],
+    ]:
         """Return histogram bin positions and averaged energy contributions."""
         ...
