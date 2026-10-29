@@ -1,0 +1,43 @@
+{
+  "SimulationType": "MonteCarlo",
+  "NumberOfInitializationCycles": 2,
+  "PrintEvery": 1,
+  "Systems": [
+    {
+      "Type": "Box",
+      "BoxLengths": [
+        24.0,
+        24.0,
+        24.0
+      ],
+      "ExternalTemperature": 298.0,
+      "ExternalPressure": 100000.0,
+      "ChargeMethod": "Ewald",
+      "VolumeMoveProbability": 0.05,
+      "OutputPDBMovie": true,
+      "SampleMovieEvery": 1,
+      "ComputeConventionalRDF": true,
+      "NumberOfBinsConventionalRDF": 128,
+      "RangeConventionalRDF": 12.0,
+      "WriteConventionalRDFEvery": 5,
+      "UseMBX": true,
+      "MBXSettingsFile": "mbx.json",
+      "PrintEnergyTerms": true
+    }
+  ],
+  "Components": [
+    {
+      "Name": "h2o",
+      "TranslationProbability": 1.0,
+      "RotationProbability": 1.0,
+      "ReinsertionProbability": 1.0,
+      "CreateNumberOfMolecules": 16,
+      "MoleculeDefinition": "."
+    }
+  ],
+  "NumberOfProductionCycles": 5,
+  "ForceField": ".",
+  "NumberOfEquilibrationCycles": 2,
+  "WriteRestartEvery": 1,
+  "RandomSeed": 42
+}

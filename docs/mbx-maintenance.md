@@ -90,6 +90,16 @@ retain XML, commands and dependency identities. The full RASPAKit suite is
 reported separately, including any failures and their available baseline controls. Passing focused tests does not
 prove ensemble convergence or arbitrary screening support.
 
+Keep each numbered `examples/raspa3_mbx` directory self-contained. Required
+component definitions, MBX settings, force fields, framework structures and
+snapshot inputs must be local, without parent-directory links or implicit
+installed-database lookup. `tests/run_mbx_examples.py` copies and runs each
+directory independently and checks completed production, relevant move
+statistics and final energy recomputation. Water NPT and Mg-MOF-74 GCMC also
+include longer input profiles; short functional defaults must remain explicitly
+distinguished from equilibrated scientific calculations. Changes to example
+parameters require a physical rationale, not just a successful process exit.
+
 New moves should declare their proposal/target difference, accepted/rejected
 state updates, timing/diagnostic semantics, supported ensembles and restart
 behavior. Test an accepted state against independent full recomputation, a
