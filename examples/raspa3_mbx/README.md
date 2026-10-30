@@ -1,119 +1,79 @@
-# RASPA3-MBX feature examples
+# Self-contained RASPA3-MBX examples
 
-These short inputs exercise the controls added by the RASPA3-MBX fork. The
-inputs reuse the MFI framework and force field from
-`examples/basic/10_mc_adorption_co2_in_mfi`. The lowercase `co2` molecule
-definition is kept here because MBX monomer names are case-sensitive. This
-keeps the cases small while allowing them to install with the standard example
-collection.
+Each numbered directory contains **all simulation inputs** and its own launcher.
+You may copy any one directory elsewhere and run it without its parent directory,
+other examples, an installed force-field database, or downloading a structure.
+The executable and its runtime libraries are the only external requirements.
+Use a RASPA3-MBX build with `BUILD_MBX=ON`, built against the maintained
+[MBX v1.4.0 dependency](../../README.md#building).
 
-Build RASPA3-MBX first, or load its server module. Then run an example from
-this directory:
+| Directory | Calculation |
+| --- | --- |
+| `1_energy_logging_and_restarts` | CO2/MFI: accepted-move energy CSV and coordinate restarts |
+| `2_widom_zero_loading_qst` | CO2/MFI: conventional Widom trials and zero-loading heat of adsorption |
+| `3_snapshot_energy_evaluation` | CO2/MFI: one-shot energy evaluation of a supplied snapshot |
+| `4_gcmc_co2_adsorption` | CO2/MFI: conventional insertion/deletion GCMC |
+| `5_water_npt` | Rigid MB-pol water: NPT MC with translation, rotation, CBMC reinsertion and volume moves |
+| `6_gcmc_co2_mg_mof74` | CO2/Mg-MOF-74: GCMC with CBMC insertion/deletion and reinsertion |
 
-```bash
-./run-example.sh 1_energy_logging_and_restarts
-./run-example.sh 2_widom_zero_loading_qst
-./run-example.sh 3_snapshot_energy_evaluation
-```
+## Run directly in an example
 
-The launcher selects the executable in this order:
-
-1. `RASPA3_EXECUTABLE=/absolute/path/to/raspa3`
-2. `raspa3` from `PATH`, including a loaded environment module
-3. `build-mbx-release-avx2/app/raspa3` or `build-mbx/app/raspa3` in a source checkout
-
-For example, on a module-based server:
+After activating your installed RASPA3-MBX environment:
 
 ```bash
-module purge
-module load raspa3-mbx/VERSION
-./run-example.sh 2_widom_zero_loading_qst
+cd 5_water_npt
+./run.sh
 ```
 
-For a local build:
+If `raspa3` is not on `PATH`, select an executable explicitly:
 
 ```bash
-RASPA3_EXECUTABLE=/path/to/RASPA3-MBX/build-mbx/app/raspa3 \
-  ./run-example.sh 1_energy_logging_and_restarts
+RASPA3_EXECUTABLE=/absolute/path/to/raspa3 ./run.sh
 ```
 
-## 1. Energy logging and coordinate restarts
+You may also invoke `raspa3` directly in the example directory. Every input
+path is local. The launcher fixes `RASPA_DIR` to that same directory, resolves
+the executable before changing directory, and defaults `OMP_NUM_THREADS` to 1.
+It does not download, copy or regenerate missing inputs. Each local README
+explains the files, ensemble, moves and outputs.
 
-`1_energy_logging_and_restarts/simulation.json` enables:
-
-```json
-"WriteRestartEvery": 5
-```
-
-and, on the system:
-
-```json
-"PrintEnergyTerms": true
-```
-
-Accepted translations and rotations are written to
-`output/energy_terms.s0.csv`. Coordinate snapshots are written every five
-completed cycles. Set `PrintEnergyTerms` to `false` to disable diagnostic CSV
-output, or set `WriteRestartEvery` to `0` to disable periodic coordinate JSON
-snapshots.
-
-## 2. Conventional Widom energy log and zero-loading Qst
-
-`2_widom_zero_loading_qst/simulation.json` starts with zero CO2 molecules and
-uses only conventional Widom trials. It enables:
-
-```json
-"ComputeZeroLoadingHeatOfAdsorption": true
-```
-
-The live system remains at zero loading. Completed ghost insertions are
-written to `output/widom_energy_terms.s0.csv`, not the accepted-move CSV. The
-final report prints block and averaged values for
-
-```text
-Qst^0 = kB*T - <weight*E_insert>/<weight>
-```
-
-in K and kJ/mol. The short run is intended as a functional example; increase
-the initialization and production cycles for publishable statistics.
-
-## 3. One-shot snapshot energy evaluation
-
-`3_snapshot_energy_evaluation/simulation.json` reads the fixed coordinates in
-`co2_snapshot.json`, evaluates them once, and exits without attempting a Monte
-Carlo move. It writes the machine-readable decomposition to
-`output/energy_evaluation.json` and prints a human-readable decomposition to
-standard output.
-
-The example uses MBX for guest energy. The framework-guest interaction remains
-the configured classical MFI/CO2 interaction, which is the RASPA3-MBX energy
-contract. The retained MOF-74 example with explicit Morse framework-guest pairs
-is available under `calculations/MOF74-CO2/morse` in a source checkout.
-
-## Shared requirements
-
-All three inputs set `UseMBX` to `true` and read `mbx.json` from this directory.
-They require an executable built with `BUILD_MBX=ON`. Output is created inside
-the selected example directory. Remove or archive an old `output/` directory
-before comparing fresh runs.
-
-## Model order and scientific checks
-
-MBX `co2` requires C,O,O sites. The shared definition and the snapshot use that
-order; positions are not automatically sorted by the adapter. The preceding
-O,C,O example definition was incorrect even though the executable could finish.
-The corrected snapshot retains the same physical positions, now ordered for MBX.
-Do not reuse output generated from the old example input as a numerical reference.
-The paper's original calculation directories are separate and remain unchanged.
-
-Run all four examples in a fresh copied directory with output checks:
+The parent launcher remains a convenience, for example:
 
 ```bash
-python tests/run_mbx_examples.py --source . --executable /absolute/path/to/raspa3 \
+./run-example.sh 6_gcmc_co2_mg_mof74
+```
+
+## Short examples and longer calculations
+
+The default inputs are **functional examples**, not converged calculations.
+Water starts with 16 molecules in a 24 Å cube to keep the execution check short.
+It is not an equilibrated liquid. The Mg-MOF-74 example uses the manuscript's
+2 × 2 × 5 framework at 298 K and 1000 Pa but only a few cycles.
+
+Directories 5 and 6 also include `simulation.production.json`: the longer
+512-water NPT and CO2/Mg-MOF-74 GCMC setups from the manuscript input bundle.
+In a fresh copy of the desired example directory, use
+`cp simulation.production.json simulation.json` before running. All other
+required files are already present. These calculations can be expensive and
+require independent equilibration and sampling checks.
+
+MBX identifiers are case-sensitive. The included rigid component definitions
+use `h2o` in O,H,H order and `co2` in C,O,O order. MBX supplies guest many-body
+energy and guest–guest/framework–guest electrostatics and polarization.
+The retained classical framework contribution is framework–guest vdW and its
+tail correction. Framework charges are fixed, nonpolarizable input charges.
+
+## Verify directory portability
+
+From the repository root:
+
+```bash
+python tests/run_mbx_examples.py --source . \
+  --executable /absolute/path/to/raspa3 \
   --output /absolute/path/to/new-example-checks
 ```
 
-This checks monomer order, finite/decomposed energy, molecular population,
-Widom noncommit behavior and requested output. Example 4 uses conventional
-insertion/deletion; it does not establish CBMC coverage. These short examples
-exercise functionality, not equilibration or scientific convergence.
+The checker copies **each example directory alone**, runs its unmodified short
+input from that directory and checks native outputs and move statistics.
+The output path must be new. Passing these checks establishes functional
+execution and local input closure, not ensemble convergence.

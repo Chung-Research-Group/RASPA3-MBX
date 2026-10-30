@@ -1,0 +1,47 @@
+{
+  "PseudoAtoms": [
+    {
+      "name": "Hw",
+      "framework": false,
+      "print_to_output": true,
+      "element": "H",
+      "print_as": "H",
+      "mass": 1.008,
+      "charge": 0.336,
+      "source": "Fixed classical proposal parameters used in the RASPA3-MBX water calculation; not a fluctuating-charge model. See README.md."
+    },
+    {
+      "name": "Ow",
+      "framework": false,
+      "print_to_output": true,
+      "element": "O",
+      "print_as": "O",
+      "mass": 15.9949,
+      "charge": -0.672,
+      "source": "Fixed classical proposal parameters used in the RASPA3-MBX water calculation; not a fluctuating-charge model. See README.md."
+    }
+  ],
+  "SelfInteractions": [
+    {
+      "name": "Hw",
+      "type": "lennard-jones",
+      "parameters": [
+        0.0,
+        0.0
+      ],
+      "source": "Fixed classical proposal parameters used in the RASPA3-MBX water calculation; not a fluctuating-charge model. See README.md."
+    },
+    {
+      "name": "Ow",
+      "type": "lennard-jones",
+      "parameters": [
+        135.0,
+        3.176
+      ],
+      "source": "Fixed classical proposal parameters used in the RASPA3-MBX water calculation; not a fluctuating-charge model. See README.md."
+    }
+  ],
+  "MixingRule": "Lorentz-Berthelot",
+  "TruncationMethod": "truncated",
+  "TailCorrections": true
+}

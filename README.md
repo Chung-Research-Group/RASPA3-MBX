@@ -340,20 +340,24 @@ This build must not require MBX headers or libraries.
 
 ## Running an MBX calculation
 
-`raspa3` reads `simulation.json` from the current working directory. A complete
-MOF-74/CO2 example with MBX and Morse interactions is stored under
-[`calculations/MOF74-CO2/morse`](calculations/MOF74-CO2/morse).
-Short, runnable examples for energy logging, restart cadence, conventional
-Widom zero-loading Qst, and one-shot snapshot evaluation are collected under
-[`examples/raspa3_mbx`](examples/raspa3_mbx).
+`raspa3` reads `simulation.json` from the current working directory.
+[Self-contained MBX examples](examples/raspa3_mbx) include water NPT MC,
+CO2/Mg-MOF-74 GCMC, conventional Widom zero-loading Qst, energy logging,
+coordinate restarts and one-shot snapshot evaluation. Every numbered directory
+contains its own force field, molecular definition, MBX settings and any
+framework or snapshot file. Each may be copied and run independently.
 
 For example:
 
 ```bash
 RASPA3_MBX_ROOT=/path/to/RASPA3-MBX
-cd "$RASPA3_MBX_ROOT/calculations/MOF74-CO2/morse/calculation/Mg_MOF74_pacman/298K/1e5Pa"
-"$RASPA3_MBX_ROOT/build-mbx/app/raspa3"
+cd "$RASPA3_MBX_ROOT/examples/raspa3_mbx/5_water_npt"
+RASPA3_EXECUTABLE="$RASPA3_MBX_ROOT/build-mbx/app/raspa3" ./run.sh
 ```
+
+For adsorption, use `6_gcmc_co2_mg_mof74` instead. The default inputs are short
+functional checks. Both directories also include a longer
+`simulation.production.json` and instructions for selecting it in a fresh copy.
 
 Add the following fields to a normal Monte Carlo input:
 
