@@ -52,8 +52,8 @@ def mbx_gas(work, source):
     write_json(work / "mbx.json", read_json(sources[0] / "mbx.json"))
 
 
-def matrix(work):
-    path, = (work / "tmmc").glob("*statistics*.txt")
+def matrix(work, pattern="*statistics*.txt"):
+    path, = (work / "tmmc").glob(pattern)
     labels, rows = [], []
     for line in path.read_text().splitlines():
         column = re.match(r"^# column (\d+):\s*(.+)", line)
@@ -294,8 +294,7 @@ def parallel_coordinates(binary, source, modern, work, env):
     assert len(files) == 2, files
     windows = []
     for path, expected in zip(files, ([2, 3], [3, 4])):
-        rows = [list(map(float, line.split())) for line in path.read_text().splitlines()
-                if line.strip() and not line.startswith("#")]
+        _, rows = matrix(work, path.name)
         assert [row[0] for row in rows] == expected and all(row[-1] > 0 for row in rows), rows
         assert math.isclose(sum(sum(row[1:4]) for row in rows), sum(row[-1] for row in rows), rel_tol=1e-12)
         windows.append(expected)
