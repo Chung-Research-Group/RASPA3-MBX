@@ -499,6 +499,18 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, basic_example_biphenyl_nvt_partial_reinsertion_recoi
   System system =
       System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 298.0, 1e4, 1.0, {}, {biphenyl}, {}, {4}, 5);
 
+  // Both terminal bond coordinates coincide in the topology. Every stored ideal-gas seed must
+  // describe a physical conformation before the partially regrown chains can draw from it.
+  const Component& component = system.components[0];
+  ASSERT_FALSE(component.conformationReservoir.empty());
+  for (const auto& conformation : component.conformationReservoir)
+  {
+    ASSERT_EQ(conformation.size(), 16uz);
+    ASSERT_GT((conformation[0].position - conformation[1].position).length(), 0.0);
+    ASSERT_GT((conformation[14].position - conformation[15].position).length(), 0.0);
+    ASSERT_TRUE(std::isfinite(component.intraMolecularPotentials.computeInternalEnergies(conformation).potentialEnergy()));
+  }
+
   MonteCarlo mc = makeShortMonteCarlo({system});
   mc.run();
 
@@ -851,8 +863,8 @@ void checkPentaneExchangeDynamics(MolecularDynamicsEnsemble ensemble)
   MCMoveProbabilities probabilities;
   probabilities.setProbability(Move::Types::SwapCBMC, 1.0);
   Component pentane = makeSemiFlexiblePentane(forceField, 0, probabilities);
-  // Empty-box Widom growth with this 300 K pentane and no intermolecular interactions:
-  // four independent 10,000-insertion means (seeds 11, 37, 83, 109), W0 = 0.02020 +/- 0.00015 (standard error).
+  // Isolated 300 K Widom growth originally gave W0 = 0.0202. With the grown starting conformation,
+  // four 10,000-insertion runs (seeds 11, 37, 83, 109) gave 0.02025 +/- 0.00012 (standard error).
   pentane.idealGasRosenbluthWeight = 0.0202;
 
   System system =
@@ -868,8 +880,8 @@ void checkPentaneExchangeDynamics(MolecularDynamicsEnsemble ensemble)
                        system.pressure, system.timeStep, system.translationalDegreesOfFreedom);
   }
 
-  // MD attempts one exchange every three cycles. Forty production proposals exercise both directions.
-  MolecularDynamics md = MolecularDynamics({120, 0, 5, 5, 1000, 10000, 5000, 5000}, {std::move(system)}, 42uz, 5, false);
+  // MD attempts one exchange every three cycles. One hundred production proposals exercise both directions.
+  MolecularDynamics md = MolecularDynamics({300, 0, 5, 5, 1000, 10000, 5000, 5000}, {std::move(system)}, 42uz, 5, false);
   md.setup();
   md.preInitialize();
   md.initialize();

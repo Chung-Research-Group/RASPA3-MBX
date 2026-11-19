@@ -605,10 +605,11 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
 {
   Component& component = components[selectedComponent];
 
-  // Persistent scratch conformation stored on the Component: initialised once to the reference geometry,
-  // then advanced in place so the reinsertion Markov chain stays warm between calls.
+  // Keep the isolated reinsertion chain warm between calls. On first use the molecule file supplies
+  // the atom identities and first-bead position for growth.
   std::vector<Atom>& scratchAtoms = component.grownIdealGasAtoms;
-  if (scratchAtoms.size() != component.atoms.size()) scratchAtoms = component.atoms;
+  const bool fresh = scratchAtoms.size() != component.atoms.size();
+  if (fresh) scratchAtoms = component.atoms;
 
   Molecule scratchMolecule(double3(0.0, 0.0, 0.0), simd_quatd(0.0, 0.0, 0.0, 1.0), component.totalMass,
                            selectedComponent, component.atoms.size());
@@ -638,6 +639,30 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
                                   cutOffFrameworkVDW,
                                   cutOffMoleculeVDW,
                                   cutOffCoulomb};
+
+  // A topology can contain coincident placeholders. Start the ideal-gas chain with a physically grown
+  // conformation before asking the retrace to evaluate its bends and torsions.
+  if (fresh)
+  {
+    std::optional<ChainGrowData> seed;
+    for (std::size_t attempt = 0; attempt < 100; ++attempt)
+    {
+      seed = CBMC::growMoleculeReinsertion(random, context, component, selectedComponent, scratchMolecule, scratchAtoms);
+      if (seed && seed->RosenbluthWeight > 0.0 && std::isfinite(seed->RosenbluthWeight) &&
+          std::isfinite(seed->energies.potentialEnergy()))
+      {
+        break;
+      }
+      seed.reset();
+    }
+    if (!seed)
+    {
+      scratchAtoms.clear();
+      throw std::runtime_error(std::format("Unable to grow a finite ideal-gas conformation for '{}'", component.name));
+    }
+    scratchAtoms = std::move(seed->atoms);
+    scratchMolecule = seed->molecule;
+  }
 
   // A handful of full-molecule reinsertion moves decorrelates the conformation from the starting geometry;
   // each accepted move regrows the whole chain from the ideal-gas Boltzmann distribution.
