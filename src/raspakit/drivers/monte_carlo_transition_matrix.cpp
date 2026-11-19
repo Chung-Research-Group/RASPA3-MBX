@@ -36,6 +36,7 @@ import mc_moves_cputime;
 import mc_moves_statistics;
 import property_pressure;
 import transition_matrix;
+import transition_matrix_nd;
 import interactions_ewald;
 import equation_of_states;
 import interpolation_energy_grid;
@@ -62,9 +63,13 @@ bool isTMMCCrossSystemMove(Move::Types moveType)
 
 void sampleTMMCState(System& system, std::size_t componentId, bool adjustBias)
 {
-  const std::size_t N = system.numberOfIntegerMoleculesPerComponent[componentId];
-  system.tmmc.updateHistogram(N);
   system.tmmc.numberOfSteps++;
+  if (system.tmmc.joint)
+  {
+    system.tmmc.joint->updateHistogram(system.numberOfIntegerMoleculesPerComponent, system.runningEnergies.potentialEnergy());
+    return;
+  }
+  system.tmmc.updateHistogram(system.numberOfIntegerMoleculesPerComponent[componentId]);
   if (adjustBias)
   {
     system.tmmc.adjustBias();
@@ -173,6 +178,16 @@ void MonteCarloTransitionMatrix::createOutputFiles(bool append)
 
 void MonteCarloTransitionMatrix::checkpointIfDue(std::size_t cycle)
 {
+  if (simulationStage == SimulationStage::Equilibration || simulationStage == SimulationStage::Production)
+  {
+    for (System& system : systems)
+    {
+      if (!system.tmmc.joint) continue;
+      const auto completedCycles = cycle + 1;
+      system.tmmc.joint->adjustBias(completedCycles);
+      if (completedCycles % system.tmmc.joint->writeTMMCEvery == 0) system.tmmc.writeStatistics();
+    }
+  }
   // periodic binary restart file
   if (cycle % writeBinaryRestartEvery == 0uz)
   {
@@ -615,6 +630,7 @@ void MonteCarloTransitionMatrix::production()
     system.runningEnergies = system.computeTotalEnergies();
 
     system.tmmc.numberOfSteps = 0;
+    if (system.tmmc.joint) system.tmmc.joint->startProduction();
 
     system.mc_moves_statistics.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();

@@ -18,6 +18,7 @@ add_executable(unit_tests_raspakit
   wolf_strain_polarization.cpp
   insertion_deletion.cpp
   mc.cpp
+  joint_tmmc.cpp
   pressure.cpp
   static_energy.cpp
   component_explicit_intra_pairs.cpp

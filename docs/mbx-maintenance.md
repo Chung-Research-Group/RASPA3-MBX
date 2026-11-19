@@ -2,18 +2,9 @@
 
 ## Scope and branch ownership
 
-`main` contains the current paper's rigid-guest MBX interface and its maintenance
-repairs. `development` identifies the latest preserved MBX-TMMC recovery source;
-`feature/mbx-flexible-exchange` preserves the separate flexible-target prototype.
-The old remote development tip is retained as `archive/development-pre-20261022`.
-These branch roles do not deploy a new executable or alter running calculations.
+Downstream `main` and `mbx` carry the rigid-guest MBX implementation and component-resolved TMMC. The independent `2d-tmmc` branch starts from the published RASPA3 release and supports force-field simulations. Use the single-system `MonteCarloTransitionMatrix` driver for MBX particle-number windows. The [input reference](manual/commands.md#joint-particle-number-windows-for-transition-matrix-monte-carlo) gives the precedence rules and statistics format.
 
-The two experimental implementations are not interchangeable. The flexible
-snapshot excludes TMMC rigid reinsertion that the recovery implementation enables.
-Porting one onto the other requires a deliberate conflict review and new tests;
-copying `system.cpp` wholesale would undo a scientifically relevant guard change.
-Source-preservation commits identify their original directory and date. They do
-not pretend to reconstruct the chronological commits of earlier development.
+Historical development sources contain additional diagnostic and flexible-guest work. The release branches use the rigid energy model described below.
 
 The attribution baseline is original RASPA3 `a8a70ca755b2821728bee05c63ba07d8b10085b5`.
 The public pre-maintenance tip is `c46c859cec8446cf4dc3d6f68cec839f56f1df33`.

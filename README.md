@@ -44,16 +44,18 @@ before comparing results with another program.
 
 ## Supported MBX calculations
 
-MBX trajectory generation currently supports the regular, single-system
-`MonteCarlo` driver. Supported state-changing moves include translation,
+Rigid MBX trajectory generation supports the single-system `MonteCarlo` and
+`MonteCarloTransitionMatrix` drivers. Supported state-changing moves include translation,
 rotation, CBMC reinsertion, conventional or CBMC insertion/deletion, and a
 framework-free isotropic volume move without an external field. All guest components must be rigid, including for CBMC and `EnergyEvaluation`.
-Flexible-guest targets and MBX-TMMC are maintained separately on development
-branches. Widom evaluation and the non-mutating `EnergyEvaluation` mode are supported.
+For TMMC use a fixed volume and a fixed host. The documented joint particle-number
+windows support conventional and CBMC exchange of rigid guests.
+See [component and system macrostate bounds](docs/manual/commands.md#joint-particle-number-windows-for-transition-matrix-monte-carlo).
+Flexible-guest targets are maintained on development branches. Widom evaluation and the non-mutating `EnergyEvaluation` mode are supported.
 
 The input reader rejects unported MBX combinations before starting a run. In
 particular, do not enable MBX for molecular dynamics, minimization,
-thermodynamic integration, CFCMC, Gibbs/reaction moves, transition-matrix or
+thermodynamic integration, CFCMC, Gibbs/reaction moves or
 parallel-replica drivers, smart/gradient moves, anisotropic volume changes, or
 flexible-framework volume changes. The full support matrix and pressure/virial
 limitations are in

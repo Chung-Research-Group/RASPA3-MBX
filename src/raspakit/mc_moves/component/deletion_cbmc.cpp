@@ -226,16 +226,15 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 
     // Check if the new macrostate is within the allowed TMMC range
-    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
+    if (!system.tmmc.joint && system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
     {
       return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
     }
 
-    const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-    double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+    const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, false);
 
     // Apply acceptance/rejection rule
-    if (random.uniform() < biasTransitionMatrix * Pacc)
+    if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * Pacc)
     {
       component.mc_moves_statistics.addAccepted(move, 1);
 

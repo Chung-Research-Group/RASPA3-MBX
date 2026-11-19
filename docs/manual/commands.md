@@ -1508,3 +1508,52 @@ and `"BinaryInteractions"` are read from the force field file
     The relative probability of a Widom particle-insertion move, which measures
     the chemical potential and relates directly to the Henry coefficient and the
     heat of adsorption.
+
+### Joint particle-number windows for transition-matrix Monte Carlo
+
+Set `SimulationType` to `MonteCarloTransitionMatrix`. A system-wide
+`MacroStateMinimumNumberOfMolecules` or `MacroStateMaximumNumberOfMolecules`
+sets the corresponding default for each adsorbate in that system. The default
+range is 0 through 100. `MinMacrostate` and `MaxMacrostate` on a component
+override the respective endpoints independently. The short names also work at
+system level. Supply each system endpoint under one spelling only.
+
+For example, this fragment fixes the first component at 2 molecules and lets the
+second range from 1 through 4. Setting its maximum to 1 gives an NVT-W window
+at the single joint state (2, 1). Initialize each tracked molecule count within
+its inclusive bounds.
+
+```json
+{
+  "SimulationType": "MonteCarloTransitionMatrix",
+  "Systems": [{"MacroStateMinimumNumberOfMolecules": 0, "MacroStateMaximumNumberOfMolecules": 4}],
+  "Components": [
+    {"Name": "h2o", "MinMacrostate": 2, "MaxMacrostate": 2, "CreateNumberOfMolecules": 2},
+    {"Name": "co2", "MinMacrostate": 1, "CreateNumberOfMolecules": 1}
+  ]
+}
+```
+
+With system bounds, all adsorbates are tracked in component order. Component-only
+bounds select the specified adsorbates. Other species can exchange normally and
+their attempts contribute to the stay column. With no explicit bounds, all
+adsorbates use the default range. A single-component simulation retains the
+one-dimensional collection-matrix estimator and file format.
+
+The joint output `tmmc/tmmc_statistics.txt` lists the component IDs for each
+axis, the population tuple, and the physical collection weights in the order
+`stay, axis0-, axis0+, axis1-, axis1+, ...`. Each trial contributes one unit to
+the row at its **pre-move** population. A wall prevents a population change and
+still records the unbiased exchange probability in the outward column. The
+histogram and mean potential energy use the retained configuration. Collection,
+visits, and energy averages begin afresh at production. For multiple systems,
+additional files carry a `.s1`, `.s2`, ... suffix.
+
+The joint sampler retains the development version's histogram-based adaptive
+bias. `lnpi` is its histogram estimate. Use the raw physical collection weights
+for transition-matrix analysis. In a singleton window the directional weights
+provide virtual exchange statistics. `SampleTMMCEvery` and `WriteTMMCEvery`
+control the joint update and write intervals in completed cycles (default 1000
+each). Set `UseTMMCBias` to `false` for unbiased sampling within the window.
+`MacroStateUseBias` overrides it per system. Binary checkpoints preserve the
+joint state and RNG for exact continuation.

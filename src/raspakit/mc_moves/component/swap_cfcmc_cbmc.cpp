@@ -336,16 +336,10 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     // Retrieve bias from transition matrix
-    if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN >= system.tmmc.maxMacrostate)
-    {
-      return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
-    }
-
-    const std::size_t newN = oldN == std::numeric_limits<std::size_t>::max() ? oldN : oldN + 1;
-    double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+    const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, true);
 
     // Apply acceptance/rejection rule
-    if (random.uniform() < biasTransitionMatrix * samplingPacc)
+    if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * samplingPacc)
     {
       // Accept the move and update Ewald sums
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);
@@ -672,16 +666,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       double samplingPacc = physicalPacc * std::exp(biasTerm);
 
       // Retrieve bias from transition matrix
-      if (system.tmmc.doTMMC && system.tmmc.rejectOutOfBound && oldN <= system.tmmc.minMacrostate)
-      {
-        return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
-      }
 
-      const std::size_t newN = oldN == 0 ? 0 : oldN - 1;
-      double biasTransitionMatrix = system.tmmc.biasFactor(newN, oldN);
+      const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, false);
 
       // Apply acceptance/rejection rule
-      if (random.uniform() < biasTransitionMatrix * samplingPacc)
+      if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * samplingPacc)
       {
         // Accept the move and update Ewald sums
         Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.trialEik);

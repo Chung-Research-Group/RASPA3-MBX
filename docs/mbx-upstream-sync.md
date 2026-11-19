@@ -4,9 +4,9 @@ This document records the 2026-08 integration of the Chung Research Group
 RASPA3-MBX fork with current RASPA3. It is both a change checklist for this
 update and the maintenance policy for later updates.
 
-## Current maintenance boundary (22 October 2026)
+## Historical maintenance boundary (22 October 2026)
 
-The source history below is retained. Current `main` uses the rigid-guest energy
+The October source history below is retained. The October `main` used the rigid-guest energy
 contract and explicitly rejects flexible MBX guests. Known model site orders are
 checked before evaluation. Experimental MBX-TMMC/flexible code is preserved on
 separate branches; inactive ND-TMMC files and generated debug outputs have been
@@ -104,9 +104,7 @@ column order is preserved.
 
 ## Supported MBX execution surface
 
-MBX trajectory generation currently supports the regular single-system
-`MonteCarlo` driver only. The non-mutating `EnergyEvaluation` analysis mode is
-also supported.
+Use `MonteCarlo` for rigid MBX sampling and `MonteCarloTransitionMatrix` for fixed-volume particle-number windows in a single system. `EnergyEvaluation` evaluates a supplied configuration.
 The input reader rejects unported combinations instead of allowing a classical
 move to corrupt an MBX trajectory.
 
@@ -126,7 +124,8 @@ move to corrupt an MBX trajectory.
 | Partial reinsertion and identity change | Rejected |
 | Anisotropic volume | Rejected |
 | CFCMC, pair/group swap, Gibbs, reactions | Rejected |
-| Transition-matrix and parallel-replica drivers | Rejected |
+| Transition-matrix Monte Carlo | Fixed-volume, single-system scalar or joint particle-number windows with rigid guests and a fixed host |
+| Parallel-replica drivers | Rejected |
 | Molecular dynamics, minimization, thermodynamic integration | Rejected; MBX gradients are not forward-ported |
 | One-shot `EnergyEvaluation` | Supported for rigid-guest JSON coordinate snapshots; no moves or MBX gradients are used |
 | Classical RASPA polarization together with MBX | Rejected; MBX supplies the retained induced term |
