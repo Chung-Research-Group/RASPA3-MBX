@@ -84,7 +84,7 @@ jobs:
         env:
           MBX_BUILD: ${{ matrix.mbx }}
         run: |
-          cases=(legacy fixed mixed)
+          cases=(legacy fixed cbmc-fixed mixed)
           if [[ "$MBX_BUILD" == ON ]]; then
             cases+=(mbx-fixed mbx-mixed)
           fi
