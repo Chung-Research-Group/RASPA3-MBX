@@ -229,14 +229,17 @@ void configureComponentMacrostates(System& system, const SimulationInput& input,
   const auto& components = input.at("Components");
   const char* systemMin = "MacroStateMinimumNumberOfMolecules";
   const char* systemMax = "MacroStateMaximumNumberOfMolecules";
-  const auto hasLimits = [](const auto& item) { return item.contains("MinMacrostate") || item.contains("MaxMacrostate"); };
+  const auto hasLimits = [](const auto& item)
+  { return item.contains("MinMacrostate") || item.contains("MaxMacrostate"); };
   if ((defaults.contains(systemMin) && defaults.contains("MinMacrostate")) ||
       (defaults.contains(systemMax) && defaults.contains("MaxMacrostate")))
     throw std::invalid_argument("TMMC: use one system keyword for each macrostate endpoint");
   const bool allAdsorbates = defaults.contains(systemMin) || defaults.contains(systemMax) || hasLimits(defaults) ||
                              std::none_of(components.begin(), components.end(), hasLimits);
-  const auto defaultMin = unsignedSetting(defaults, "MinMacrostate", unsignedSetting(defaults, systemMin, matrix.minMacrostate));
-  const auto defaultMax = unsignedSetting(defaults, "MaxMacrostate", unsignedSetting(defaults, systemMax, matrix.maxMacrostate));
+  const auto defaultMin =
+      unsignedSetting(defaults, "MinMacrostate", unsignedSetting(defaults, systemMin, matrix.minMacrostate));
+  const auto defaultMax =
+      unsignedSetting(defaults, "MaxMacrostate", unsignedSetting(defaults, systemMax, matrix.maxMacrostate));
   matrix.useBias = biasSetting(defaults, "MacroStateUseBias", biasSetting(input, "UseTMMCBias", true));
   std::vector<std::size_t> ids, lower, upper;
   for (std::size_t id = 0; id < system.components.size(); ++id)
@@ -252,7 +255,9 @@ void configureComponentMacrostates(System& system, const SimulationInput& input,
     const auto hi = unsignedSetting(item, "MaxMacrostate", defaultMax);
     const auto n = system.initialNumberOfMolecules[id];
     if (lo > hi || hi - lo == std::numeric_limits<std::size_t>::max() || n < lo || n > hi)
-      throw std::invalid_argument(std::format("TMMC: component {} initial population {} and macrostate bounds [{}, {}] are inconsistent", system.components[id].name, n, lo, hi));
+      throw std::invalid_argument(
+          std::format("TMMC: component {} initial population {} and macrostate bounds [{}, {}] are inconsistent",
+                      system.components[id].name, n, lo, hi));
     ids.push_back(id);
     lower.push_back(lo);
     upper.push_back(hi);
@@ -271,14 +276,15 @@ void configureComponentMacrostates(System& system, const SimulationInput& input,
 
   // A composition-changing identity move or transfer between boxes has no single +/- axis column.
   for (const auto& component : system.components)
-    for (const auto move : {Move::Types::IdentityChangeCBMC, Move::Types::GibbsSwapCBMC, Move::Types::GibbsSwapCFCMC,
-                            Move::Types::GibbsVolume, Move::Types::ParallelTempering,
-                            Move::Types::WidomCFCMC, Move::Types::WidomCBCFCMC})
+    for (const auto move :
+         {Move::Types::IdentityChangeCBMC, Move::Types::GibbsSwapCBMC, Move::Types::GibbsSwapCFCMC,
+          Move::Types::GibbsVolume, Move::Types::ParallelTempering, Move::Types::WidomCFCMC, Move::Types::WidomCBCFCMC})
       if (component.mc_moves_probabilities.getProbability(move) > 0)
-        throw std::invalid_argument(std::format("TMMC: incompatible joint macrostate move {}", Move::moveNames[std::to_underlying(move)]));
+        throw std::invalid_argument(
+            std::format("TMMC: incompatible joint macrostate move {}", Move::moveNames[std::to_underlying(move)]));
   matrix.joint.emplace(lower, upper, ids, sampleEvery, writeEvery, matrix.useBias);
 }
-}
+}  // namespace
 
 void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {

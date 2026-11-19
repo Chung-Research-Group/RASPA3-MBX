@@ -9,8 +9,8 @@ TEST(JointTMMC, EachAttemptUpdatesThePreMoveRowAndASeparateRetainedState)
 {
   TransitionMatrix matrix;
   matrix.doTMMC = true;
-  matrix.joint.emplace(std::vector<std::size_t>{2, 4}, std::vector<std::size_t>{3, 6},
-                       std::vector<std::size_t>{2, 0}, 1, 1, true);
+  matrix.joint.emplace(std::vector<std::size_t>{2, 4}, std::vector<std::size_t>{3, 6}, std::vector<std::size_t>{2, 0},
+                       1, 1, true);
   auto& joint = *matrix.joint;
   std::vector<std::size_t> counts{5, 0, 2};
   const auto oldRow = matrix.collectionRow(counts, 2);
@@ -36,8 +36,8 @@ TEST(JointTMMC, FixedWindowRetainsOutwardWeightsWhileUntrackedSpeciesMoveFreely)
 {
   TransitionMatrix matrix;
   matrix.doTMMC = true;
-  matrix.joint.emplace(std::vector<std::size_t>{4, 1}, std::vector<std::size_t>{4, 1},
-                       std::vector<std::size_t>{2, 0}, 1, 1, false);
+  matrix.joint.emplace(std::vector<std::size_t>{4, 1}, std::vector<std::size_t>{4, 1}, std::vector<std::size_t>{2, 0},
+                       1, 1, false);
   std::vector<std::size_t> counts{1, 7, 4};
   EXPECT_DOUBLE_EQ(matrix.exchangeBias(counts, 0, false), 0.0);
   EXPECT_DOUBLE_EQ(matrix.exchangeBias(counts, 2, true), 0.0);

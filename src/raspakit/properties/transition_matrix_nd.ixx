@@ -58,8 +58,8 @@ export struct TransitionMatrixMultidimensional
         writeTMMCEvery(writeTMMCEvery),
         useBias(useBias)
   {
-    if (numberOfComponents == 0 || maxMacrostate.size() != numberOfComponents || componentIds.size() != numberOfComponents ||
-        !sampleTMMCEvery || !writeTMMCEvery)
+    if (numberOfComponents == 0 || maxMacrostate.size() != numberOfComponents ||
+        componentIds.size() != numberOfComponents || !sampleTMMCEvery || !writeTMMCEvery)
       throw std::invalid_argument("Invalid joint macrostate dimensions or TMMC interval");
     totalNumberOfStates = 1;
     for (std::size_t i = 0; i < numberOfComponents; ++i)
@@ -119,8 +119,6 @@ export struct TransitionMatrixMultidimensional
   std::size_t numberOfUpdates = {0};   ///< Number of recorded matrix/histogram updates.
   std::size_t numberOfComputes = {0};  ///< Number of bias recomputations.
 
-
-
   /**
    * \brief Converts a flattened macrostate index into local per-dimension indices.
    *
@@ -131,7 +129,6 @@ export struct TransitionMatrixMultidimensional
    * \return Local multidimensional index.
    */
   std::vector<std::size_t> unravelIndex(std::size_t state) const;
-
 
   /**
    * \brief Finds the row of a full system population vector.
@@ -197,7 +194,6 @@ export struct TransitionMatrixMultidimensional
    * \param currentCycle Current simulation cycle.
    */
   void adjustBias(std::size_t currentCycle);
-
 
   /**
    * \brief Switches from equilibration to production sampling.

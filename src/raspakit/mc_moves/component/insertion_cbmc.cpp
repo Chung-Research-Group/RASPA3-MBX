@@ -130,8 +130,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   // Calculate the acceptance probability Pacc
   double Pacc = preFactor * growData->RosenbluthWeight / idealGasRosenbluthWeight;
 
-  const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent,
-                                                               selectedComponent, true);
+  const double biasTransitionMatrix =
+      system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, true);
 
   // Apply acceptance/rejection criterion
   if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * Pacc)

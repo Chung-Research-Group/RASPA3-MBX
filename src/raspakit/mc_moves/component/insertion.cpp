@@ -143,8 +143,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   double preFactor = system.beta * fugacity * system.simulationBox.volume /
                      double(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
   double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
-  const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent,
-                                                               selectedComponent, true);
+  const double biasTransitionMatrix =
+      system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, true);
   // Check if the new macrostate exceeds the maximum allowed; reject if true.
 
   // apply acceptance/rejection rule

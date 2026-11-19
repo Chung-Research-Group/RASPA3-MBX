@@ -45,8 +45,7 @@ std::size_t TransitionMatrixMultidimensional::getLocalIndex(const std::size_t se
   return numberOfComponents;  // An untracked component leaves the tracked particle numbers unchanged.
 }
 
-void TransitionMatrixMultidimensional::updateMatrix(double3 Pacc, std::size_t oldRow,
-                                                    std::size_t selectedComponent)
+void TransitionMatrixMultidimensional::updateMatrix(double3 Pacc, std::size_t oldRow, std::size_t selectedComponent)
 {
   numberOfUpdates++;
   Pacc.clamp(0.0, 1.0);
@@ -240,7 +239,6 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Transi
   archive << m.numberOfUpdates;
   archive << m.numberOfComputes;
 
-
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);
 #endif
@@ -286,7 +284,6 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMa
 
   archive >> m.numberOfUpdates;
   archive >> m.numberOfComputes;
-
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

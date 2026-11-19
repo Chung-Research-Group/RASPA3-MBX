@@ -247,12 +247,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
     const double physicalPacc = preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) *
-                  std::exp(-system.beta * energyDifference.potentialEnergy());
+                                std::exp(-system.beta * energyDifference.potentialEnergy());
     const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     // Retrieve bias from transition matrix
-    const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent,
-                                                                 selectedComponent, true);
+    const double biasTransitionMatrix =
+        system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, true);
 
     // Apply acceptance/rejection rule
     if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * samplingPacc)
@@ -476,12 +476,12 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                          (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
       double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
       const double physicalPacc = preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) *
-                    std::exp(-system.beta * energyDifference.potentialEnergy());
+                                  std::exp(-system.beta * energyDifference.potentialEnergy());
       const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
       // Retrieve bias from transition matrix
-      const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent,
-                                                                   selectedComponent, false);
+      const double biasTransitionMatrix =
+          system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, false);
 
       // Apply acceptance/rejection rule
       if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * samplingPacc)

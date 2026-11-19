@@ -129,8 +129,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                        (system.beta * fugacity * system.simulationBox.volume);
     double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
-    const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent,
-                                                                 selectedComponent, false);
+    const double biasTransitionMatrix =
+        system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, false);
 
     // Apply acceptance/rejection rule
     if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * Pacc)

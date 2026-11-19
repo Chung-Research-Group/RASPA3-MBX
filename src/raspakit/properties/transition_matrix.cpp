@@ -14,8 +14,10 @@ std::size_t TransitionMatrix::collectionRow(const std::vector<std::size_t> &coun
 
 void TransitionMatrix::recordMove(double3 weights, std::size_t oldRow, std::size_t component)
 {
-  if (joint) joint->updateMatrix(weights, oldRow, component);
-  else updateMatrix(weights, oldRow);
+  if (joint)
+    joint->updateMatrix(weights, oldRow, component);
+  else
+    updateMatrix(weights, oldRow);
 }
 
 double TransitionMatrix::exchangeBias(const std::vector<std::size_t> &counts, std::size_t component, bool insert)

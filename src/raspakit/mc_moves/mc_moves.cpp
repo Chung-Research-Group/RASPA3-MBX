@@ -59,7 +59,8 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
   // pick move type from probabilities object
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
 
-  const auto oldRow = selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
+  const auto oldRow =
+      selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
   double3 collectionWeights(0.0, 1.0, 0.0);
 
   switch (moveType)
@@ -200,7 +201,6 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
       }
       break;
     }
@@ -225,7 +225,6 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
       }
       break;
     }
@@ -250,7 +249,6 @@ void MC_Moves::performRandomMoveInitialization(RandomNumber &random, System &sel
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
       }
       break;
     }
@@ -404,7 +402,8 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
   // pick move type from probabilities object
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
 
-  const auto oldRow = selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
+  const auto oldRow =
+      selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
   double3 collectionWeights(0.0, 1.0, 0.0);
 
   switch (moveType)
@@ -545,7 +544,6 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
       }
       break;
     }
@@ -570,7 +568,6 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
       }
       break;
     }
@@ -595,7 +592,6 @@ void MC_Moves::performRandomMoveEquilibration(RandomNumber &random, System &sele
         {
           selectedSystem.runningEnergies += energyDifference.value();
         }
-
       }
       break;
     }
@@ -796,7 +792,8 @@ void MC_Moves::performRandomMoveProduction(RandomNumber &random, System &selecte
   // pick move type from probabilities object
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
 
-  const auto oldRow = selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
+  const auto oldRow =
+      selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
   double3 collectionWeights(0.0, 1.0, 0.0);
 
   std::chrono::system_clock::time_point t1 = std::chrono::system_clock::now();

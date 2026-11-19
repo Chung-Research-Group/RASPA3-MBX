@@ -117,7 +117,8 @@ void MonteCarloTransitionMatrix::createOutputFiles(bool append)
         std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system_id);
     streams.emplace_back(fileNameString, append ? std::ios::app : std::ios::out);
     if (append)
-      std::print(streams.back(), "\nResuming binary TMMC checkpoint at cycle {} (seed {})\n", currentCycle, random.seed);
+      std::print(streams.back(), "\nResuming binary TMMC checkpoint at cycle {} (seed {})\n", currentCycle,
+                 random.seed);
     fileNameString =
         std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
     outputJsonFileNames.emplace_back(fileNameString);
@@ -190,7 +191,7 @@ void MonteCarloTransitionMatrix::performCycle()
 
     if (selectedSystem.tmmc.joint)
       selectedSystem.tmmc.joint->updateHistogram(selectedSystem.numberOfIntegerMoleculesPerComponent,
-                                                selectedSystem.runningEnergies.potentialEnergy());
+                                                 selectedSystem.runningEnergies.potentialEnergy());
     else
     {
       selectedSystem.tmmc.updateHistogram(selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent]);
