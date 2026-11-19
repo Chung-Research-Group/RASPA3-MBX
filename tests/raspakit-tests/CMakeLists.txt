@@ -21,6 +21,7 @@ add_executable(unit_tests_raspakit
   joint_tmmc.cpp
   pressure.cpp
   static_energy.cpp
+  finite_double.cpp
   component_explicit_intra_pairs.cpp
   forcefield_options.cpp
   framework_intramolecular_reader.cpp

@@ -6,6 +6,7 @@
 import std;
 
 import double3;
+import finite_double;
 import atom;
 import molecule;
 import forcefield;
@@ -508,7 +509,7 @@ TEST(MC_SEMI_FLEXIBLE_CBMC, basic_example_biphenyl_nvt_partial_reinsertion_recoi
     ASSERT_EQ(conformation.size(), 16uz);
     ASSERT_GT((conformation[0].position - conformation[1].position).length(), 0.0);
     ASSERT_GT((conformation[14].position - conformation[15].position).length(), 0.0);
-    ASSERT_TRUE(std::isfinite(component.intraMolecularPotentials.computeInternalEnergies(conformation).potentialEnergy()));
+    ASSERT_TRUE(isFiniteDouble(component.intraMolecularPotentials.computeInternalEnergies(conformation).potentialEnergy()));
   }
 
   MonteCarlo mc = makeShortMonteCarlo({system});

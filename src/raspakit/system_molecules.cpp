@@ -7,6 +7,7 @@ import std;
 import randomnumbers;
 import simd_quatd;
 import double3;
+import finite_double;
 import double3x3;
 import atom;
 import atom_dynamics;
@@ -648,8 +649,8 @@ std::vector<Atom> System::equilibratedIdealGasConformation(RandomNumber& random,
     for (std::size_t attempt = 0; attempt < 100; ++attempt)
     {
       seed = CBMC::growMoleculeReinsertion(random, context, component, selectedComponent, scratchMolecule, scratchAtoms);
-      if (seed && seed->RosenbluthWeight > 0.0 && std::isfinite(seed->RosenbluthWeight) &&
-          std::isfinite(seed->energies.potentialEnergy()))
+      if (seed && isFiniteDouble(seed->RosenbluthWeight) && seed->RosenbluthWeight > 0.0 &&
+          isFiniteDouble(seed->energies.potentialEnergy()))
       {
         break;
       }

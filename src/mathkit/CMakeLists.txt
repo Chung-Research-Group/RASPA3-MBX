@@ -6,7 +6,7 @@ project(mathkit)
 # It reaches down into foundationkit for archiving and JSON, so that these types can serialise themselves,
 # and nowhere else.
 file(GLOB MATHKIT_CPP_FILES ${PROJECT_SOURCE_DIR}/*.cpp)
-file(GLOB MATHKIT_IXX_FILES ${PROJECT_SOURCE_DIR}/*.ixx)
+file(GLOB MATHKIT_IXX_FILES CONFIGURE_DEPENDS ${PROJECT_SOURCE_DIR}/*.ixx)
 
 add_library(${PROJECT_NAME} STATIC ${PCH_HEADER} ${PCH_SOURCE})
 set_target_properties(${PROJECT_NAME} PROPERTIES POSITION_INDEPENDENT_CODE TRUE)
