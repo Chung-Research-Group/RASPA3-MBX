@@ -1,0 +1,79 @@
+name: Sync an official RASPA3 release
+
+on:
+  schedule:
+    - cron: "23 4 * * *"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Preview the release and its merge without updating branches
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: downstream-upstream-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.repository == 'Chung-Research-Group/RASPA3-MBX' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    outputs:
+      sha: ${{ steps.candidate.outputs.sha }}
+      base: ${{ steps.candidate.outputs.base }}
+      branch: ${{ steps.candidate.outputs.branch }}
+      release: ${{ steps.candidate.outputs.release }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ !inputs.dry_run && secrets.RELEASE_SYNC_TOKEN || github.token }}
+      - name: Read published releases
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --paginate 'repos/iRASPA/RASPA3/releases?per_page=100' \
+            --jq '.[] | select(.draft == false and .prerelease == false) | [.published_at, .tag_name] | @tsv' \
+            > "$RUNNER_TEMP/releases.tsv"
+          test -s "$RUNNER_TEMP/releases.tsv"
+      - name: Prepare release branch
+        id: candidate
+        env:
+          DRY_RUN: ${{ inputs.dry_run || false }}
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          options=()
+          if [[ "$DRY_RUN" == true ]]; then options+=(--dry-run); fi
+          python3 .github/scripts/sync_release.py prepare "$RUNNER_TEMP/releases.tsv" "${options[@]}"
+
+  validate:
+    needs: prepare
+    if: ${{ !inputs.dry_run && needs.prepare.outputs.sha != '' }}
+    uses: ./.github/workflows/mbx-validation.yml
+    with:
+      validation_ref: ${{ needs.prepare.outputs.sha }}
+
+  promote:
+    runs-on: ubuntu-24.04
+    needs: [prepare, validate]
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_SYNC_TOKEN || github.token }}
+      - name: Publish the validated release
+        env:
+          BASE: ${{ needs.prepare.outputs.base }}
+          BRANCH: ${{ needs.prepare.outputs.branch }}
+          CANDIDATE: ${{ needs.prepare.outputs.sha }}
+          RELEASE: ${{ needs.prepare.outputs.release }}
+        run: python3 .github/scripts/sync_release.py promote "$BASE" "$BRANCH" "$CANDIDATE" "$RELEASE"

@@ -368,53 +368,52 @@ The regression matrix is complete and the tested integration branch is
 3. Only after cloning the promoted remote into a temporary directory and
    rerunning a smoke test should the old checkout be archived or deleted.
 
-No source merge back into the old folder is needed. Future updates happen in
-this one checkout by fetching and merging `upstream/main`; build directories
-are disposable artifacts, not repository versions. Remote pushes, default
-branch changes, and removal of the old checkout remain explicit user actions.
+### Published-release synchronization (19 November 2026)
 
-### Upstream synchronization workflow
+The scheduled workflow in the Chung Research Group fork checks iRASPA's
+published releases each day at 04:23 UTC (13:23 Korea time). It reads the
+published timestamp and fetches the exact tag, peeling annotated tags to
+commits. The initial release is v3.0.30 at
+`994c371939e7f10e8c1776d67151ee05943d9f2d`. The fork's historical integration
+already includes this commit. A poll processes the oldest pending stable
+release. Additional pending releases are processed on subsequent polls and
+manual runs. Drafts, prereleases and branch-tip changes never trigger a sync.
+[Official releases](https://github.com/iRASPA/RASPA3/releases)
 
-Current branch roles are defined in [mbx-maintenance.md](mbx-maintenance.md).
-The older archival-development instructions above are superseded by that policy.
+1. The workflow creates `sync-to-upstream/<tag>` in the downstream repository
+   from `main` and merges the tag on that branch. Reruns reuse the branch and
+   preserve any manual conflict resolution. The run log identifies conflicts.
+   Resolve them on that sync branch by merging the indicated release tag and
+   the current downstream main, then dispatch the workflow again.
+2. CI checks out the candidate SHA with read-only credentials and builds with
+   MBX enabled and disabled. It runs the native suites, shipped MBX examples
+   and the TMMC calculation regressions for the applicable build. The candidate
+   stays available for inspection if a test fails.
+3. Once validation passes, CI checks both branch tips again and fast-forwards
+   `main` to the tested commit. If the downstream `mbx` branch exists, it
+   advances in the same atomic push. Divergent work on either branch requires
+   reconciliation. The standalone `2d-tmmc` contribution is maintained and
+   tested independently on its official RASPA3 release base.
 
-Keep the fork as a thin set of reviewable layers instead of one long-lived
-mixed feature branch:
+The schedule becomes available when the workflow is on the fork's default
+`main` branch and GitHub Actions is enabled. Select **Sync an official RASPA3
+release → Run workflow** for an immediate check. The manual run defaults to
+a dry run which computes the merge locally and prints the candidate details.
+Clear the dry-run box to execute the complete workflow. All Git writes target
+the downstream fork. Submission to iRASPA is a separate maintainer action.
+GitHub disables scheduled workflows in public repositories after 60 days
+of inactivity. Re-enable this workflow in Actions if its status is disabled.
+[GitHub schedule settings](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows)
 
-```text
-upstream/main                    exact mirror of iRASPA/RASPA3
-main                             tested RASPA3-MBX release integration
-feature/mbx-core                 adapter, System fields, input validation
-feature/accepted-energy-log      optional diagnostic reporting
-feature/tmmc-nd                  multidimensional TMMC, independently tested
-sync/upstream-YYYYMMDD-SHA       temporary upstream-integration branch
-```
+GitHub must permit the workflow to write to the downstream branches. The job
+uses the repository token by default. When GitHub rejects updates to workflow
+files for insufficient permission, configure the optional `RELEASE_SYNC_TOKEN`
+Actions secret with write access to contents and workflows for this fork.
+Only the preparation and promotion jobs use that credential. Repository
+protection rules still apply. [GitHub token permissions](https://docs.github.com/en/rest/authentication/permissions-required-for-fine-grained-personal-access-tokens)
 
-The feature branches describe ownership; they need not be rebased and merged
-manually for every release if the same separation is maintained as a short,
-logical commit series on `main`. The crucial point is that MBX, logging, and
-multidimensional TMMC are not interleaved in the same commits.
-
-Recommended cadence and process:
-
-1. Fetch upstream at least monthly and immediately for every upstream release
-   or force-field/MC-move change.
-2. Record the exact upstream SHA, create `sync/upstream-YYYYMMDD-SHA` from the
-   last tested MBX `main`, and merge `upstream/main` with `--no-ff`.
-3. Resolve architecture/build conflicts in favor of upstream first. Reapply the
-   small MBX interfaces according to the energy contract in this document.
-4. Keep `git rerere` enabled to reuse only identical mechanical conflict
-   resolutions; always review energy and archive conflicts manually.
-5. Run both an upstream-only configuration (`BUILD_MBX=OFF`) and the MBX CI
-   configuration (`BUILD_MBX=ON`).
-6. Run upstream tests plus the MBX absolute-energy, accepted-move drift,
-   accepted/Widom logger, zero-loading Widom-heat, and Morse direct-CPU
-   regressions.
-7. Compare one short fixed-seed MOF-74 trajectory against the last released
-   fork and explain expected model changes such as new Morse tails.
-8. Merge the sync branch into `main`, tag it as
-   `raspa3-mbx-<upstream-version>.<fork-revision>`, and record both SHAs in the
-   release notes.
+To exercise the Git protocol and failure paths in temporary local repositories,
+run `python3 tests/check_upstream_release_sync.py -v`.
 
 Recommended CI matrix:
 
@@ -433,9 +432,8 @@ absolute dependency presets, production output, or downloaded dependencies.
 
 ## Pull-request policy
 
-Do not open or push a pull request automatically from the integration branch.
-The RASPA3-MBX integration update belongs in the fork repository after local
-review. The Morse I/O/reporting work described above should be prepared
+The release workflow maintains the downstream fork. Any contribution to the
+official iRASPA repository receives separate review and submission. The Morse I/O/reporting work described above should be prepared
 separately from a clean official-upstream branch. Publishing either branch
 requires an explicit review of the final diff, commit message, target
 repository, and target branch.
