@@ -407,7 +407,7 @@ export struct System
    * Validate the force-field and move configuration supported by the MBX Monte Carlo path.
    * This is a no-op when UseMBX is false and throws with an actionable message otherwise.
    */
-  void validateMBXMonteCarloConfiguration() const;
+  void validateMBXMonteCarloConfiguration(bool transitionMatrixDriver = false) const;
   /// Check the rigid-guest target and known MBX site orders before evaluating any configuration.
   /// CO2 uses C,O,O and water uses O,H,H; other monomers must follow the installed MBX database.
   void validateMBXComponentDefinitions() const;

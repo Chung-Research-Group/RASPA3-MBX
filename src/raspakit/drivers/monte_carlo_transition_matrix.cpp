@@ -115,6 +115,11 @@ System& MonteCarloTransitionMatrix::randomSystem()
 
 void MonteCarloTransitionMatrix::run()
 {
+  for (const System& system : systems)
+  {
+    if (system.useMBX && systems.size() != 1) throw std::runtime_error("MBX TMMC requires one simulation box");
+    system.validateMBXMonteCarloConfiguration(true);
+  }
   switch (simulationStage)
   {
     case SimulationStage::PreInitialization:

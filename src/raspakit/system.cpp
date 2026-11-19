@@ -829,17 +829,15 @@ void System::validateMBXComponentDefinitions() const
   }
 }
 
-void System::validateMBXMonteCarloConfiguration() const
+void System::validateMBXMonteCarloConfiguration(bool transitionMatrixDriver) const
 {
   if (!useMBX) return;
   validateMBXComponentDefinitions();
 
-  if (tmmc.doTMMC)
-  {
-    throw std::runtime_error(
-        "[System MBX validation]: transition-matrix Monte Carlo has not been forward-ported to MBX; "
-        "use the regular MonteCarlo driver without TMMC state");
-  }
+  if (tmmc.doTMMC != transitionMatrixDriver)
+    throw std::runtime_error("[System MBX validation]: TMMC state requires the MonteCarloTransitionMatrix driver");
+  if (transitionMatrixDriver && framework && framework->hasMobileAtoms())
+    throw std::runtime_error("[System MBX validation]: MBX TMMC requires a fixed framework");
   if (forceField.computePolarization)
   {
     throw std::runtime_error(
@@ -857,7 +855,7 @@ void System::validateMBXMonteCarloConfiguration() const
         "uses the classical gradient energy; conventional geometry-only RDF sampling remains supported");
   }
 
-  const auto moveIsSupported = [this](Move::Types move)
+  const auto moveIsSupported = [this, transitionMatrixDriver](Move::Types move)
   {
     switch (move)
     {
@@ -869,7 +867,7 @@ void System::validateMBXMonteCarloConfiguration() const
       case Move::Types::Widom:
         return true;
       case Move::Types::VolumeChange:
-        return !framework.has_value() && !hasExternalField;
+        return !transitionMatrixDriver && !framework.has_value() && !hasExternalField;
       default:
         return false;
     }
@@ -885,6 +883,8 @@ void System::validateMBXMonteCarloConfiguration() const
     }
     if (probability <= 0.0 || moveIsSupported(move)) continue;
 
+    if (transitionMatrixDriver && move == Move::Types::VolumeChange)
+      throw std::runtime_error("[System MBX validation]: MBX TMMC requires a fixed volume");
     if (move == Move::Types::VolumeChange && (framework.has_value() || hasExternalField))
     {
       throw std::runtime_error(

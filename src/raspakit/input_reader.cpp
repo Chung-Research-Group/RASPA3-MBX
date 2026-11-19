@@ -3061,16 +3061,18 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     const System& system = systems[systemId];
     if (!system.useMBX) continue;
 
-    if (simulationType != SimulationType::MonteCarlo && simulationType != SimulationType::EnergyEvaluation)
+    const bool transitionMatrixDriver = simulationType == SimulationType::MonteCarloTransitionMatrix;
+    if (simulationType == SimulationType::MonteCarlo || transitionMatrixDriver)
     {
-      throw std::runtime_error(
-          std::format("[Input reader, system {}]: UseMBX currently supports only SimulationType 'MonteCarlo' "
-                      "or 'EnergyEvaluation'; "
-                      "transition-matrix, molecular-dynamics, minimization, thermodynamic-integration, and "
-                      "parallel-replica drivers have not been forward-ported to MBX",
-                      systemId));
+      if (transitionMatrixDriver && systems.size() != 1)
+        throw std::runtime_error("[Input reader]: MBX TMMC requires one simulation box");
+      system.validateMBXMonteCarloConfiguration(transitionMatrixDriver);
     }
-    if (simulationType == SimulationType::MonteCarlo) system.validateMBXMonteCarloConfiguration();
+    else if (simulationType != SimulationType::EnergyEvaluation)
+    {
+      throw std::runtime_error(std::format("[Input reader, system {}]: UseMBX supports MonteCarlo, "
+                                           "MonteCarloTransitionMatrix and EnergyEvaluation", systemId));
+    }
   }
 
   for (std::size_t i = 0uz; i < systems.size(); ++i)
