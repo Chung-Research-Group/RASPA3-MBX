@@ -198,8 +198,8 @@ export struct TransitionMatrixMultidimensional
   /**
    * \brief Switches from equilibration to production sampling.
    *
-   * Clears both histograms and disables equilibration. The tracked collection matrix
-   * is intentionally left unchanged.
+   * Resets the collection matrix, visit histograms and energy sums for production sampling.
+   * Carries the trained bias into production and disables the equilibration bias cap.
    */
   void startProduction();
 
