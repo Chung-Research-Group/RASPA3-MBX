@@ -255,6 +255,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMa
   archive >> m.useTMBias;
   archive >> m.rejectOutofBound;
   archive >> m.rezeroAfterInitialization;
+  m.joint.reset();
+  m.statisticsFileName = "tmmc/tmmc_statistics.txt";
   if (versionNumber >= 2)
   {
     archive >> m.statisticsFileName;
