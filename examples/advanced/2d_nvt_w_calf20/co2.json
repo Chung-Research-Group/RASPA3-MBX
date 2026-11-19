@@ -1,0 +1,12 @@
+{
+    "CriticalTemperature" : 190.564,
+    "CriticalPressure" : 4599200.0,
+    "AcentricFactor" : 0.01142,
+    "Type" : "rigid",
+    "pseudoAtoms" : [
+            ["Cco2", [3.821676,       15.605912,        4.899919]],
+            ["Oco2", [4.848782,       15.094770,        4.979208]],
+            ["Oco2", [2.794570,       16.117053,        4.820629]]
+    ]
+}
+
