@@ -87,7 +87,7 @@ def get_deck(work, source, modern, kind):
                    "FugacityCoefficient": 1., "MolFraction": fraction,
                    "CreateNumberOfMolecules": number}
                   for name, fraction, number in zip(names, (0.125, 0.875), (1, 2))]
-    if kind == "cbmc-fixed":
+    if "cbmc" in kind:
         for component in components:
             component["SwapProbability"] = component.pop("SwapConventionalProbability")
     if one_axis:
@@ -109,6 +109,10 @@ def get_deck(work, source, modern, kind):
             "WriteBinaryRestartEvery": 7 if use_mbx else 111,
             "NumberOfProductionCycles" if modern else "NumberOfCycles": 12 if use_mbx else 200,
             "Systems": [system], "Components": components}
+    if kind == "adaptive":
+        system["MacroStateUseBias"] = True
+        deck["SampleTMMCEvery"] = 4
+        deck["WriteTMMCEvery"] = 10
     write_json(work / "simulation.json", deck)
 
 
@@ -167,13 +171,38 @@ def verify(kind, work):
     else:
         assert set(grid) == set(itertools.product((1, 2), (2, 3))), list(grid)
         assert all(min(node["weights"][1:]) > 0 for node in grid.values())
+    if kind in ("mixed", "adaptive"):
+        total_hist = sum(row["histogram"] for row in grid.values())
+        grand_weights = {(a, b): .5**a * 3.5**b / (math.factorial(a) * math.factorial(b))
+                         for a, b in grid}
+        normalization = sum(grand_weights.values())
+        for (a, b), node in grid.items():
+            expected = grand_weights[a, b] / normalization
+            observed = node["histogram"] / total_hist
+            # The deterministic stream is long enough to resolve the four truncated Poisson masses.
+            if kind == "mixed":
+                assert abs(expected - observed) < .055, ((a, b), observed, expected)
+            rates = [min(1., a / .5), min(1., .5 / (a + 1)),
+                     min(1., b / 3.5), min(1., 3.5 / (b + 1))]
+            attempts = [weight / rate for weight, rate in zip(node["weights"][1:], rates)]
+            assert max(abs(count - round(count)) for count in attempts) < 1e-4, ((a, b), attempts)
+            assert math.isclose(sum(attempts), sum(node["weights"]), rel_tol=1e-8), node
+            node["ideal_probability"] = expected
+            node["sampled_probability"] = observed
     result = {str(key): value for key, value in sorted(grid.items())}
+    if kind == "adaptive":
+        path, = (work / "tmmc").glob("*statistics*.txt")
+        match = re.search(r"^# bias updated: (\d+) times$", path.read_text(), re.M)
+        assert match and int(match[1]) > 0
+        biases = [row[labels.index("bias")] for row in rows]
+        assert all(map(math.isfinite, biases)) and max(biases) > min(biases)
+        result["adaptive"] = {"updates": int(match[1]), "bias_range": max(biases) - min(biases)}
     path, = (work / "output").glob("output_*.s0.json")
     move_stats = read_json(path)["output"]["MCMoveStatistics"]["system"]
     names = ("h2o", "co2") if kind.startswith("mbx") else ("A", "B")
     attempts_by_axis = []
     for name in names:
-        swap = move_stats[name]["Swap (CBMC)" if kind == "cbmc-fixed" else "Swap"]
+        swap = move_stats[name]["Swap (CBMC)" if "cbmc" in kind else "Swap"]
         attempts = swap["total"][:2]
         accepted = swap["accepted"][:2]
         assert min(attempts) > 0, swap
@@ -226,8 +255,8 @@ def main():
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--cases", nargs="+", choices=("legacy", "fixed", "cbmc-fixed", "mixed", "mbx-fixed", "mbx-mixed"),
-                        default=("legacy", "fixed", "cbmc-fixed", "mixed"))
+    parser.add_argument("--cases", nargs="+", choices=("legacy", "fixed", "cbmc-fixed", "mixed", "adaptive", "mbx-fixed", "mbx-mixed", "mbx-cbmc-mixed"),
+                        default=("legacy", "fixed", "cbmc-fixed", "mixed", "adaptive"))
     args = parser.parse_args()
     binary, source = args.binary.resolve(), args.source.resolve()
     modern = '"NumberOfProductionCycles"' in (source / "src/raspakit/input_reader.cpp").read_text()
