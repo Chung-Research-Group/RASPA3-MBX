@@ -8,7 +8,8 @@ Historical development sources contain additional diagnostic and flexible-guest 
 
 The attribution baseline is original RASPA3 `a8a70ca755b2821728bee05c63ba07d8b10085b5`.
 The public pre-maintenance tip is `c46c859cec8446cf4dc3d6f68cec839f56f1df33`.
-Future synchronization with a newer upstream revision belongs on its own branch.
+Published upstream releases follow the downstream branch and CI procedure
+in [the release synchronization guide](mbx-upstream-sync.md#published-release-synchronization-19-november-2026).
 Upstream acceptance and the form of an eventual contribution remain the original
 maintainers' decisions; a clean local branch is not an accepted upstream branch.
 

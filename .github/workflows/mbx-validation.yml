@@ -2,6 +2,11 @@ name: RASPA3 optional MBX validation
 
 on:
   workflow_call:
+    inputs:
+      validation_ref:
+        description: Commit to build and test
+        type: string
+        default: ""
   workflow_dispatch:
 
 permissions:
@@ -24,6 +29,9 @@ jobs:
       MBX_COMMIT: 0e01b75b47611d7d51f27a34b112bdc5e2090a50
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.validation_ref || github.sha }}
+          persist-credentials: false
       - uses: conda-incubator/setup-miniconda@v3
         with:
           miniforge-version: latest
@@ -64,13 +72,24 @@ jobs:
       - name: Run all discovered native tests
         run: |
           ctest --preset mbx-local --show-only=json-v1 > ctest_inventory.json
-          ctest --preset mbx-local --output-on-failure --timeout 180 --output-junit native-tests.xml
+          ctest --preset mbx-local --no-tests=error --output-on-failure --timeout 180 --output-junit native-tests.xml
       - name: Run shipped examples with physical and output checks
         if: always() && matrix.mbx == 'ON' && steps.native_build.outcome == 'success'
         run: |
           python tests/run_mbx_examples.py --source "$GITHUB_WORKSPACE" \
             --executable "$GITHUB_WORKSPACE/build-mbx/app/raspa3" \
             --output "$RUNNER_TEMP/example-checks" --timeout 600
+      - name: Run native 1D and 2D TMMC calculations
+        if: inputs.validation_ref != '' || hashFiles('tests/native_tmmc.py') != ''
+        env:
+          MBX_BUILD: ${{ matrix.mbx }}
+        run: |
+          cases=(legacy fixed cbmc-fixed mixed)
+          if [[ "$MBX_BUILD" == ON ]]; then
+            cases+=(mbx-fixed mbx-mixed)
+          fi
+          python tests/native_tmmc.py --binary "$GITHUB_WORKSPACE/build-mbx/app/raspa3" \
+            --source "$GITHUB_WORKSPACE" --output "$RUNNER_TEMP/tmmc-checks" --cases "${cases[@]}"
       - name: Preserve native evidence
         if: always()
         uses: actions/upload-artifact@v4
@@ -81,3 +100,4 @@ jobs:
             ctest_inventory.json
             build-mbx/Testing/Temporary/
             ${{ runner.temp }}/example-checks/
+            ${{ runner.temp }}/tmmc-checks/
