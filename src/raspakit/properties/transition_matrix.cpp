@@ -7,18 +7,20 @@ import std;
 import archive;
 import double3;
 
-std::size_t TransitionMatrix::collectionRow(const std::vector<std::size_t> &counts, std::size_t component) const
+std::size_t TransitionMatrix::collectionRow(const std::vector<std::size_t>& counts, std::size_t component) const
 {
   return joint ? joint->collectionRow(counts) : counts[component];
 }
 
 void TransitionMatrix::recordMove(double3 weights, std::size_t oldRow, std::size_t component)
 {
-  if (joint) joint->updateMatrix(weights, oldRow, component);
-  else updateMatrix(weights, oldRow);
+  if (joint)
+    joint->updateMatrix(weights, oldRow, component);
+  else
+    updateMatrix(weights, oldRow);
 }
 
-double TransitionMatrix::exchangeBias(const std::vector<std::size_t> &counts, std::size_t component, bool insert)
+double TransitionMatrix::exchangeBias(const std::vector<std::size_t>& counts, std::size_t component, bool insert)
 {
   if (!doTMMC) return 1.0;
   if (joint) return joint->biasFactor(counts, component, insert);

@@ -251,21 +251,25 @@ bool biasSetting(const SimulationInput& input, const char* key, bool fallback)
   return input.at(key).get<bool>();
 }
 
-void configureComponentMacrostates(System& system, const SimulationInput& input, std::size_t systemIndex, bool fillFromBelow = false)
+void configureComponentMacrostates(System& system, const SimulationInput& input, std::size_t systemIndex,
+                                   bool fillFromBelow = false)
 {
   auto& matrix = system.tmmc;
   const auto& defaults = input.at("Systems").at(systemIndex);
   const auto& components = input.at("Components");
   const char* systemMin = "MacroStateMinimumNumberOfMolecules";
   const char* systemMax = "MacroStateMaximumNumberOfMolecules";
-  const auto hasLimits = [](const auto& item) { return item.contains("MinMacrostate") || item.contains("MaxMacrostate"); };
+  const auto hasLimits = [](const auto& item)
+  { return item.contains("MinMacrostate") || item.contains("MaxMacrostate"); };
   if ((defaults.contains(systemMin) && defaults.contains("MinMacrostate")) ||
       (defaults.contains(systemMax) && defaults.contains("MaxMacrostate")))
     throw std::invalid_argument("TMMC: use one system keyword for each macrostate endpoint");
   const bool allAdsorbates = defaults.contains(systemMin) || defaults.contains(systemMax) || hasLimits(defaults) ||
                              std::none_of(components.begin(), components.end(), hasLimits);
-  const auto defaultMin = unsignedSetting(defaults, "MinMacrostate", unsignedSetting(defaults, systemMin, matrix.minMacrostate));
-  const auto defaultMax = unsignedSetting(defaults, "MaxMacrostate", unsignedSetting(defaults, systemMax, matrix.maxMacrostate));
+  const auto defaultMin =
+      unsignedSetting(defaults, "MinMacrostate", unsignedSetting(defaults, systemMin, matrix.minMacrostate));
+  const auto defaultMax =
+      unsignedSetting(defaults, "MaxMacrostate", unsignedSetting(defaults, systemMax, matrix.maxMacrostate));
   matrix.useBias = biasSetting(defaults, "MacroStateUseBias", biasSetting(input, "UseTMMCBias", true));
   std::vector<std::size_t> ids, lower, upper;
   for (std::size_t id = 0; id < system.components.size(); ++id)
@@ -281,7 +285,9 @@ void configureComponentMacrostates(System& system, const SimulationInput& input,
     const auto hi = unsignedSetting(item, "MaxMacrostate", defaultMax);
     const auto n = system.initialNumberOfMolecules[id];
     if (lo > hi || hi - lo == std::numeric_limits<std::size_t>::max() || (!fillFromBelow && n < lo) || n > hi)
-      throw std::invalid_argument(std::format("TMMC: component {} initial population {} and macrostate bounds [{}, {}] are inconsistent", system.components[id].name, n, lo, hi));
+      throw std::invalid_argument(
+          std::format("TMMC: component {} initial population {} and macrostate bounds [{}, {}] are inconsistent",
+                      system.components[id].name, n, lo, hi));
     ids.push_back(id);
     lower.push_back(lo);
     upper.push_back(hi);
@@ -300,25 +306,40 @@ void configureComponentMacrostates(System& system, const SimulationInput& input,
 
   // The collection row has one plus and one minus column per component.
   // Pair/group exchanges, reactions, and transfers between systems require other directions.
-  for (const auto move : {Move::Types::IdentityChangeCBMC, Move::Types::GibbsIdentityChangeCBMC,
-                          Move::Types::GibbsVolume, Move::Types::GibbsSwapCBMC, Move::Types::GibbsSwapCFCMC,
-                          Move::Types::GibbsSwapCBCFCMC, Move::Types::GibbsConventionalCFCMC,
-                          Move::Types::GibbsConventionalCBCFCMC, Move::Types::ParallelTempering,
-                          Move::Types::ReactionCBMC, Move::Types::ReactionConventionalCFCMC, Move::Types::ReactionConventionalCBCFCMC,
-                          Move::Types::ReactionCFCMC, Move::Types::ReactionCBCFCMC,
-                          Move::Types::PairSwap, Move::Types::PairSwapCBMC, Move::Types::PairSwapCFCMC,
-                          Move::Types::PairSwapCBCFCMC, Move::Types::GroupSwap, Move::Types::GroupSwapCBMC,
-                          Move::Types::GroupSwapCFCMC, Move::Types::GroupSwapCBCFCMC,
-                          Move::Types::WidomCFCMC, Move::Types::WidomCBCFCMC})
+  for (const auto move : {Move::Types::IdentityChangeCBMC,
+                          Move::Types::GibbsIdentityChangeCBMC,
+                          Move::Types::GibbsVolume,
+                          Move::Types::GibbsSwapCBMC,
+                          Move::Types::GibbsSwapCFCMC,
+                          Move::Types::GibbsSwapCBCFCMC,
+                          Move::Types::GibbsConventionalCFCMC,
+                          Move::Types::GibbsConventionalCBCFCMC,
+                          Move::Types::ParallelTempering,
+                          Move::Types::ReactionCBMC,
+                          Move::Types::ReactionConventionalCFCMC,
+                          Move::Types::ReactionConventionalCBCFCMC,
+                          Move::Types::ReactionCFCMC,
+                          Move::Types::ReactionCBCFCMC,
+                          Move::Types::PairSwap,
+                          Move::Types::PairSwapCBMC,
+                          Move::Types::PairSwapCFCMC,
+                          Move::Types::PairSwapCBCFCMC,
+                          Move::Types::GroupSwap,
+                          Move::Types::GroupSwapCBMC,
+                          Move::Types::GroupSwapCFCMC,
+                          Move::Types::GroupSwapCBCFCMC,
+                          Move::Types::WidomCFCMC,
+                          Move::Types::WidomCBCFCMC})
   {
     if (system.mc_moves_probabilities.getProbability(move) > 0 ||
         std::ranges::any_of(system.components, [move](const auto& component)
-                           { return component.mc_moves_probabilities.getProbability(move) > 0; }))
-      throw std::invalid_argument(std::format("TMMC: incompatible joint macrostate move {}", Move::moveNames[std::to_underlying(move)]));
+                            { return component.mc_moves_probabilities.getProbability(move) > 0; }))
+      throw std::invalid_argument(
+          std::format("TMMC: incompatible joint macrostate move {}", Move::moveNames[std::to_underlying(move)]));
   }
   matrix.joint.emplace(lower, upper, ids, sampleEvery, writeEvery, matrix.useBias);
 }
-}
+}  // namespace
 
 void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
@@ -3160,8 +3181,10 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
     else if (simulationType != SimulationType::EnergyEvaluation)
     {
-      throw std::runtime_error(std::format("[Input reader, system {}]: UseMBX supports MonteCarlo, "
-                                           "MonteCarloTransitionMatrix and EnergyEvaluation", systemId));
+      throw std::runtime_error(
+          std::format("[Input reader, system {}]: UseMBX supports MonteCarlo, "
+                      "MonteCarloTransitionMatrix and EnergyEvaluation",
+                      systemId));
     }
   }
 
@@ -3330,8 +3353,6 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
           }
         }
       }
-
-
     }
   }
 
@@ -3497,7 +3518,9 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
 }
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::generalOptions = {
-    "SampleTMMCEvery", "WriteTMMCEvery", "UseTMMCBias",
+    "SampleTMMCEvery",
+    "WriteTMMCEvery",
+    "UseTMMCBias",
     "SimulationType",
     "Units",
     "ForceField",
@@ -3551,7 +3574,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
     "Systems"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::systemOptions = {
-    "MinMacrostate", "MaxMacrostate",
+    "MinMacrostate",
+    "MaxMacrostate",
     "ForceField",
     "CutOff",
     "CutOffVDW",
@@ -3670,7 +3694,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "ThermochemicalDatabase"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
-    "MinMacrostate", "MaxMacrostate",
+    "MinMacrostate",
+    "MaxMacrostate",
     "Name",
     "Type",
     "MoleculeDefinition",

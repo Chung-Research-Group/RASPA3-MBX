@@ -186,7 +186,8 @@ Move::Types MC_Moves::performRandomMovePreInitialization(RandomNumber& random, S
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
 
   // save old number of molecules for reference
-  const std::size_t oldRow = selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
+  const std::size_t oldRow =
+      selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
 
   // during pre-initialization only translation, rotation, reinsertion and partial-reinsertion moves are performed;
   // any other sampled move type is skipped
@@ -283,7 +284,8 @@ Move::Types MC_Moves::performRandomMoveInitialization(RandomNumber& random, Syst
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
 
   // save old number of molecules for reference
-  const std::size_t oldRow = selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
+  const std::size_t oldRow =
+      selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
 
   switch (moveType)
   {
@@ -1005,7 +1007,8 @@ Move::Types MC_Moves::performRandomMoveEquilibration(RandomNumber& random, Syste
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
 
   // save old number of molecules for reference
-  const std::size_t oldRow = selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
+  const std::size_t oldRow =
+      selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
 
   switch (moveType)
   {
@@ -1727,7 +1730,8 @@ Move::Types MC_Moves::performRandomMoveProduction(RandomNumber& random, System& 
   Move::Types moveType = selectedSystem.components[selectedComponent].mc_moves_probabilities.sample(random);
 
   // save old number of molecules for reference
-  const std::size_t oldRow = selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
+  const std::size_t oldRow =
+      selectedSystem.tmmc.collectionRow(selectedSystem.numberOfIntegerMoleculesPerComponent, selectedComponent);
 
   std::chrono::steady_clock::time_point t1 = std::chrono::steady_clock::now();
   switch (moveType)

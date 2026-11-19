@@ -66,7 +66,8 @@ void sampleTMMCState(System& system, std::size_t componentId, bool adjustBias)
   system.tmmc.numberOfSteps++;
   if (system.tmmc.joint)
   {
-    system.tmmc.joint->updateHistogram(system.numberOfIntegerMoleculesPerComponent, system.runningEnergies.potentialEnergy());
+    system.tmmc.joint->updateHistogram(system.numberOfIntegerMoleculesPerComponent,
+                                       system.runningEnergies.potentialEnergy());
     return;
   }
   system.tmmc.updateHistogram(system.numberOfIntegerMoleculesPerComponent[componentId]);

@@ -336,7 +336,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     // Retrieve bias from transition matrix
-    const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, true);
+    const double biasTransitionMatrix =
+        system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, true);
 
     // Apply acceptance/rejection rule
     if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * samplingPacc)
@@ -667,7 +668,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
 
       // Retrieve bias from transition matrix
 
-      const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, false);
+      const double biasTransitionMatrix =
+          system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, false);
 
       // Apply acceptance/rejection rule
       if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * samplingPacc)

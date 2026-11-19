@@ -213,7 +213,8 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
     return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
   }
 
-  const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, true);
+  const double biasTransitionMatrix =
+      system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent, selectedComponent, true);
 
   // apply acceptance/rejection rule
   if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * Pacc)
