@@ -928,5 +928,20 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarloTr
     throw std::runtime_error(std::format("MonteCarloTransitionMatrix: Error in binary restart\n"));
   }
 
+  for (const System& system : mc.systems)
+  {
+    const auto& matrix = system.tmmc;
+    if (!matrix.doTMMC) continue;
+    const auto& counts = system.numberOfIntegerMoleculesPerComponent;
+    if (matrix.joint)
+    {
+      matrix.joint->collectionRow(counts);  // Checks every tracked coordinate against its archived window.
+    }
+    else if (counts.size() != 1 ||
+             (matrix.rejectOutOfBound && (counts.front() < matrix.minMacrostate || counts.front() > matrix.maxMacrostate)))
+    {
+      throw std::runtime_error("TMMC checkpoint population is outside the archived scalar window");
+    }
+  }
   return archive;
 }

@@ -1747,5 +1747,14 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, ParallelTMMC
     throw std::runtime_error("ParallelTMMC: error in binary restart\n");
   }
 
+  if (ptmmc.simulationStage != ParallelTMMC::SimulationStage::Uninitialized)
+  {
+    for (const System& system : ptmmc.systems)
+    {
+      const auto& counts = system.numberOfIntegerMoleculesPerComponent;
+      if (counts.size() != 1 || counts.front() < system.tmmc.minMacrostate || counts.front() > system.tmmc.maxMacrostate)
+        throw std::runtime_error("ParallelTMMC checkpoint population is outside its archived walker window");
+    }
+  }
   return archive;
 }

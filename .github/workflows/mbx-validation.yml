@@ -104,7 +104,7 @@ jobs:
         run: |
           cases=()
           if [[ "$MBX_BUILD" == ON ]]; then
-            cases=(--cases legacy fixed cbmc-fixed mixed adaptive mbx-fixed mbx-mixed mbx-cbmc-mixed)
+            cases=(--cases legacy fixed cbmc-fixed mixed adaptive coordinates cation parallel-coordinates mbx-fixed mbx-mixed mbx-cbmc-mixed)
           fi
           python tests/native_tmmc.py --binary "$GITHUB_WORKSPACE/build-mbx/app/raspa3" \
             --source "$GITHUB_WORKSPACE" --output "$RUNNER_TEMP/tmmc-checks" "${cases[@]}"

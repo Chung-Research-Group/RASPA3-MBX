@@ -252,7 +252,7 @@ bool biasSetting(const SimulationInput& input, const char* key, bool fallback)
 }
 
 void configureComponentMacrostates(System& system, const SimulationInput& input, std::size_t systemIndex,
-                                   bool fillFromBelow = false)
+                                   bool restartFromBinary, bool fillFromBelow = false)
 {
   auto& matrix = system.tmmc;
   const auto& defaults = input.at("Systems").at(systemIndex);
@@ -278,13 +278,15 @@ void configureComponentMacrostates(System& system, const SimulationInput& input,
     if (system.components[id].type != Component::Type::Adsorbate)
     {
       if (hasLimits(item)) throw std::invalid_argument("TMMC: component bounds require an adsorbate");
-      continue;
+      // The original scalar input accepts a single cation using system-level limits.
+      if (system.components.size() != 1) continue;
     }
     if (!allAdsorbates && !hasLimits(item)) continue;
     const auto lo = unsignedSetting(item, "MinMacrostate", defaultMin);
     const auto hi = unsignedSetting(item, "MaxMacrostate", defaultMax);
-    const auto n = system.initialNumberOfMolecules[id];
-    if (lo > hi || hi - lo == std::numeric_limits<std::size_t>::max() || (!fillFromBelow && n < lo) || n > hi)
+    const auto n = system.numberOfIntegerMoleculesPerComponent[id];
+    if (lo > hi || hi - lo == std::numeric_limits<std::size_t>::max() ||
+        (!restartFromBinary && ((!fillFromBelow && n < lo) || n > hi)))
       throw std::invalid_argument(
           std::format("TMMC: component {} initial population {} and macrostate bounds [{}, {}] are inconsistent",
                       system.components[id].name, n, lo, hi));
@@ -3158,7 +3160,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     for (std::size_t i = 0uz; i < systems.size(); ++i)
     {
       systems[i].tmmc.doTMMC = true;
-      configureComponentMacrostates(systems[i], parsed_data, i);
+      configureComponentMacrostates(systems[i], parsed_data, i, restartFromBinary);
       if (parsed_data.contains("TMMCUpdateEvery")) systems[i].tmmc.updateTMEvery = tmmcUpdateEvery;
       systems[i].tmmc.useTMBias = true;
     }
@@ -3486,7 +3488,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
     System& system = systems.front();
     system.tmmc.doTMMC = true;
-    configureComponentMacrostates(system, parsed_data, 0, true);
+    configureComponentMacrostates(system, parsed_data, 0, restartFromBinary, true);
     system.tmmc.useTMBias = true;
     system.tmmc.rejectOutOfBound = true;
     system.tmmc.updateTMEvery = tmmcUpdateEvery;
@@ -3505,13 +3507,13 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
                       "every window must span at least two macrostates\n",
                       tmmcNumberOfWindows, system.tmmc.minMacrostate, system.tmmc.maxMacrostate));
     }
-    const std::size_t initialNumberOfMolecules =
-        std::accumulate(system.initialNumberOfMolecules.begin(), system.initialNumberOfMolecules.end(), 0uz);
-    if (initialNumberOfMolecules > system.tmmc.minMacrostate)
+    const std::size_t initialNumberOfMolecules = system.numberOfIntegerMoleculesPerComponent.front();
+    if (!restartFromBinary && initialNumberOfMolecules > system.tmmc.minMacrostate)
     {
       throw std::runtime_error(
           std::format("[Input reader]: 'ParallelTMMC' fills every window from below by growing molecules; "
-                      "'CreateNumberOfMolecules' ({}) must not exceed 'MacroStateMinimumNumberOfMolecules' ({})\n",
+                      "the initial population ({}) from coordinates and 'CreateNumberOfMolecules' must not exceed "
+                      "'MacroStateMinimumNumberOfMolecules' ({})\n",
                       initialNumberOfMolecules, system.tmmc.minMacrostate));
     }
   }

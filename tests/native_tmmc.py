@@ -68,8 +68,8 @@ def matrix(work):
 
 def get_deck(work, source, modern, kind):
     use_mbx = kind.startswith("mbx")
-    fixed = kind in ("fixed", "cbmc-fixed", "mbx-fixed")
-    one_axis = kind == "legacy"
+    fixed = kind in ("fixed", "cbmc-fixed", "mbx-fixed", "coordinates")
+    one_axis = kind in ("legacy", "cation")
     # z_i = V f_i / (k_B T). Set z_A=1/2, z_B=7/2 by choosing total z=4.
     temperature, length = 300.0, 24.0
     pressure = 4 * 1.380650324e-23 * temperature / (length * 1e-10) ** 3
@@ -93,6 +93,8 @@ def get_deck(work, source, modern, kind):
     if one_axis:
         components = components[:1]
         components[0].update(MolFraction=1.)
+        if kind == "cation":
+            components[0]["Type"] = "Cation"
         system.update(MacroStateMinimumNumberOfMolecules=0, MacroStateMaximumNumberOfMolecules=3)
     elif fixed:
         for component in components:
@@ -103,6 +105,12 @@ def get_deck(work, source, modern, kind):
         system.update(MacroStateMinimumNumberOfMolecules=1, MacroStateMaximumNumberOfMolecules=3)
         components[0].update(MaxMacrostate=2)
         components[1].update(MinMacrostate=2, MaxMacrostate=3)
+    if kind == "coordinates":
+        # Load one molecule of each species, then have RASPA create the second B.
+        system["RestartFileName"] = "coordinates.json"
+        write_json(work / "coordinates.json", {"A": [[2., 3., 4.]], "B": [[14., 15., 16.]]})
+        components[0]["CreateNumberOfMolecules"] = 0
+        components[1]["CreateNumberOfMolecules"] = 1
     deck = {"SimulationType": "MonteCarloTransitionMatrix", "ForceField": ".",
             "RandomSeed": 74169, "PrintEvery": 5,
             "NumberOfInitializationCycles": 1, "NumberOfEquilibrationCycles": 1,
@@ -131,6 +139,10 @@ def closure(work):
 
 
 def verify(kind, work):
+    if kind == "coordinates":
+        kind = "fixed"
+    elif kind == "cation":
+        kind = "legacy"
     labels, rows = matrix(work)
     if kind == "legacy":
         assert [int(r[0]) for r in rows] == [0, 1, 2, 3], rows
@@ -240,6 +252,8 @@ def restart_check(kind, binary, first, env):
     shutil.copyfile(checkpoint, resumed / "source.bin")
     settings = read_json(resumed / "simulation.json")
     settings.update(RestartFromBinaryFile=True, BinaryRestartFileName="source.bin", RandomSeed=50235)
+    # The archived A count is authoritative; the input-only count lies below its lower bound.
+    settings["Components"][0]["CreateNumberOfMolecules"] = 0
     write_json(resumed / "simulation.json", settings)
     native(binary, resumed, env)
     reference = matrix(first)
@@ -250,13 +264,69 @@ def restart_check(kind, binary, first, env):
             "identical_rows": len(reference[1]), "input_seed_changed": True}
 
 
+def reject_extra_coordinate(binary, first, env):
+    bad = first.with_name("coordinates-outside")
+    bad.mkdir()
+    for path in first.glob("*.json"):
+        shutil.copyfile(path, bad / path.name)
+    deck = read_json(bad / "simulation.json")
+    deck["Components"][0]["CreateNumberOfMolecules"] = 1
+    write_json(bad / "simulation.json", deck)
+    run = subprocess.run([str(binary)], cwd=bad, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    (bad / "console.log").write_text(run.stdout)
+    assert run.returncode != 0 and "component A initial population 2" in run.stdout, run.stdout
+
+
+def parallel_coordinates(binary, source, modern, work, env):
+    get_deck(work, source, modern, "legacy")
+    deck = read_json(work / "simulation.json")
+    deck.update(SimulationType="ParallelTMMC", NumberOfWindows=2, ReweightingNumberOfPressures=5,
+                NumberOfProductionCycles=30, WriteBinaryRestartEvery=8)
+    system = deck["Systems"][0]
+    temperature = system.pop("ExternalTemperature")
+    system.update(RestartFileName="coordinates.json", ExternalTemperatures=[temperature],
+                  MacroStateMinimumNumberOfMolecules=2, MacroStateMaximumNumberOfMolecules=4)
+    deck["Components"][0]["CreateNumberOfMolecules"] = 0
+    write_json(work / "coordinates.json", {"A": [[2., 3., 4.]]})
+    write_json(work / "simulation.json", deck)
+    native(binary, work, env)
+    files = sorted((work / "tmmc").glob("*.parallel_tmmc.txt"))
+    assert len(files) == 2, files
+    windows = []
+    for path, expected in zip(files, ([2, 3], [3, 4])):
+        rows = [list(map(float, line.split())) for line in path.read_text().splitlines()
+                if line.strip() and not line.startswith("#")]
+        assert [row[0] for row in rows] == expected and all(row[-1] > 0 for row in rows), rows
+        assert math.isclose(sum(sum(row[1:4]) for row in rows), sum(row[-1] for row in rows), rel_tol=1e-12)
+        windows.append(expected)
+    bad = work.with_name("parallel-coordinates-outside")
+    resumed = work.with_name("parallel-coordinates-resumed")
+    deck["Components"][0]["CreateNumberOfMolecules"] = 2  # One coordinate plus two created exceeds the first lower edge.
+    for directory in (bad, resumed):
+        directory.mkdir()
+        for path in work.glob("*.json"):
+            shutil.copyfile(path, directory / path.name)
+        write_json(directory / "simulation.json", deck)
+    proc = subprocess.run([str(binary)], cwd=bad, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    (bad / "console.log").write_text(proc.stdout)
+    assert proc.returncode != 0 and "initial population (3)" in proc.stdout, proc.stdout
+    shutil.copyfile(work / "restart_data.bin", resumed / "source.bin")
+    deck.update(RestartFromBinaryFile=True, BinaryRestartFileName="source.bin", RandomSeed=50235)
+    write_json(resumed / "simulation.json", deck)
+    native(binary, resumed, env)
+    for path in files:
+        assert path.read_bytes() == (resumed / "tmmc" / path.name).read_bytes()
+    return {"walker_windows": windows, "excess_initial_population_rejected": True, "identical_restarted_matrices": 2}
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--cases", nargs="+", choices=("legacy", "fixed", "cbmc-fixed", "mixed", "adaptive", "mbx-fixed", "mbx-mixed", "mbx-cbmc-mixed"),
-                        default=("legacy", "fixed", "cbmc-fixed", "mixed", "adaptive"))
+    parser.add_argument("--cases", nargs="+", choices=("legacy", "fixed", "cbmc-fixed", "mixed", "adaptive", "coordinates", "cation", "parallel-coordinates",
+                                                        "mbx-fixed", "mbx-mixed", "mbx-cbmc-mixed"),
+                        default=("legacy", "fixed", "cbmc-fixed", "mixed", "adaptive", "coordinates", "cation", "parallel-coordinates"))
     args = parser.parse_args()
     binary, source = args.binary.resolve(), args.source.resolve()
     modern = '"NumberOfProductionCycles"' in (source / "src/raspakit/input_reader.cpp").read_text()
@@ -268,11 +338,17 @@ def main():
     for kind in args.cases:
         work = args.output / kind
         work.mkdir()
-        get_deck(work, source, modern, kind)
-        native(binary, work, env)
-        results["cases"][kind] = verify(kind, work)
-        if kind in ("mixed", "mbx-mixed"):
-            results["cases"][kind]["restart"] = restart_check(kind, binary, work, env)
+        if kind == "parallel-coordinates":
+            results["cases"][kind] = parallel_coordinates(binary, source, modern, work, env)
+        else:
+            get_deck(work, source, modern, kind)
+            native(binary, work, env)
+            results["cases"][kind] = verify(kind, work)
+            if kind == "coordinates":
+                reject_extra_coordinate(binary, work, env)
+                results["cases"][kind]["out_of_range_rejected"] = True
+            if kind in ("mixed", "mbx-mixed"):
+                results["cases"][kind]["restart"] = restart_check(kind, binary, work, env)
         write_json(args.output / "results.json", results)
         print(kind, json.dumps(results["cases"][kind]), flush=True)
 
