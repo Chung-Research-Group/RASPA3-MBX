@@ -7,6 +7,7 @@ import std;
 
 import double3;
 import int3;
+import json;
 import forcefield;
 import framework;
 import component;
@@ -84,14 +85,6 @@ ForceField makeZeoliteAlkaneForceField()
                     true, false, true);
 }
 
-Component makeAlkaneFromExample(const ForceField& forceField, std::size_t componentId, std::string_view name,
-                                const MCMoveProbabilities& probabilities)
-{
-  TemporaryFile file(std::string(name) + ".json", molecule_fixtures::alkaneJson(name));
-  return Component(Component::Type::Adsorbate, componentId, forceField, std::string(name), file.stemPath().string(), 5,
-                   21, probabilities, std::nullopt, false);
-}
-
 Move::Types reactionMoveFromProbabilities(const MCMoveProbabilities& probabilities)
 {
   if (probabilities.getProbability(Move::Types::ReactionCFCMC) > 0.0) return Move::Types::ReactionCFCMC;
@@ -111,14 +104,30 @@ bool usesConventionalReactionGrowth(const MCMoveProbabilities& probabilities)
          probabilities.getProbability(Move::Types::ReactionConventionalCFCMC) > 0.0;
 }
 
-// Turn a flexible component into a whole-molecule rigid body: the fragment graph collapses to a
-// single rigid fragment, which makes the CBMC engine use the rigid whole-molecule growth path.
-void makeComponentRigid(Component& component)
+Component makeAlkaneFromExample(const ForceField& forceField, std::size_t componentId, std::string_view name,
+                                const MCMoveProbabilities& probabilities, bool rigid)
 {
-  component.rigid = true;
-  std::vector<std::size_t> wholeMolecule(component.definedAtoms.size());
-  std::iota(wholeMolecule.begin(), wholeMolecule.end(), std::size_t{0});
-  component.buildFragmentGraph({wholeMolecule});
+  nlohmann::json definition = nlohmann::json::parse(molecule_fixtures::alkaneJson(name));
+  if (rigid)
+  {
+    // The flexible growth templates have coincident coordinates. Supply the all-trans reference geometry
+    // before the component reader constructs the rigid body frame and determines its inertia.
+    constexpr double bondLength = 1.54;
+    constexpr double halfBendAngle = 57.0 * std::numbers::pi / 180.0;
+    const double stepX = bondLength * std::sin(halfBendAngle);
+    const double stepY = bondLength * std::cos(halfBendAngle);
+    auto& sites = definition.at("pseudoAtoms");
+    std::vector<std::size_t> wholeMolecule(sites.size());
+    std::iota(wholeMolecule.begin(), wholeMolecule.end(), 0uz);
+    for (const std::size_t i : wholeMolecule)
+    {
+      sites[i][1] = {static_cast<double>(i) * stepX, static_cast<double>(i % 2) * stepY, 0.0};
+    }
+    definition["RigidBodies"] = {wholeMolecule};
+  }
+  TemporaryFile file(std::string(name) + ".json", definition.dump());
+  return Component(Component::Type::Adsorbate, componentId, forceField, std::string(name), file.stemPath().string(), 5,
+                   21, probabilities, std::nullopt, false);
 }
 
 void checkEnergyDrift(System& s)
@@ -160,13 +169,9 @@ System makeMultiComponentReactionSystem(const MCMoveProbabilities& systemProbabi
   componentProbabilities.setProbability(Move::Types::Rotation, 1.0);
   componentProbabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
-  Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities);
-  Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities);
-  if (usesConventionalReactionGrowth(systemProbabilities))
-  {
-    makeComponentRigid(propane);
-    makeComponentRigid(butane);
-  }
+  const bool rigid = usesConventionalReactionGrowth(systemProbabilities);
+  Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities, rigid);
+  Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities, rigid);
   propane.lnPartitionFunction = 1.0;
   butane.lnPartitionFunction = 1.0;
 
@@ -245,13 +250,9 @@ System makeMixedParallelSerialReactionSystem(const MCMoveProbabilities& systemPr
   componentProbabilities.setProbability(Move::Types::Rotation, 1.0);
   componentProbabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
-  Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities);
-  Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities);
-  if (usesConventionalReactionGrowth(systemProbabilities))
-  {
-    makeComponentRigid(propane);
-    makeComponentRigid(butane);
-  }
+  const bool rigid = usesConventionalReactionGrowth(systemProbabilities);
+  Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities, rigid);
+  Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities, rigid);
   propane.lnPartitionFunction = 1.0;
   butane.lnPartitionFunction = 1.0;
 
@@ -291,13 +292,9 @@ System makeZeoliteMultiComponentReactionSystem(const MCMoveProbabilities& system
   componentProbabilities.setProbability(Move::Types::Rotation, 1.0);
   componentProbabilities.setProbability(Move::Types::ReinsertionCBMC, 1.0);
 
-  Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities);
-  Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities);
-  if (usesConventionalReactionGrowth(systemProbabilities))
-  {
-    makeComponentRigid(propane);
-    makeComponentRigid(butane);
-  }
+  const bool rigid = usesConventionalReactionGrowth(systemProbabilities);
+  Component propane = makeAlkaneFromExample(forceField, 0, "propane", componentProbabilities, rigid);
+  Component butane = makeAlkaneFromExample(forceField, 1, "butane", componentProbabilities, rigid);
   propane.lnPartitionFunction = 1.0;
   butane.lnPartitionFunction = 1.0;
 
