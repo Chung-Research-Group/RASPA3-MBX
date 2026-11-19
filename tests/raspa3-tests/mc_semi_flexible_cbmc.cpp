@@ -844,113 +844,73 @@ void expectGroupStatesAligned(const System& system)
     atomIndex += molecule.numberOfAtoms;
   }
 }
+
+void checkPentaneExchangeDynamics(MolecularDynamicsEnsemble ensemble)
+{
+  const ForceField forceField = makeAlkaneForceField();
+  MCMoveProbabilities probabilities;
+  probabilities.setProbability(Move::Types::SwapCBMC, 1.0);
+  Component pentane = makeSemiFlexiblePentane(forceField, 0, probabilities);
+  // Empty-box Widom growth with this 300 K pentane and no intermolecular interactions:
+  // four independent 10,000-insertion means (seeds 11, 37, 83, 109), W0 = 0.02020 +/- 0.00015 (standard error).
+  pentane.idealGasRosenbluthWeight = 0.0202;
+
+  System system =
+      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e6, 1.0, {}, {pentane}, {}, {16}, 5);
+  system.timeStep = 5e-5;
+  system.molecularDynamicsEnsemble = ensemble;
+  system.thermostat = Thermostat(300.0, system.timeStep, system.translationalDegreesOfFreedom,
+                                 system.rotationalDegreesOfFreedom, 3, 3, 0.15);
+  if (ensemble == MolecularDynamicsEnsemble::MuPT)
+  {
+    system.thermobarostat =
+        Thermobarostat(ensemble, CellMinimizationType::Isotropic, MonoclinicAngleType::Beta, 300.0,
+                       system.pressure, system.timeStep, system.translationalDegreesOfFreedom);
+  }
+
+  // MD attempts one exchange every three cycles. Forty production proposals exercise both directions.
+  MolecularDynamics md = MolecularDynamics({120, 0, 5, 5, 1000, 10000, 5000, 5000}, {std::move(system)}, 42uz, 5, false);
+  md.setup();
+  md.preInitialize();
+  md.initialize();
+  const System& sampled = md.systems.front();
+  const auto verifyGeometry = [&sampled]()
+  {
+    expectGroupStatesAligned(sampled);
+    expectRigidCoreGeometryPreserved(sampled);
+    EXPECT_TRUE(std::isfinite(sampled.runningEnergies.conservedEnergy()));
+    EXPECT_GT(sampled.simulationBox.volume, 0.0);
+  };
+  md.equilibrate(verifyGeometry, 1);
+
+  std::size_t minPopulation = std::numeric_limits<std::size_t>::max();
+  std::size_t maxPopulation{};
+  md.production([&]()
+  {
+    verifyGeometry();
+    const std::size_t population = sampled.moleculeData.size();
+    minPopulation = std::min(minPopulation, population);
+    maxPopulation = std::max(maxPopulation, population);
+  }, 1);
+
+  const auto& swaps =
+      std::get<MoveStatistics<double3>>(sampled.components[0].mc_moves_statistics[Move::Types::SwapCBMC]);
+  EXPECT_GT(swaps.totalAccepted.x, 0.0);
+  EXPECT_GT(swaps.totalAccepted.y, 0.0);
+  EXPECT_GT(maxPopulation, minPopulation);
+}
 }  // namespace
 
-// Grand-canonical MD (MuVT): the particle-exchange step inserts and deletes whole molecules; for
-// semi-flexible components the per-group rigid-body states (GroupState) are spliced in and out of
-// System::groupData so that the rigid-body integration stays aligned with the molecule layout. The
-// alignment is verified every cycle through the stage callbacks while exchanges are happening.
+// Verify group-state splicing and rigid-core geometry during both insertion and deletion.
 TEST(MC_SEMI_FLEXIBLE_CBMC, pentane_muvt_geometry_molecular_dynamics)
 {
-  const ForceField forceField = makeAlkaneForceField();
-
-  MCMoveProbabilities probabilities;
-  probabilities.setProbability(Move::Types::SwapCBMC, 1.0);
-  Component pentane = makeSemiFlexiblePentane(forceField, 0, probabilities);
-
-  System system =
-      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e6, 1.0, {}, {pentane}, {}, {16}, 5);
-  system.timeStep = 5e-5;
-  system.molecularDynamicsEnsemble = MolecularDynamicsEnsemble::MuVT;
-  system.thermostat = Thermostat(300.0, system.timeStep, system.translationalDegreesOfFreedom,
-                                 system.rotationalDegreesOfFreedom, 3, 3, 0.15);
-
-  // More production cycles than the other MD tests: particle exchange is only attempted every
-  // third cycle and the acceptance assertions below need accepted exchanges within the MD stages.
-  MolecularDynamics md = MolecularDynamics({60, 0, 5, 5, 1000, 10000, 5000, 5000}, {std::move(system)}, 42uz, 5, false);
-
-  const auto verifyGroupStates = [&md]()
-  {
-    for (System& s : md.systems)
-    {
-      expectGroupStatesAligned(s);
-      expectRigidCoreGeometryPreserved(s);
-      EXPECT_TRUE(std::isfinite(s.runningEnergies.conservedEnergy()));
-    }
-  };
-
-  md.setup();
-  md.preInitialize();
-  md.initialize();
-  md.equilibrate(verifyGroupStates, 1);
-  md.production(verifyGroupStates, 1);
-
-  for (System& s : md.systems)
-  {
-    // both an insertion and a deletion must have been accepted, otherwise the group-state splicing
-    // was not exercised (the run is deterministic through the fixed seed)
-    const auto& swapStatistics =
-        std::get<MoveStatistics<double3>>(s.components[0].mc_moves_statistics[Move::Types::SwapCBMC]);
-    const double3 acceptedCounts = swapStatistics.accepted + swapStatistics.totalAccepted;
-    EXPECT_GT(acceptedCounts.x, 0.0);
-    EXPECT_GT(acceptedCounts.y, 0.0);
-
-    expectGroupStatesAligned(s);
-    expectRigidCoreGeometryPreserved(s);
-    EXPECT_TRUE(std::isfinite(s.runningEnergies.conservedEnergy()));
-  }
+  checkPentaneExchangeDynamics(MolecularDynamicsEnsemble::MuVT);
 }
 
-// Grand-canonical MD at constant pressure (MuPT): particle exchange (group-state splicing) combined
-// with the barostat propagation of the rigid-group centers of mass and the flexible atoms.
+// Also couple the cell to the rigid-group centers of mass and the flexible atoms.
 TEST(MC_SEMI_FLEXIBLE_CBMC, pentane_mupt_geometry_molecular_dynamics)
 {
-  const ForceField forceField = makeAlkaneForceField();
-
-  MCMoveProbabilities probabilities;
-  probabilities.setProbability(Move::Types::SwapCBMC, 1.0);
-  Component pentane = makeSemiFlexiblePentane(forceField, 0, probabilities);
-
-  System system =
-      System(forceField, SimulationBox(30.0, 30.0, 30.0), false, 300.0, 1e6, 1.0, {}, {pentane}, {}, {16}, 5);
-  system.timeStep = 5e-5;
-  system.molecularDynamicsEnsemble = MolecularDynamicsEnsemble::MuPT;
-  system.thermostat = Thermostat(300.0, system.timeStep, system.translationalDegreesOfFreedom,
-                                 system.rotationalDegreesOfFreedom, 3, 3, 0.15);
-  system.thermobarostat =
-      Thermobarostat(MolecularDynamicsEnsemble::MuPT, CellMinimizationType::Isotropic, MonoclinicAngleType::Beta, 300.0,
-                     system.pressure, system.timeStep, system.translationalDegreesOfFreedom);
-
-  MolecularDynamics md = MolecularDynamics({60, 0, 5, 5, 1000, 10000, 5000, 5000}, {std::move(system)}, 42uz, 5, false);
-
-  const auto verifyGroupStates = [&md]()
-  {
-    for (System& s : md.systems)
-    {
-      expectGroupStatesAligned(s);
-      expectRigidCoreGeometryPreserved(s);
-      EXPECT_TRUE(std::isfinite(s.runningEnergies.conservedEnergy()));
-    }
-  };
-
-  md.setup();
-  md.preInitialize();
-  md.initialize();
-  md.equilibrate(verifyGroupStates, 1);
-  md.production(verifyGroupStates, 1);
-
-  for (System& s : md.systems)
-  {
-    const auto& swapStatistics =
-        std::get<MoveStatistics<double3>>(s.components[0].mc_moves_statistics[Move::Types::SwapCBMC]);
-    const double3 acceptedCounts = swapStatistics.accepted + swapStatistics.totalAccepted;
-    EXPECT_GT(acceptedCounts.x + acceptedCounts.y, 0.0);
-
-    expectGroupStatesAligned(s);
-    expectRigidCoreGeometryPreserved(s);
-    EXPECT_TRUE(std::isfinite(s.runningEnergies.conservedEnergy()));
-    EXPECT_GT(s.simulationBox.volume, 0.0);
-  }
+  checkPentaneExchangeDynamics(MolecularDynamicsEnsemble::MuPT);
 }
 
 // Under a symmetric logarithmic cell strain the rigid-group centers of mass follow the cell while
