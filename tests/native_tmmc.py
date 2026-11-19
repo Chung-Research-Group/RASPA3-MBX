@@ -49,8 +49,8 @@ def matrix(work):
 
 
 def get_deck(work, kind):
-    fixed = kind in ("fixed", "cbmc-fixed")
-    one_axis = kind == "legacy"
+    fixed = kind in ("fixed", "cbmc-fixed", "coordinates")
+    one_axis = kind in ("legacy", "cation")
     # z_i = V f_i / (k_B T). Set z_A=1/2, z_B=7/2 by choosing total z=4.
     temperature, length = 300.0, 24.0
     pressure = 4 * 1.380650324e-23 * temperature / (length * 1e-10) ** 3
@@ -69,6 +69,8 @@ def get_deck(work, kind):
     if one_axis:
         components = components[:1]
         components[0].update(MolFraction=1.)
+        if kind == "cation":
+            components[0]["Type"] = "Cation"
         system.update(MacroStateMinimumNumberOfMolecules=0, MacroStateMaximumNumberOfMolecules=3)
     elif fixed:
         for component in components:
@@ -79,6 +81,12 @@ def get_deck(work, kind):
         system.update(MacroStateMinimumNumberOfMolecules=1, MacroStateMaximumNumberOfMolecules=3)
         components[0].update(MaxMacrostate=2)
         components[1].update(MinMacrostate=2, MaxMacrostate=3)
+    if kind == "coordinates":
+        # Load one molecule of each species, then have RASPA create the second B.
+        system["RestartFileName"] = "coordinates.json"
+        write_json(work / "coordinates.json", {"A": [[2., 3., 4.]], "B": [[14., 15., 16.]]})
+        components[0]["CreateNumberOfMolecules"] = 0
+        components[1]["CreateNumberOfMolecules"] = 1
     deck = {"SimulationType": "MonteCarloTransitionMatrix", "ForceField": ".",
             "RandomSeed": 74169, "PrintEvery": 5,
             "NumberOfInitializationCycles": 1, "NumberOfEquilibrationCycles": 1,
@@ -92,6 +100,10 @@ def get_deck(work, kind):
 
 
 def verify(kind, work):
+    if kind == "coordinates":
+        kind = "fixed"
+    elif kind == "cation":
+        kind = "legacy"
     labels, rows = matrix(work)
     if kind == "legacy":
         assert [int(r[0]) for r in rows] == [0, 1, 2, 3], rows
@@ -195,6 +207,8 @@ def restart_check(kind, binary, first, env):
     shutil.copyfile(checkpoint, resumed / "source.bin")
     settings = read_json(resumed / "simulation.json")
     settings.update(RestartFromBinaryFile=True, BinaryRestartFileName="source.bin", RandomSeed=50235)
+    # The archived A count is authoritative; the input-only count lies below its lower bound.
+    settings["Components"][0]["CreateNumberOfMolecules"] = 0
     write_json(resumed / "simulation.json", settings)
     native(binary, resumed, env)
     reference = matrix(first)
@@ -205,13 +219,26 @@ def restart_check(kind, binary, first, env):
             "identical_rows": len(reference[1]), "input_seed_changed": True}
 
 
+def reject_extra_coordinate(binary, first, env):
+    bad = first.with_name("coordinates-outside")
+    bad.mkdir()
+    for path in first.glob("*.json"):
+        shutil.copyfile(path, bad / path.name)
+    deck = read_json(bad / "simulation.json")
+    deck["Components"][0]["CreateNumberOfMolecules"] = 1
+    write_json(bad / "simulation.json", deck)
+    run = subprocess.run([str(binary)], cwd=bad, env=env, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    (bad / "console.log").write_text(run.stdout)
+    assert run.returncode != 0 and "component A initial population 2" in run.stdout, run.stdout
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--binary", type=Path, required=True)
     parser.add_argument("--source", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--cases", nargs="+", choices=("legacy", "fixed", "cbmc-fixed", "mixed", "adaptive"),
-                        default=("legacy", "fixed", "cbmc-fixed", "mixed", "adaptive"))
+    parser.add_argument("--cases", nargs="+", choices=("legacy", "fixed", "cbmc-fixed", "mixed", "adaptive", "coordinates", "cation"),
+                        default=("legacy", "fixed", "cbmc-fixed", "mixed", "adaptive", "coordinates", "cation"))
     args = parser.parse_args()
     binary, source = args.binary.resolve(), args.source.resolve()
     args.output.mkdir(parents=True, exist_ok=True)
@@ -225,6 +252,9 @@ def main():
         get_deck(work, kind)
         native(binary, work, env)
         results["cases"][kind] = verify(kind, work)
+        if kind == "coordinates":
+            reject_extra_coordinate(binary, work, env)
+            results["cases"][kind]["out_of_range_rejected"] = True
         if kind == "mixed":
             results["cases"][kind]["restart"] = restart_check(kind, binary, work, env)
         write_json(args.output / "results.json", results)

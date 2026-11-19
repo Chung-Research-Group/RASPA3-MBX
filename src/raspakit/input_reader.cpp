@@ -222,7 +222,8 @@ bool biasSetting(const SimulationInput& input, const char* key, bool fallback)
   return input.at(key).get<bool>();
 }
 
-void configureComponentMacrostates(System& system, const SimulationInput& input, std::size_t systemIndex)
+void configureComponentMacrostates(System& system, const SimulationInput& input, std::size_t systemIndex,
+                                   bool restartFromBinary)
 {
   auto& matrix = system.tmmc;
   const auto& defaults = input.at("Systems").at(systemIndex);
@@ -248,13 +249,14 @@ void configureComponentMacrostates(System& system, const SimulationInput& input,
     if (system.components[id].type != Component::Type::Adsorbate)
     {
       if (hasLimits(item)) throw std::invalid_argument("TMMC: component bounds require an adsorbate");
-      continue;
+      // The original scalar input accepts a single cation using system-level limits.
+      if (system.components.size() != 1) continue;
     }
     if (!allAdsorbates && !hasLimits(item)) continue;
     const auto lo = unsignedSetting(item, "MinMacrostate", defaultMin);
     const auto hi = unsignedSetting(item, "MaxMacrostate", defaultMax);
-    const auto n = system.initialNumberOfMolecules[id];
-    if (lo > hi || hi - lo == std::numeric_limits<std::size_t>::max() || n < lo || n > hi)
+    const auto n = system.numberOfIntegerMoleculesPerComponent[id];
+    if (lo > hi || hi - lo == std::numeric_limits<std::size_t>::max() || (!restartFromBinary && (n < lo || n > hi)))
       throw std::invalid_argument(
           std::format("TMMC: component {} initial population {} and macrostate bounds [{}, {}] are inconsistent",
                       system.components[id].name, n, lo, hi));
@@ -1637,7 +1639,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     if (systems[i].tmmc.doTMMC)
     {
-      configureComponentMacrostates(systems[i], parsed_data, i);
+      configureComponentMacrostates(systems[i], parsed_data, i, restartFromBinary);
     }
   }
 }

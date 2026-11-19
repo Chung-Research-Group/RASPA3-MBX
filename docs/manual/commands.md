@@ -99,7 +99,11 @@ system level. Supply each system endpoint under one spelling only.
 For example, this fragment fixes the first component at 2 molecules and lets the
 second range from 1 through 4. Setting its maximum to 1 gives an NVT-W window
 at the single joint state (2, 1). Initialize each tracked molecule count within
-its inclusive bounds.
+its inclusive bounds. For a fresh run with `RestartFileName`, count both the
+molecules loaded from coordinates and those added by `CreateNumberOfMolecules`.
+A binary continuation uses the populations and bounds saved in its checkpoint.
+A single cation can use legacy scalar system bounds; component-specific bounds
+apply to adsorbates.
 
 ```json
 {
