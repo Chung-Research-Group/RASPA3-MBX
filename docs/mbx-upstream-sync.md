@@ -387,7 +387,12 @@ manual runs. Drafts, prereleases and branch-tip changes never trigger a sync.
    the current downstream main, then dispatch the workflow again.
 2. CI checks out the candidate SHA with read-only credentials and builds with
    MBX enabled and disabled. It runs the native suites, shipped MBX examples
-   and the TMMC calculation regressions for the applicable build. The candidate
+   and the TMMC calculation regressions for the applicable build. Each build
+   exports its test executables, fixtures and exact conda package list.
+   Sixteen independent runners execute interleaved CTest indices for each
+   build, covering the complete suite with a fresh workspace per shard.
+   Native assertions and the simulation lengths in the fixtures are preserved.
+   GitHub's hosted job time limit still applies. The candidate
    stays available for inspection if a test fails.
 3. Once validation passes, CI checks both branch tips again and fast-forwards
    `main` to the tested commit. If the downstream `mbx` branch exists, it

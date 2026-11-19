@@ -13,9 +13,8 @@ permissions:
   contents: read
 
 jobs:
-  native-tests:
+  build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -64,15 +63,34 @@ jobs:
           cmake --preset mbx-local --fresh \
             -DBUILD_MBX=${{ matrix.mbx }} \
             -DBUILD_TESTING_MBX=${{ matrix.mbx }} \
+            -DBUILD_CLI=OFF \
             -DBUILD_TESTING_RASPAKIT=ON \
             -DBUILD_TESTING_RASPA3=ON
       - name: Build RASPA3 and native tests
         id: native_build
-        run: cmake --build --preset mbx-local --parallel 2
-      - name: Run all discovered native tests
+        env:
+          MBX_BUILD: ${{ matrix.mbx }}
         run: |
-          ctest --preset mbx-local --show-only=json-v1 > ctest_inventory.json
-          ctest --preset mbx-local --no-tests=error --output-on-failure --timeout 180 --output-junit native-tests.xml
+          targets=(raspa3 unit_tests_raspakit unit_tests_raspa3)
+          if [[ "$MBX_BUILD" == ON ]]; then
+            targets+=(unit_tests_mbx)
+          fi
+          cmake --build --preset mbx-local --parallel 2 --target "${targets[@]}"
+      - name: Package the CTest suite and its runtime fixtures
+        run: |
+          conda list --explicit --md5 > "$RUNNER_TEMP/dependencies.conda.lock"
+          ctest --test-dir build-mbx --show-only=json-v1 > ctest_inventory.json
+          find build-mbx -name CTestTestfile.cmake ! -path 'build-mbx/tests/*' -print0 > "$RUNNER_TEMP/testfiles"
+          tar -czf "$RUNNER_TEMP/native-suite.tar.gz" --exclude='*/CMakeFiles' \
+            --exclude='*/Testing' build-mbx/tests --null -T "$RUNNER_TEMP/testfiles"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-suite-MBX-${{ matrix.mbx }}
+          path: |
+            ${{ runner.temp }}/native-suite.tar.gz
+            ${{ runner.temp }}/dependencies.conda.lock
+          compression-level: 0
+          retention-days: 2
       - name: Run shipped examples with physical and output checks
         if: always() && matrix.mbx == 'ON' && steps.native_build.outcome == 'success'
         run: |
@@ -84,20 +102,62 @@ jobs:
         env:
           MBX_BUILD: ${{ matrix.mbx }}
         run: |
-          cases=(legacy fixed cbmc-fixed mixed)
+          cases=()
           if [[ "$MBX_BUILD" == ON ]]; then
-            cases+=(mbx-fixed mbx-mixed)
+            cases=(--cases legacy fixed cbmc-fixed mixed adaptive mbx-fixed mbx-mixed mbx-cbmc-mixed)
           fi
           python tests/native_tmmc.py --binary "$GITHUB_WORKSPACE/build-mbx/app/raspa3" \
-            --source "$GITHUB_WORKSPACE" --output "$RUNNER_TEMP/tmmc-checks" --cases "${cases[@]}"
+            --source "$GITHUB_WORKSPACE" --output "$RUNNER_TEMP/tmmc-checks" "${cases[@]}"
       - name: Preserve native evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: native-evidence-MBX-${{ matrix.mbx }}
           path: |
-            native-tests.xml
             ctest_inventory.json
-            build-mbx/Testing/Temporary/
             ${{ runner.temp }}/example-checks/
             ${{ runner.temp }}/tmmc-checks/
+
+  native-tests:
+    if: ${{ !cancelled() }}
+    needs: build
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        mbx: ["ON", "OFF"]
+        shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.validation_ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: native-suite-MBX-${{ matrix.mbx }}
+          path: ci-native-suite
+      - uses: conda-incubator/setup-miniconda@v3
+        with:
+          miniforge-version: latest
+          environment-file: ci-native-suite/dependencies.conda.lock
+          activate-environment: raspa3-mbx
+          auto-activate-base: false
+      - name: Run every sixteenth test in a separate workspace
+        shell: bash -el {0}
+        env:
+          SHARD: ${{ matrix.shard }}
+          OMP_NUM_THREADS: "1"
+          OPENBLAS_NUM_THREADS: "1"
+        run: |
+          tar -xzf ci-native-suite/native-suite.tar.gz
+          export LD_LIBRARY_PATH="$CONDA_PREFIX/lib"
+          ctest --test-dir build-mbx -I "$SHARD,,16" --no-tests=error \
+            --output-on-failure --output-junit "$RUNNER_TEMP/native-tests.xml"
+      - name: Preserve shard evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: native-results-MBX-${{ matrix.mbx }}-shard-${{ matrix.shard }}
+          path: |
+            ${{ runner.temp }}/native-tests.xml
+            build-mbx/Testing/Temporary/
