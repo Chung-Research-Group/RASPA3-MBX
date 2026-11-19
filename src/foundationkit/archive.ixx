@@ -404,13 +404,16 @@ class Archive
   {
     std::size_t index{};
     *this >> index;
-    if(index == 0)
+    switch (index)
     {
-      *this >> get<0>(v);
-    }
-    if(index == 1)
-    {
-      *this >> get<1>(v);
+      case 0:
+        *this >> v.template emplace<0>();
+        break;
+      case 1:
+        *this >> v.template emplace<1>();
+        break;
+      default:
+        throw std::runtime_error("Invalid variant index in restart archive");
     }
     return *this;
   }
