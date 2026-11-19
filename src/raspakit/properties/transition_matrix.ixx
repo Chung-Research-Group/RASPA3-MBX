@@ -4,6 +4,7 @@ export module transition_matrix;
 
 import std;
 
+import transition_matrix_nd;
 import archive;
 import double3;
 
@@ -19,7 +20,14 @@ import double3;
  */
 export struct TransitionMatrix
 {
-  std::uint64_t versionNumber{1};  ///< Version number for serialization compatibility.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization compatibility.
+
+  std::optional<TransitionMatrixMultidimensional> joint;
+  std::string statisticsFileName{"tmmc/tmmc_statistics.txt"};
+
+  std::size_t collectionRow(const std::vector<std::size_t> &counts, std::size_t component) const;
+  void recordMove(double3 weights, std::size_t oldRow, std::size_t component);
+  double exchangeBias(const std::vector<std::size_t> &counts, std::size_t component, bool insert);
 
   bool operator==(TransitionMatrix const &) const = default;
 

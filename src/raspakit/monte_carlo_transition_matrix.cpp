@@ -107,17 +107,25 @@ continueProductionStage:
   output();
 }
 
-void MonteCarloTransitionMatrix::createOutputFiles()
+void MonteCarloTransitionMatrix::createOutputFiles(bool append)
 {
   std::filesystem::create_directories("output");
+  outputJsons.resize(systems.size());
   for (std::size_t system_id{0}; System& system : systems)
   {
     std::string fileNameString =
         std::format("output/output_{}_{}.s{}.txt", system.temperature, system.input_pressure, system_id);
-    streams.emplace_back(fileNameString, std::ios::out);
+    streams.emplace_back(fileNameString, append ? std::ios::app : std::ios::out);
+    if (append)
+      std::print(streams.back(), "\nResuming binary TMMC checkpoint at cycle {} (seed {})\n", currentCycle, random.seed);
     fileNameString =
         std::format("output/output_{}_{}.s{}.json", system.temperature, system.input_pressure, system_id);
     outputJsonFileNames.emplace_back(fileNameString);
+    if (append)
+    {
+      std::ifstream previous(fileNameString);
+      if (previous) previous >> outputJsons[system_id];
+    }
 
     ++system_id;
   }
@@ -125,7 +133,6 @@ void MonteCarloTransitionMatrix::createOutputFiles()
 
 void MonteCarloTransitionMatrix::performCycle()
 {
-  std::size_t N{0uz};
   std::size_t totalNumberOfMolecules{0uz};
   std::size_t totalNumberOfComponents{0uz};
   std::size_t numberOfStepsPerCycle{0uz};
@@ -157,18 +164,13 @@ void MonteCarloTransitionMatrix::performCycle()
         MC_Moves::performRandomMoveInitialization(random, selectedSystem, selectedSecondSystem, selectedComponent,
                                                   fractionalMoleculeSystem);
 
-        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-        selectedSystem.tmmc.updateHistogram(N);
         selectedSystem.tmmc.numberOfSteps++;
         break;
       case SimulationStage::Equilibration:
         MC_Moves::performRandomMoveEquilibration(random, selectedSystem, selectedSecondSystem, selectedComponent,
                                                  fractionalMoleculeSystem);
 
-        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-        selectedSystem.tmmc.updateHistogram(N);
         selectedSystem.tmmc.numberOfSteps++;
-        selectedSystem.tmmc.adjustBias();
 
         selectedSystem.components[selectedComponent].lambdaGC.WangLandauIteration(
             PropertyLambdaProbabilityHistogram::WangLandauPhase::Sample, selectedSystem.containsTheFractionalMolecule);
@@ -180,13 +182,19 @@ void MonteCarloTransitionMatrix::performCycle()
         MC_Moves::performRandomMoveProduction(random, selectedSystem, selectedSecondSystem, selectedComponent,
                                               fractionalMoleculeSystem, estimation.currentBin);
 
-        N = selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent];
-        selectedSystem.tmmc.updateHistogram(N);
         selectedSystem.tmmc.numberOfSteps++;
-        selectedSystem.tmmc.adjustBias();
 
         numberOfSteps++;
         break;
+    }
+
+    if (selectedSystem.tmmc.joint)
+      selectedSystem.tmmc.joint->updateHistogram(selectedSystem.numberOfIntegerMoleculesPerComponent,
+                                                selectedSystem.runningEnergies.potentialEnergy());
+    else
+    {
+      selectedSystem.tmmc.updateHistogram(selectedSystem.numberOfIntegerMoleculesPerComponent[selectedComponent]);
+      if (simulationStage != SimulationStage::Initialization) selectedSystem.tmmc.adjustBias();
     }
 
     selectedSystem.components[selectedComponent].lambdaGC.sampleOccupancy(selectedSystem.containsTheFractionalMolecule);
@@ -385,6 +393,16 @@ void MonteCarloTransitionMatrix::equilibrate()
       }
     }
 
+    for (System& system : systems)
+    {
+      if (system.tmmc.joint)
+      {
+        const auto completedCycles = currentCycle + 1;
+        system.tmmc.joint->adjustBias(completedCycles);
+        if (completedCycles % system.tmmc.joint->writeTMMCEvery == 0) system.tmmc.writeStatistics();
+      }
+    }
+
     if (currentCycle % writeBinaryRestartEvery == 0uz)
     {
       // write restart
@@ -423,6 +441,7 @@ void MonteCarloTransitionMatrix::production()
 
     system.tmmc.numberOfSteps = 0;
 
+    if (system.tmmc.joint) system.tmmc.joint->startProduction();
     system.mc_moves_statistics.clearMoveStatistics();
     system.mc_moves_cputime.clearTimingStatistics();
 
@@ -506,6 +525,16 @@ void MonteCarloTransitionMatrix::production()
       for (System& system : systems)
       {
         system.optimizeMCMoves();
+      }
+    }
+
+    for (System& system : systems)
+    {
+      if (system.tmmc.joint)
+      {
+        const auto completedCycles = currentCycle + 1;
+        system.tmmc.joint->adjustBias(completedCycles);
+        if (completedCycles % system.tmmc.joint->writeTMMCEvery == 0) system.tmmc.writeStatistics();
       }
     }
 
@@ -697,12 +726,9 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, MonteCarloTr
   archive >> mc.totalProductionSimulationTime;
   archive >> mc.totalSimulationTime;
 
-  std::uint64_t magicNumber;
+  std::uint64_t magicNumber{};
   archive >> magicNumber;
   if (magicNumber != static_cast<std::uint64_t>(0x6f6b6179))
-  {
-  }
-  std::cout << std::format("Magic number read correctly: {} vs {}\n", magicNumber,
-                           static_cast<std::uint64_t>(0x6f6b6179));
+    throw std::runtime_error("Invalid TMMC checkpoint trailer");
   return archive;
 }

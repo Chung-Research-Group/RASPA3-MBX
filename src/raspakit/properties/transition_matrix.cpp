@@ -7,9 +7,29 @@ import std;
 import archive;
 import double3;
 
+std::size_t TransitionMatrix::collectionRow(const std::vector<std::size_t> &counts, std::size_t component) const
+{
+  return joint ? joint->collectionRow(counts) : counts[component];
+}
+
+void TransitionMatrix::recordMove(double3 weights, std::size_t oldRow, std::size_t component)
+{
+  if (joint) joint->updateMatrix(weights, oldRow, component);
+  else updateMatrix(weights, oldRow);
+}
+
+double TransitionMatrix::exchangeBias(const std::vector<std::size_t> &counts, std::size_t component, bool insert)
+{
+  if (!doTMMC) return 1.0;
+  if (joint) return joint->biasFactor(counts, component, insert);
+  const std::size_t oldN = counts[component];
+  if (insert ? oldN >= maxMacrostate : oldN <= minMacrostate) return 0.0;
+  return biasFactor(insert ? oldN + 1 : oldN - 1, oldN);
+}
+
 void TransitionMatrix::initialize()
 {
-  if (!doTMMC) return;
+  if (!doTMMC || joint) return;
 
   cmatrix.resize(maxMacrostate - minMacrostate + 1);
   bias.resize(maxMacrostate - minMacrostate + 1);
@@ -57,7 +77,7 @@ double TransitionMatrix::biasFactor(std::size_t newN, std::size_t oldN)
 // From Vince Shen's pseudo code//
 void TransitionMatrix::adjustBias()
 {
-  if (!doTMMC || !useBias || !useTMBias) return;
+  if (!doTMMC || joint || !useBias || !useTMBias) return;
 
   if ((numberOfSteps % updateTMEvery != 0) || numberOfSteps == 0) return;
 
@@ -140,16 +160,14 @@ void TransitionMatrix::clearCMatrix()
 
 void TransitionMatrix::writeStatistics()
 {
-  std::ofstream textTMMCFile{};
-  std::filesystem::path cwd = std::filesystem::current_path();
-
-  std::string dirname = "tmmc/";
-  std::string fname = dirname + "/" + "tmmc_statistics.txt";
-
-  std::filesystem::path directoryName = cwd / dirname;
-  std::filesystem::path fileName = cwd / fname;
-  std::filesystem::create_directories(directoryName);
-  textTMMCFile = std::ofstream(fileName, std::ios::out);
+  if (joint)
+  {
+    joint->writeStatistics(statisticsFileName);
+    return;
+  }
+  const std::filesystem::path path(statisticsFileName);
+  if (path.has_parent_path()) std::filesystem::create_directories(path.parent_path());
+  std::ofstream textTMMCFile(path);
 
   if (doTMMC)
   {
@@ -198,6 +216,8 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Transi
   archive << m.useTMBias;
   archive << m.rejectOutofBound;
   archive << m.rezeroAfterInitialization;
+  archive << m.statisticsFileName;
+  archive << m.joint;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -235,6 +255,11 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, TransitionMa
   archive >> m.useTMBias;
   archive >> m.rejectOutofBound;
   archive >> m.rezeroAfterInitialization;
+  if (versionNumber >= 2)
+  {
+    archive >> m.statisticsFileName;
+    archive >> m.joint;
+  }
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

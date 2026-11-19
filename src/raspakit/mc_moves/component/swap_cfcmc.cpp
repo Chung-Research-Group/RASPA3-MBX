@@ -52,7 +52,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
   {
     if (insertionDisabled)
     {
-      return {std::nullopt, double3(0.0, 0.0, 0.0)};
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
 
     // Steps for insertion Lambda_new = 1 + epsilon
@@ -268,19 +268,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
         std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy()) +
                  biasTerm);
 
-    double biasTransitionMatrix = system.tmmc.biasFactor(oldN + 1, oldN);
-
-    if (system.tmmc.doTMMC)
-    {
-      std::size_t newN = oldN + 1;
-      if (newN > system.tmmc.maxMacrostate)
-      {
-        return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
-      }
-    }
+    const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent,
+                                                                 selectedComponent, true);
 
     // Apply acceptance/rejection rule
-    if (random.uniform() < biasTransitionMatrix * Pacc)
+    if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * Pacc)
     {
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
 
@@ -305,13 +297,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
     // Restore old lambda
     std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
 
-    return {std::nullopt, double3(0.0, 1.0, 0.0)};
+    return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
   }
   else if (selectedNewBin < 0)  // Deletion move
   {
     if (deletionDisabled)
     {
-      return {std::nullopt, double3(0.0, 0.0, 0.0)};
+      return {std::nullopt, double3(0.0, 1.0, 0.0)};
     }
     // Steps for deletion Lambda_new = -epsilon
     // ===================================================================
@@ -523,19 +515,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC(Random
           std::exp(-system.beta * (energyDifferenceStep1.potentialEnergy() + energyDifferenceStep2.potentialEnergy()) +
                    biasTerm);
 
-      double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
-
-      if (system.tmmc.doTMMC)
-      {
-        std::size_t newN = oldN - 1;
-        if (newN < system.tmmc.minMacrostate)
-        {
-          return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
-        }
-      }
+      const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent,
+                                                                   selectedComponent, false);
 
       // Apply acceptance/rejection rule
-      if (random.uniform() < biasTransitionMatrix * Pacc)
+      if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * Pacc)
       {
         Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
         component.lambdaGC.setCurrentBin(newBin);

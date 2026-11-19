@@ -98,7 +98,7 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
 
     // Compute tail correction energy difference
     time_begin = std::chrono::system_clock::now();
-    [[maybe_unused]] RunningEnergy tailEnergyDifference =
+    RunningEnergy tailEnergyDifference =
         Interactions::computeInterMolecularTailEnergyDifference(system.forceField, system.simulationBox,
                                                                 system.spanOfMoleculeAtoms(), {}, molecule) +
         Interactions::computeFrameworkMoleculeTailEnergyDifference(system.forceField, system.simulationBox,
@@ -129,21 +129,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     double preFactor = double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                        (system.beta * fugacity * system.simulationBox.volume);
     double Pacc = preFactor * std::exp(-system.beta * energyDifference.potentialEnergy());
-    std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
-    double biasTransitionMatrix = system.tmmc.biasFactor(oldN - 1, oldN);
-
-    // Check if TMMC is enabled and if new state is below minimum macrostate
-    if (system.tmmc.doTMMC)
-    {
-      std::size_t newN = oldN - 1;
-      if (newN < system.tmmc.minMacrostate)
-      {
-        return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
-      }
-    }
+    const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent,
+                                                                 selectedComponent, false);
 
     // Apply acceptance/rejection rule
-    if (random.uniform() < biasTransitionMatrix * Pacc)
+    if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * Pacc)
     {
       // Move accepted; update acceptance statistics
       component.mc_moves_statistics.addAccepted(move, 1);

@@ -24,6 +24,7 @@ import mc_moves_move_types;
 import reaction;
 import reactions;
 import transition_matrix;
+import transition_matrix_nd;
 import property_conventional_rdf;
 import property_rdf;
 import property_density_grid;
@@ -200,6 +201,83 @@ void InputReader::parseMixturePrediction([[maybe_unused]] const nlohmann::basic_
 
 void InputReader::parseBreakthrough([[maybe_unused]] const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
 {
+}
+
+namespace
+{
+using SimulationInput = nlohmann::basic_json<nlohmann::raspa_map>;
+
+std::size_t unsignedSetting(const SimulationInput& input, const char* key, std::size_t fallback)
+{
+  if (!input.contains(key)) return fallback;
+  if (!input.at(key).is_number_unsigned())
+    throw std::invalid_argument(std::format("TMMC: {} must be a nonnegative integer", key));
+  return input.at(key).get<std::size_t>();
+}
+
+bool biasSetting(const SimulationInput& input, const char* key, bool fallback)
+{
+  if (!input.contains(key)) return fallback;
+  if (!input.at(key).is_boolean()) throw std::invalid_argument(std::format("TMMC: {} must be boolean", key));
+  return input.at(key).get<bool>();
+}
+
+void configureComponentMacrostates(System& system, const SimulationInput& input, std::size_t systemIndex)
+{
+  auto& matrix = system.tmmc;
+  const auto& defaults = input.at("Systems").at(systemIndex);
+  const auto& components = input.at("Components");
+  const char* systemMin = "MacroStateMinimumNumberOfMolecules";
+  const char* systemMax = "MacroStateMaximumNumberOfMolecules";
+  const auto hasLimits = [](const auto& item) { return item.contains("MinMacrostate") || item.contains("MaxMacrostate"); };
+  if ((defaults.contains(systemMin) && defaults.contains("MinMacrostate")) ||
+      (defaults.contains(systemMax) && defaults.contains("MaxMacrostate")))
+    throw std::invalid_argument("TMMC: use one system keyword for each macrostate endpoint");
+  const bool allAdsorbates = defaults.contains(systemMin) || defaults.contains(systemMax) || hasLimits(defaults) ||
+                             std::none_of(components.begin(), components.end(), hasLimits);
+  const auto defaultMin = unsignedSetting(defaults, "MinMacrostate", unsignedSetting(defaults, systemMin, matrix.minMacrostate));
+  const auto defaultMax = unsignedSetting(defaults, "MaxMacrostate", unsignedSetting(defaults, systemMax, matrix.maxMacrostate));
+  matrix.useBias = biasSetting(defaults, "MacroStateUseBias", biasSetting(input, "UseTMMCBias", true));
+  std::vector<std::size_t> ids, lower, upper;
+  for (std::size_t id = 0; id < system.components.size(); ++id)
+  {
+    const auto& item = components.at(id);
+    if (system.components[id].type != Component::Type::Adsorbate)
+    {
+      if (hasLimits(item)) throw std::invalid_argument("TMMC: component bounds require an adsorbate");
+      continue;
+    }
+    if (!allAdsorbates && !hasLimits(item)) continue;
+    const auto lo = unsignedSetting(item, "MinMacrostate", defaultMin);
+    const auto hi = unsignedSetting(item, "MaxMacrostate", defaultMax);
+    const auto n = system.initialNumberOfMolecules[id];
+    if (lo > hi || hi - lo == std::numeric_limits<std::size_t>::max() || n < lo || n > hi)
+      throw std::invalid_argument(std::format("TMMC: component {} initial population {} and macrostate bounds [{}, {}] are inconsistent", system.components[id].name, n, lo, hi));
+    ids.push_back(id);
+    lower.push_back(lo);
+    upper.push_back(hi);
+  }
+  if (ids.empty()) throw std::invalid_argument("TMMC requires an adsorbate macrostate");
+  const auto sampleEvery = unsignedSetting(input, "SampleTMMCEvery", 1000);
+  const auto writeEvery = unsignedSetting(input, "WriteTMMCEvery", 1000);
+  if (!sampleEvery || !writeEvery) throw std::invalid_argument("TMMC intervals must be positive");
+  if (systemIndex != 0) matrix.statisticsFileName = std::format("tmmc/tmmc_statistics.s{}.txt", systemIndex);
+  if (system.components.size() == 1)
+  {
+    matrix.minMacrostate = lower.front();
+    matrix.maxMacrostate = upper.front();
+    return;
+  }
+
+  // A composition-changing identity move or transfer between boxes has no single +/- axis column.
+  for (const auto& component : system.components)
+    for (const auto move : {Move::Types::IdentityChangeCBMC, Move::Types::GibbsSwapCBMC, Move::Types::GibbsSwapCFCMC,
+                            Move::Types::GibbsVolume, Move::Types::ParallelTempering,
+                            Move::Types::WidomCFCMC, Move::Types::WidomCBCFCMC})
+      if (component.mc_moves_probabilities.getProbability(move) > 0)
+        throw std::invalid_argument(std::format("TMMC: incompatible joint macrostate move {}", Move::moveNames[std::to_underlying(move)]));
+  matrix.joint.emplace(lower, upper, ids, sampleEvery, writeEvery, matrix.useBias);
+}
 }
 
 void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann::raspa_map>& parsed_data)
@@ -1450,7 +1528,7 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     for (std::size_t i = 0uz; i < systems.size(); ++i)
     {
       systems[i].tmmc.doTMMC = true;
-      systems[i].tmmc.useBias = true;
+
       systems[i].tmmc.useTMBias = true;
     }
   }
@@ -1553,36 +1631,21 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
   {
     if (systems[i].tmmc.doTMMC)
     {
-      if (systems[i].numerOfAdsorbateComponents() > 1)
-      {
-        throw std::runtime_error("Error: Multiple components for TMMC not yet implemented.\n");
-      }
-
-      // check initial number of molecules is in the range of the TMMC macrostates
-      for (std::size_t j = 0uz; j < systems[i].components.size(); ++j)
-      {
-        if (systems[i].components[j].type == Component::Type::Adsorbate)
-        {
-          std::size_t numberOfMolecules = systems[i].initialNumberOfMolecules[j];
-          if (numberOfMolecules < systems[i].tmmc.minMacrostate || numberOfMolecules > systems[i].tmmc.maxMacrostate)
-          {
-            throw std::runtime_error(
-                std::format("Error: Molecules created ({}) need to fit into the TMMC macrostate "
-                            "range ({}-{})\n",
-                            numberOfMolecules, systems[i].tmmc.minMacrostate, systems[i].tmmc.maxMacrostate));
-          }
-        }
-      }
+      configureComponentMacrostates(systems[i], parsed_data, i);
     }
   }
 }
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::generalOptions = {
     "SimulationType",
+    "SampleTMMCEvery",
+    "WriteTMMCEvery",
+    "UseTMMCBias",
     "Units",
     "ForceField",
     "NumberOfLambdaBins",
     "RestartFromBinaryFile",
+    "BinaryRestartFileName",
     "RandomSeed",
     "NumberOfCycles",
     "NumberOfInitializationCycles",
@@ -1667,12 +1730,16 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::system
     "WriteLammpsDataEvery",
     "Ensemble",
     "TimeStep",
+    "MinMacrostate",
+    "MaxMacrostate",
     "MacroStateUseBias",
     "MacroStateMinimumNumberOfMolecules",
     "MacroStateMaximumNumberOfMolecules",
     "RestartFileName"};
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::componentOptions = {
+    "MinMacrostate",
+    "MaxMacrostate",
     "Name",
     "Type",
     "MoleculeDefinition",

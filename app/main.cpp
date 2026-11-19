@@ -83,6 +83,15 @@ int main(int argc, char* argv[])
       case InputReader::SimulationType::MonteCarloTransitionMatrix:
       {
         MonteCarloTransitionMatrix mc(inputReader);
+        if (inputReader.restartFromBinary)
+        {
+          std::ifstream ifile(inputReader.restartFromBinaryFileName, std::ios::binary);
+          if (!ifile) throw std::runtime_error("Cannot open TMMC restart: " + inputReader.restartFromBinaryFileName);
+          Archive<std::ifstream> archive(ifile);
+          archive >> mc;
+          if (!ifile) throw std::runtime_error("Incomplete TMMC restart: " + inputReader.restartFromBinaryFileName);
+          mc.createOutputFiles(true);
+        }
         mc.run();
         break;
       }

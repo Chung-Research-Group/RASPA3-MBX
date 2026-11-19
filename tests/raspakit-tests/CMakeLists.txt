@@ -8,6 +8,7 @@ add_executable(unit_tests_raspakit
   dudlambda.cpp
   ewald.cpp
   insertion_deletion.cpp
+  joint_tmmc.cpp
   mc.cpp
   pressure.cpp
   static_energy.cpp
