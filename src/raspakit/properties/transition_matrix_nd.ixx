@@ -159,7 +159,7 @@ export struct TransitionMatrixMultidimensional
    * This matrix is tracked and written to file, but it is not used in \ref adjustBias.
    *
    * \param Pacc Acceptance probabilities for deletion (\p x), stay (\p y), and insertion (\p z).
-   * \param particleNumbers Current particle numbers.
+   * \param oldRow Flattened collection row before the move.
    * \param selectedComponent Global component id of the attempted move.
    */
   void updateMatrix(double3 Pacc, std::size_t oldRow, std::size_t selectedComponent);

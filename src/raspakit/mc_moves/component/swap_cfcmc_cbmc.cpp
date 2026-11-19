@@ -246,15 +246,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
     double preFactor = correctionFactorEwald * system.beta * fugacity * system.simulationBox.volume /
                        static_cast<double>(1 + system.numberOfIntegerMoleculesPerComponent[selectedComponent]);
     double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-    double Pacc = preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) *
-                  std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm);
+    const double physicalPacc = preFactor * (growData->RosenbluthWeight / idealGasRosenbluthWeight) *
+                  std::exp(-system.beta * energyDifference.potentialEnergy());
+    const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
     // Retrieve bias from transition matrix
     const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent,
                                                                  selectedComponent, true);
 
     // Apply acceptance/rejection rule
-    if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * Pacc)
+    if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * samplingPacc)
     {
       // Accept the move and update Ewald sums
       Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
@@ -275,13 +276,13 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
       component.mc_moves_statistics.addAccepted(move, 0);
 
       return {energyDifference + growData->energies + energyFourierDifference + tailEnergyDifferenceGrow,
-              double3(0.0, 1.0 - Pacc, Pacc)};
+              double3(0.0, 1.0 - physicalPacc, physicalPacc)};
     };
 
     // Reject move and restore the fractional molecule
     std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
 
-    return {std::nullopt, double3(0.0, 1.0 - Pacc, Pacc)};
+    return {std::nullopt, double3(0.0, 1.0 - physicalPacc, physicalPacc)};
   }
   else if (selectedNewBin < 0)  // Deletion move
   {
@@ -474,15 +475,16 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
                          double(system.numberOfIntegerMoleculesPerComponent[selectedComponent]) /
                          (system.beta * component.molFraction * fugacity * system.simulationBox.volume);
       double biasTerm = lambda.biasFactor[newBin] - lambda.biasFactor[oldBin];
-      double Pacc = preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) *
-                    std::exp(-system.beta * energyDifference.potentialEnergy() + biasTerm);
+      const double physicalPacc = preFactor * (idealGasRosenbluthWeight / retraceData.RosenbluthWeight) *
+                    std::exp(-system.beta * energyDifference.potentialEnergy());
+      const double samplingPacc = physicalPacc * std::exp(biasTerm);
 
       // Retrieve bias from transition matrix
       const double biasTransitionMatrix = system.tmmc.exchangeBias(system.numberOfIntegerMoleculesPerComponent,
                                                                    selectedComponent, false);
 
       // Apply acceptance/rejection rule
-      if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * Pacc)
+      if (biasTransitionMatrix > 0.0 && random.uniform() < biasTransitionMatrix * samplingPacc)
       {
         // Accept the move and update Ewald sums
         Interactions::acceptEwaldMove(system.forceField, system.storedEik, system.totalEik);
@@ -499,14 +501,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::swapMove_CFCMC_CBMC(R
         component.mc_moves_statistics.addAccepted(move, 1);
 
         return {energyDifference + energyFourierDifference + tailEnergyDifferenceRetrace - retraceData.energies,
-                double3(Pacc, 1.0 - Pacc, 0.0)};
+                double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
       };
 
       // Restore the old molecules
       std::copy(oldFractionalMolecule.begin(), oldFractionalMolecule.end(), fractionalMolecule.begin());
       std::copy(oldNewFractionalMolecule.begin(), oldNewFractionalMolecule.end(), newFractionalMolecule.begin());
 
-      return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};
+      return {std::nullopt, double3(physicalPacc, 1.0 - physicalPacc, 0.0)};
     }
     return {std::nullopt, double3(0.0, 1.0, 0.0)};
   }
