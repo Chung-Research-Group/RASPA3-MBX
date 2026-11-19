@@ -1,0 +1,54 @@
+{
+  "SimulationType": "MonteCarloTransitionMatrix",
+  "NumberOfInitializationCycles": 2,
+  "PrintEvery": 5,
+  "ForceField": ".",
+  "Systems": [
+    {
+      "Type": "Framework",
+      "Name": "CALF-20",
+      "NumberOfUnitCells": [
+        3,
+        3,
+        3
+      ],
+      "ExternalTemperature": 295.0,
+      "ExternalPressure": 97000,
+      "UseChargesFrom": "CIF_File",
+      "ChargeMethod": "Ewald",
+      "OutputPDBMovie": false,
+      "SampleMovieEvery": 50
+    }
+  ],
+  "Components": [
+    {
+      "Name": "h2o",
+      "MoleculeDefinition": ".",
+      "MolFraction": 0.002732,
+      "FugacityCoefficient": 1.0,
+      "TranslationProbability": 1.0,
+      "RotationProbability": 1.0,
+      "ReinsertionProbability": 1.0,
+      "SwapProbability": 1.0,
+      "CreateNumberOfMolecules": 4,
+      "MinMacrostate": 4,
+      "MaxMacrostate": 4
+    },
+    {
+      "Name": "co2",
+      "MoleculeDefinition": ".",
+      "MolFraction": 0.997268,
+      "FugacityCoefficient": 1.0,
+      "TranslationProbability": 1.0,
+      "RotationProbability": 1.0,
+      "ReinsertionProbability": 1.0,
+      "SwapProbability": 1.0,
+      "CreateNumberOfMolecules": 4,
+      "MinMacrostate": 4,
+      "MaxMacrostate": 4
+    }
+  ],
+  "NumberOfEquilibrationCycles": 2,
+  "RandomSeed": 31119,
+  "NumberOfProductionCycles": 20
+}
