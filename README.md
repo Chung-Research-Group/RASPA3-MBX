@@ -14,7 +14,7 @@ and one-shot evaluation of coordinate snapshots.
 Use `main` or `mbx` for the combined rigid-MBX and two-component TMMC implementation.
 The [standalone 2d-tmmc branch](https://github.com/Chung-Research-Group/RASPA3-MBX/tree/2d-tmmc)
 provides the force-field implementation on the v3.0.30 release base. For the Linux
-executable, start with the [branch installation guide](INSTALLATION.md).
+executable, start with the [branch installation guide](INSTALLATION.md). The version printed in simulation output identifies the upstream release. Record the fork commit (`git rev-parse HEAD`) alongside it to identify the MBX and TMMC code used.
 
 ## What this fork adds
 
