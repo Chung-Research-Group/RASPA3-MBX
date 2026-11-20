@@ -1757,6 +1757,11 @@ reported separately at the end of the simulation.
 
         ${RASPA_DIR}/simulations/share/raspa3/forcefield/string/force_field.json
 
+-   `"UseMBX" : boolean` (default `false`) selects the rigid-molecule MBX potential for this system. Compile RASPA with `-DBUILD_MBX=ON` to enable this option.
+-   `"MBXSettingsFile" : string` gives the MBX JSON settings file when `UseMBX` is true. Relative paths use the simulation working directory. Binary restarts restore the settings recorded at checkpoint time.
+
+The [MBX installation and model description](../../INSTALLATION.md#optional-mbx-support) lists the supported moves, units and site orders.
+
 ### System `MC`-moves <a name="system-mc-moves"></a>
 
 -   `"VolumeMoveProbability" : floating-point-number`\

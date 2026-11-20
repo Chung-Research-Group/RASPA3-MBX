@@ -2,6 +2,8 @@
 \page installing_from_source Installing from Source
 
 
+To add the optional MBX potential, pass `-DBUILD_MBX=ON` and set `MBX_ROOT` to the installed MBX prefix. The standard build defaults to `BUILD_MBX=OFF`. See the [MBX source-build instructions](../../INSTALLATION.md#optional-mbx-support).
+
 ## 1. Building from Source
 
 ### 1.1 Prerequisites

@@ -10,6 +10,7 @@
 5. [Thermodynamic integration: NaCl in water](#Example_advanced_5)
 6. [Reweighted histogram: methane in MFI](#Example_advanced_6)
 7. [Reweighted histogram: methane VLE](#Example_advanced_7)
+8. [Rigid MBX CO₂ adsorption in MFI](#Example_advanced_8)
 
 
 #### Monte Carlo: CFCMC Gibbs CO₂<a name="Example_advanced_1"></a>
@@ -653,3 +654,7 @@ Run from `examples/advanced/7_reweighted_histogram_vle_methane`:
 }
 ```
 
+
+#### Rigid MBX CO₂ adsorption in MFI<a name="Example_advanced_8"></a>
+
+This short grand-canonical run samples conventional insertion, deletion, translation and rotation of CO₂ at 298 K and 1 bar. Build the `raspa3` executable with MBX enabled and run it from the [example directory](../../examples/advanced/8_mbx_co2_in_mfi). The final output JSON contains the running and recomputed energies and the individual MBX terms.
