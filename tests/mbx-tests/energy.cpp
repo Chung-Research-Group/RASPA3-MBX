@@ -12,7 +12,7 @@ import system;
 
 TEST(MBX, TwoComponentEnergyAndExchange)
 {
-  ForceField ff = ForceField::makeZeoliteForceField(12.0, true, false, true);
+  ForceField ff = ForceField::makeZeoliteForceField(12.0, true, true, true);
   std::vector<Component> components;
   for (std::size_t i = 0; i < 2; ++i)
   {
@@ -40,9 +40,13 @@ TEST(MBX, TwoComponentEnergyAndExchange)
   EXPECT_NEAR(0.0, system.mbxTrialDifference(1, 0, molecule, {}).mbxEnergy, 1e-6);
   std::vector<Atom> copy(molecule.begin(), molecule.end());
   const auto deletion = system.mbxTrialDifference(1, 0, {}, {});
-  const double old = system.runningEnergies.mbxEnergy;
+  const RunningEnergy old = system.runningEnergies;
   system.deleteMolecule(1, 0, molecule);
   system.runningEnergies = system.computeTotalEnergies();
-  EXPECT_NEAR(system.runningEnergies.mbxEnergy - old, deletion.mbxEnergy, 1e-6);
-  EXPECT_NEAR(-deletion.mbxEnergy, system.mbxTrialDifference(1, {}, copy, {}).mbxEnergy, 1e-6);
+  EXPECT_NEAR(system.runningEnergies.mbxEnergy - old.mbxEnergy, deletion.mbxEnergy, 1e-6);
+  EXPECT_NEAR(system.runningEnergies.tail - old.tail, deletion.tail, 1e-8);
+  EXPECT_NE(0.0, deletion.tail);
+  const auto insertion = system.mbxTrialDifference(1, {}, copy, {});
+  EXPECT_NEAR(-deletion.mbxEnergy, insertion.mbxEnergy, 1e-6);
+  EXPECT_NEAR(-deletion.tail, insertion.tail, 1e-8);
 }
