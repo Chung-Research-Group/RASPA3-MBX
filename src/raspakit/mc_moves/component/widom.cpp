@@ -127,6 +127,14 @@ double MC_Moves::WidomMove(RandomNumber& random, System& system, std::size_t sel
   double logCorrectionFactorEwald =
       -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
                       polarizationDifference.potentialEnergy());
+  RunningEnergy targetDifference;
+  if (system.usesMBX())
+  {
+    const RunningEnergy proposalDifference = growData->energies;
+    targetDifference = system.mbxTrialDifference(selectedComponent, std::nullopt, newMolecule, proposalDifference);
+    logCorrectionFactorEwald =
+        -system.beta * (targetDifference.potentialEnergy() - proposalDifference.potentialEnergy());
+  }
 
   double idealGasRosenbluthWeight = component.idealGasRosenbluthWeight.value_or(1.0);
 

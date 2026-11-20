@@ -35,7 +35,13 @@ void runSimulation(InputReader& inputReader)
   // with the default. The choice of the input the run was started with is put back after reading.
   auto applyInputDevices = [&](std::vector<System>& systems)
   {
-    for (System& system : systems) system.cbmcDevice = inputReader.cbmcDevice;
+    for (std::size_t i = 0; i < systems.size(); ++i)
+    {
+      System& system = systems[i];
+      if (i < inputReader.systems.size() && system.usesMBX() != inputReader.systems[i].usesMBX())
+        throw std::runtime_error("UseMBX in the input does not match the energy model in the binary restart");
+      system.cbmcDevice = inputReader.cbmcDevice;
+    }
   };
 
   switch (inputReader.simulationType)

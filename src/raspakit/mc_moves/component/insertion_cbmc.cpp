@@ -127,6 +127,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
   double logCorrectionFactorEwald =
       -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
                       polarizationDifference.potentialEnergy());
+  RunningEnergy targetDifference;
+  if (system.usesMBX())
+  {
+    const RunningEnergy proposalDifference = growData->energies;
+    targetDifference = system.mbxTrialDifference(selectedComponent, std::nullopt, newMolecule, proposalDifference);
+    logCorrectionFactorEwald =
+        -system.beta * (targetDifference.potentialEnergy() - proposalDifference.potentialEnergy());
+  }
 
   // Compute the acceptance probability pre-factor
   double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
@@ -171,7 +179,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMoveCBMC(Ran
 
     system.insertMoleculePolarization(selectedComponent, growData->molecule, growData->atoms, new_electric_field);
 
-    return {growData->energies + energyFourierDifference + tailEnergyDifference + polarizationDifference,
+    return {system.usesMBX()
+                ? targetDifference
+                : growData->energies + energyFourierDifference + tailEnergyDifference + polarizationDifference,
             double3(0.0, 1.0 - Pacc, Pacc)};
   };
 

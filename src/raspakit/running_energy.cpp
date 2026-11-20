@@ -119,6 +119,9 @@ std::string RunningEnergy::printMC() const
                conv * crossLink, Units::displayedUnitOfEnergyString);
   }
 
+  if (mbxEnergy != 0.0)
+    std::print(stream, "    MBX{}                      {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * mbxEnergy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    polarization{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -219,6 +222,10 @@ std::string RunningEnergy::printMCDiff(RunningEnergy &other) const
   std::print(stream, "    cross-link{}             | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
              Units::displayedUnitOfEnergyConversionString, conv * crossLink, conv * other.crossLink,
              conv * drift.crossLink);
+  if (mbxEnergy != 0.0 || other.mbxEnergy != 0.0)
+    std::print(stream, "    MBX{}                    | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
+               Units::displayedUnitOfEnergyConversionString, conv * mbxEnergy, conv * other.mbxEnergy,
+               conv * drift.mbxEnergy);
   std::print(stream, "    polarization{}           | {: 10.6e} | {: 10.6e} | {: 10.6e} |\n",
              Units::displayedUnitOfEnergyConversionString, conv * polarization, conv * other.polarization,
              conv * drift.polarization);
@@ -416,6 +423,9 @@ std::string RunningEnergy::printMC(const std::string &label) const
              conv * intraCoul, Units::displayedUnitOfEnergyString);
   std::print(stream, "    cross-link{}               {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * crossLink, Units::displayedUnitOfEnergyString);
+  if (mbxEnergy != 0.0)
+    std::print(stream, "    MBX{}                      {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
+               conv * mbxEnergy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    polarization{}             {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
              conv * polarization, Units::displayedUnitOfEnergyString);
   std::print(stream, "    dU/dlambda VDW{}           {: .6e} [{}]\n", Units::displayedUnitOfEnergyConversionString,
@@ -549,6 +559,7 @@ nlohmann::json RunningEnergy::jsonMC() const
   status["intra VDW [K]"] = conv * intraVDW;
   status["intra Coulombic [K]"] = conv * intraCoul;
   status["cross-link [K]"] = conv * crossLink;
+  if (mbxEnergy != 0.0) status["MBX energy [K]"] = conv * mbxEnergy;
   status["polarization [K]"] = conv * polarization;
   status["dU/dlambda VDW [K]"] = conv * totalDudlambdaVDW();
   status["dU/dlambda Real [K]"] = conv * totalDudlambdaCharge();
@@ -658,7 +669,8 @@ std::string RunningEnergy::repr() const
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const RunningEnergy &e)
 {
-  archive << e.versionNumber;
+  const std::uint64_t version = e.mbxEnergy != 0.0 ? e.versionNumber : 1;
+  archive << version;
 
   archive << e.externalFieldVDW;
   archive << e.frameworkMoleculeVDW;
@@ -694,6 +706,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Runnin
   archive << e.NoseHooverEnergy;
   archive << e.thermobarostatEnergy;
   archive << e.cmap;
+  if (version >= 2) archive << e.mbxEnergy;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -747,6 +760,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, RunningEnerg
   archive >> e.NoseHooverEnergy;
   archive >> e.thermobarostatEnergy;
   archive >> e.cmap;
+  e.mbxEnergy = 0.0;
+  if (versionNumber >= 2) archive >> e.mbxEnergy;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

@@ -97,7 +97,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   // compute molecule-molecule energy contribution (and, for molecule-molecule polarization, the electric field on
   // the inserted molecule as well as the change of the field on every existing molecule)
   std::optional<RunningEnergy> interMolecule;
-  if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+  if (system.usesMBX())
+  {
+    interMolecule = RunningEnergy{};
+  }
+  else if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
   {
     electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
     interMolecule = Interactions::computeInterMolecularPolarizationElectricFieldDifference(
@@ -164,12 +168,18 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   // get the total difference in energy
   RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                    energyFourierDifference + tailEnergyDifference + polarizationDifference;
+  if (system.usesMBX())
+    energyDifference = system.mbxTrialDifference(selectedComponent, std::nullopt, trialMolecule.second,
+                                                 *externalFieldMolecule + *frameworkMolecule);
 
   // The intra-molecular energy of the inserted conformation enters the running energies but not the
   // acceptance rule: the conformation is drawn from the ideal-gas Boltzmann distribution
   // exp(-beta * U_intra), so its intra energy cancels against the generation probability (zero for
   // rigid molecules).
-  RunningEnergy internalEnergyNew = component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, trialMolecule.second);
+  RunningEnergy internalEnergyNew = system.usesMBX()
+                                        ? RunningEnergy{}
+                                        : component.intraMolecularPotentials.computeInternalEnergies(
+                                              system.forceField, system.simulationBox, trialMolecule.second);
 
   double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
   double preFactor = system.beta * fugacity * system.simulationBox.volume /
@@ -178,10 +188,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::insertionMove(RandomN
   // intramolecular pairs is not part of the generation probability (see 'System::intraCoulombScalingEnergy')
   // The exponent is added to the logarithm of the prefactor and held to the range of a double: the Boltzmann
   // factor of a strongly bound ion overflowed on its own, and a prefactor of zero times that is not a number.
-  double Pacc = MC_Moves::biasedAcceptance(preFactor,
-                                           -system.beta * (energyDifference.potentialEnergy() +
-                                                           system.intraCoulombScalingEnergy(trialMolecule.second)),
-                                           0.0)
+  double Pacc = MC_Moves::biasedAcceptance(
+                    preFactor,
+                    -system.beta * (energyDifference.potentialEnergy() +
+                                    (system.usesMBX() ? 0.0 : system.intraCoulombScalingEnergy(trialMolecule.second))),
+                    0.0)
                     .physical;
   std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

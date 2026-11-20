@@ -68,6 +68,7 @@ export struct EnergyStatus
   {
     totalEnergy = EnergyDuDlambda(0.0, 0.0);
     polarizationEnergy = EnergyDuDlambda(0.0, 0.0);
+    mbxEnergy = EnergyDuDlambda(0.0, 0.0);
     crossLinkEnergy = EnergyDuDlambda(0.0, 0.0);
     frameworkEnergy = EnergyDuDlambda(0.0, 0.0);
     dUdlambda = 0.0;
@@ -111,7 +112,7 @@ export struct EnergyStatus
     }
     totalEnergy =
         intraEnergy.total() + externalFieldMoleculeEnergy.total() + frameworkMoleculeEnergy.total() +
-        interEnergy.total() + polarizationEnergy + crossLinkEnergy + frameworkEnergy;
+        interEnergy.total() + mbxEnergy + polarizationEnergy + crossLinkEnergy + frameworkEnergy;
   }
 
   std::string printEnergyStatus(const std::vector<Component>& components, const std::string& label);
@@ -120,6 +121,7 @@ export struct EnergyStatus
   {
     totalEnergy += b.totalEnergy;
     polarizationEnergy += b.polarizationEnergy;
+    mbxEnergy += b.mbxEnergy;
     crossLinkEnergy += b.crossLinkEnergy;
     frameworkEnergy += b.frameworkEnergy;
     dUdlambda += b.dUdlambda;
@@ -154,6 +156,7 @@ export struct EnergyStatus
   {
     totalEnergy -= b.totalEnergy;
     polarizationEnergy -= b.polarizationEnergy;
+    mbxEnergy -= b.mbxEnergy;
     crossLinkEnergy -= b.crossLinkEnergy;
     frameworkEnergy -= b.frameworkEnergy;
     dUdlambda -= b.dUdlambda;
@@ -189,6 +192,7 @@ export struct EnergyStatus
     EnergyStatus v(numberOfExternalFields, numberOfFrameworks, numberOfComponents);
     v.totalEnergy = -totalEnergy;
     v.polarizationEnergy = -polarizationEnergy;
+    v.mbxEnergy = -mbxEnergy;
     v.crossLinkEnergy = -crossLinkEnergy;
     v.frameworkEnergy = -frameworkEnergy;
     v.dUdlambda = -dUdlambda;
@@ -219,7 +223,7 @@ export struct EnergyStatus
     return v;
   }
 
-  std::uint64_t versionNumber{2};
+  std::uint64_t versionNumber{3};
   std::size_t numberOfExternalFields;
   std::size_t numberOfFrameworks;
   std::size_t numberOfComponents;
@@ -232,6 +236,7 @@ export struct EnergyStatus
   std::vector<EnergyInter> externalFieldComponentEnergies;
   std::vector<EnergyInter> frameworkComponentEnergies;
   std::vector<EnergyInter> interComponentEnergies;
+  EnergyDuDlambda mbxEnergy{0.0, 0.0};
   EnergyDuDlambda polarizationEnergy;
   /// The cross-link and polymer-link bonds between molecules: their bonded terms and the non-bonded pair
   /// exclusions and intramolecular overrides they bring (RunningEnergy::crossLink with its companions).
@@ -255,6 +260,7 @@ export inline EnergyStatus operator+(const EnergyStatus& a, const EnergyStatus& 
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
   m.totalEnergy = a.totalEnergy + b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy + b.polarizationEnergy;
+  m.mbxEnergy = a.mbxEnergy + b.mbxEnergy;
   m.crossLinkEnergy = a.crossLinkEnergy + b.crossLinkEnergy;
   m.frameworkEnergy = a.frameworkEnergy + b.frameworkEnergy;
   m.dUdlambda = a.dUdlambda + b.dUdlambda;
@@ -290,6 +296,7 @@ export inline EnergyStatus operator-(const EnergyStatus& a, const EnergyStatus& 
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
   m.totalEnergy = a.totalEnergy - b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy - b.polarizationEnergy;
+  m.mbxEnergy = a.mbxEnergy - b.mbxEnergy;
   m.crossLinkEnergy = a.crossLinkEnergy - b.crossLinkEnergy;
   m.frameworkEnergy = a.frameworkEnergy - b.frameworkEnergy;
   m.dUdlambda = a.dUdlambda - b.dUdlambda;
@@ -325,6 +332,7 @@ export inline EnergyStatus operator*(const EnergyStatus& a, const EnergyStatus& 
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
   m.totalEnergy = a.totalEnergy * b.totalEnergy;
   m.polarizationEnergy = a.polarizationEnergy * b.polarizationEnergy;
+  m.mbxEnergy = a.mbxEnergy * b.mbxEnergy;
   m.crossLinkEnergy = a.crossLinkEnergy * b.crossLinkEnergy;
   m.frameworkEnergy = a.frameworkEnergy * b.frameworkEnergy;
   m.dUdlambda = a.dUdlambda * b.dUdlambda;
@@ -360,6 +368,7 @@ export inline EnergyStatus operator*(const double& a, const EnergyStatus& b)
   EnergyStatus m(b.numberOfExternalFields, b.numberOfFrameworks, b.numberOfComponents);
   m.totalEnergy = a * b.totalEnergy;
   m.polarizationEnergy = a * b.polarizationEnergy;
+  m.mbxEnergy = a * b.mbxEnergy;
   m.crossLinkEnergy = a * b.crossLinkEnergy;
   m.frameworkEnergy = a * b.frameworkEnergy;
   m.dUdlambda = a * b.dUdlambda;
@@ -395,6 +404,7 @@ export inline EnergyStatus operator/(const EnergyStatus& a, const double& b)
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
   m.totalEnergy = a.totalEnergy / b;
   m.polarizationEnergy = a.polarizationEnergy / b;
+  m.mbxEnergy = a.mbxEnergy / b;
   m.crossLinkEnergy = a.crossLinkEnergy / b;
   m.frameworkEnergy = a.frameworkEnergy / b;
   m.dUdlambda = a.dUdlambda / b;
@@ -430,6 +440,7 @@ export inline EnergyStatus sqrt(const EnergyStatus& a)
   EnergyStatus m(a.numberOfExternalFields, a.numberOfFrameworks, a.numberOfComponents);
   m.totalEnergy = sqrt(a.totalEnergy);
   m.polarizationEnergy = sqrt(a.polarizationEnergy);
+  m.mbxEnergy = sqrt(a.mbxEnergy);
   m.crossLinkEnergy = sqrt(a.crossLinkEnergy);
   m.frameworkEnergy = sqrt(a.frameworkEnergy);
   m.dUdlambda = std::sqrt(a.dUdlambda);

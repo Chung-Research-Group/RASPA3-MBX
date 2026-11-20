@@ -112,7 +112,19 @@ export struct System
          std::vector<std::size_t> initialNumberOfMolecules, std::size_t numberOfBlocks,
          const MCMoveProbabilities& systemProbabilities = MCMoveProbabilities());
 
-  std::uint64_t versionNumber{4};
+  std::uint64_t versionNumber{5};
+
+  // Settings are captured when the input is read and carried in binary checkpoints.
+  std::string mbxSettings{};
+  double mbxFrameworkPermanentEnergy{};  // kcal/mol
+  static bool mbxAvailable();
+  bool usesMBX() const { return !mbxSettings.empty(); }
+  void configureMBX(const std::string& path);
+  void validateMBX() const;
+  double mbxEnergy(std::size_t component = 0, std::optional<std::size_t> replacedMolecule = {},
+                   std::span<const Atom> trial = {}, std::array<double, 7>* terms = nullptr) const;
+  RunningEnergy mbxTrialDifference(std::size_t component, std::optional<std::size_t> replacedMolecule,
+                                   std::span<const Atom> trial, const RunningEnergy& shortRange) const;
 
   double temperature{300.0};
   double pressure{1e4};
@@ -513,7 +525,7 @@ export struct System
   /// test them (a molecule-molecule or framework-molecule van der Waals pair above the overlap criterion, an atom
   /// outside the confining geometry of an external field) and '*overlap' is set when one is found; the energy
   /// returned is then not a total (the kernels stop at the pair). '*overlap' is never cleared.
-  RunningEnergy computeTotalEnergies(bool* overlap = nullptr) noexcept;
+  RunningEnergy computeTotalEnergies(bool* overlap = nullptr);
   RunningEnergy computePolarizationEnergy() noexcept;
   RunningEnergy computeTotalGradients() noexcept;
   void computeTotalElectrostaticPotential() noexcept;
@@ -1618,7 +1630,7 @@ export struct System
    * forces (no intramolecular) into a scratch gradient buffer, then applies the atomic-to-molecular
    * virial correction. Does not mutate live AtomDynamics gradients used by MD.
    */
-  [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure() noexcept;
+  [[nodiscard]] std::pair<EnergyStatus, double3x3> computeMolecularPressure();
 
   /// True when the force-based RDF is enabled and should sample on this cycle.
   [[nodiscard]] bool forceBasedRDFSampleDue(std::size_t currentCycle) const;

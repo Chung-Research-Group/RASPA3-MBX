@@ -37,6 +37,9 @@ std::string EnergyStatus::printEnergyStatus(const std::vector<Component> &compon
              conv * interEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    molecule-molecule  Coulombic Fourier:    {: .6e} [{}/-]\n",
              conv * interEnergy.CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
+  if (mbxEnergy.energy != 0.0)
+    std::print(stream, "    MBX:                                     {: .6e} [{}]\n", conv * mbxEnergy.energy,
+               Units::displayedUnitOfEnergyString);
   std::print(stream, "    polarization:                            {: .6e} [{}/-]\n", conv * polarizationEnergy.energy,
              Units::displayedUnitOfEnergyString);
   std::print(stream, "    cross-links:                             {: .6e} [{}/-]\n", conv * crossLinkEnergy.energy,
@@ -133,6 +136,9 @@ std::string EnergyStatus::repr() const
              conv * interEnergy.CoulombicReal.energy, Units::displayedUnitOfEnergyString);
   std::print(stream, "    molecule-molecule  Coulombic Fourier:    {: .6e} [{}/-]\n",
              conv * interEnergy.CoulombicFourier.energy, Units::displayedUnitOfEnergyString);
+  if (mbxEnergy.energy != 0.0)
+    std::print(stream, "    MBX:                                     {: .6e} [{}]\n", conv * mbxEnergy.energy,
+               Units::displayedUnitOfEnergyString);
   std::print(stream, "    polarization:                            {: .6e} [{}/-]\n", conv * polarizationEnergy.energy,
              Units::displayedUnitOfEnergyString);
   std::print(stream, "    cross-links:                             {: .6e} [{}/-]\n", conv * crossLinkEnergy.energy,
@@ -153,7 +159,8 @@ std::string EnergyStatus::repr() const
 
 Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const EnergyStatus &e)
 {
-  archive << e.versionNumber;
+  const std::uint64_t version = e.mbxEnergy.energy != 0.0 ? e.versionNumber : 2;
+  archive << version;
 
   archive << e.numberOfExternalFields;
   archive << e.numberOfFrameworks;
@@ -174,6 +181,7 @@ Archive<std::ofstream> &operator<<(Archive<std::ofstream> &archive, const Energy
   archive << e.translationalKineticEnergy;
   archive << e.rotationalKineticEnergy;
   archive << e.noseHooverEnergy;
+  if (version >= 3) archive << e.mbxEnergy;
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -212,6 +220,8 @@ Archive<std::ifstream> &operator>>(Archive<std::ifstream> &archive, EnergyStatus
   archive >> e.translationalKineticEnergy;
   archive >> e.rotationalKineticEnergy;
   archive >> e.noseHooverEnergy;
+  e.mbxEnergy = EnergyDuDlambda(0.0, 0.0);
+  if (versionNumber >= 3) archive >> e.mbxEnergy;
 
 #if DEBUG_ARCHIVE
   std::uint64_t magicNumber;

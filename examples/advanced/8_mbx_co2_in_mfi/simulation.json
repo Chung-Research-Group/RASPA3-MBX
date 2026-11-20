@@ -1,0 +1,36 @@
+{
+  "SimulationType": "MonteCarlo",
+  "NumberOfProductionCycles": 5,
+  "NumberOfInitializationCycles": 2,
+  "NumberOfEquilibrationCycles": 2,
+  "PrintEvery": 1,
+  "RandomSeed": 42,
+  "ForceField": ".",
+  "Systems": [
+    {
+      "Type": "Framework",
+      "Name": "MFI_SI",
+      "HeliumVoidFraction": 0.3,
+      "NumberOfUnitCells": [
+        2,
+        2,
+        2
+      ],
+      "ExternalTemperature": 298.0,
+      "ExternalPressure": 100000.0,
+      "ChargeMethod": "Ewald",
+      "UseMBX": true,
+      "MBXSettingsFile": "mbx.json"
+    }
+  ],
+  "Components": [
+    {
+      "Name": "co2",
+      "MoleculeDefinition": ".",
+      "TranslationProbability": 0.3,
+      "RotationProbability": 0.3,
+      "SwapConventionalProbability": 0.4,
+      "CreateNumberOfMolecules": 0
+    }
+  ]
+}

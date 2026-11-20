@@ -102,7 +102,11 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
   time_begin = std::chrono::steady_clock::now();
   std::vector<double3> electricFieldNeighborDelta;
   std::optional<RunningEnergy> interMolecule;
-  if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+  if (system.usesMBX())
+  {
+    interMolecule = RunningEnergy{};
+  }
+  else if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
   {
     electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
     interMolecule = Interactions::computeInterMolecularPolarizationElectricFieldDifference(
@@ -159,6 +163,9 @@ std::optional<RunningEnergy> MC_Moves::translationMove(RandomNumber &random, Sys
       externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() + ewaldFourierEnergy +
       polarizationDifference +
       system.crossLinkEnergyDifference(selectedComponent, selectedMolecule, trialMolecule.second, molecule_atoms);
+  if (system.usesMBX())
+    energyDifference = system.mbxTrialDifference(selectedComponent, selectedMolecule, trialMolecule.second,
+                                                 *externalFieldMolecule + *frameworkMolecule);
 
   // Update move construction statistics
   component.mc_moves_statistics.addConstructed(move, selectedDirection);

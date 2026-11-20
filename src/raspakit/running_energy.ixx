@@ -172,7 +172,7 @@ export struct RunningEnergy
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
            frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
            ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
-           bondTorsion + bendBend + bendTorsion + cmap + intraVDW + intraCoul + crossLink + tail + polarization;
+           bondTorsion + bendBend + bendTorsion + cmap + intraVDW + intraCoul + crossLink + tail + mbxEnergy + polarization;
   }
 
   /**
@@ -229,7 +229,7 @@ export struct RunningEnergy
     return externalFieldVDW + frameworkMoleculeVDW + moleculeMoleculeVDW + externalFieldCharge +
            frameworkMoleculeCharge + moleculeMoleculeCharge + ewald_fourier + ewald_self + ewald_exclusion + bond +
            ureyBradley + bend + inversionBend + outOfPlaneBend + torsion + improperTorsion + bondBond + bondBend +
-           bondTorsion + bendBend + bendTorsion + cmap + intraVDW + intraCoul + crossLink + tail + polarization +
+           bondTorsion + bendBend + bendTorsion + cmap + intraVDW + intraCoul + crossLink + tail + mbxEnergy + polarization +
            translationalKineticEnergy + rotationalKineticEnergy + NoseHooverEnergy + thermobarostatEnergy;
   }
 
@@ -327,6 +327,7 @@ export struct RunningEnergy
     crossLink = 0.0;
     tail = 0.0;
     polarization = 0.0;
+    mbxEnergy = 0.0;
     dudlambdaVDW.fill(0.0);
     dudlambdaCharge.fill(0.0);
     dudlambdaEwald.fill(0.0);
@@ -365,6 +366,7 @@ export struct RunningEnergy
     crossLink += b.crossLink;
     tail += b.tail;
     polarization += b.polarization;
+    mbxEnergy += b.mbxEnergy;
     for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
     {
       dudlambdaVDW[i] += b.dudlambdaVDW[i];
@@ -408,6 +410,7 @@ export struct RunningEnergy
     crossLink -= b.crossLink;
     tail -= b.tail;
     polarization -= b.polarization;
+    mbxEnergy -= b.mbxEnergy;
     for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
     {
       dudlambdaVDW[i] -= b.dudlambdaVDW[i];
@@ -452,6 +455,7 @@ export struct RunningEnergy
     v.crossLink = -crossLink;
     v.tail = -tail;
     v.polarization = -polarization;
+    v.mbxEnergy = -mbxEnergy;
     for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
     {
       v.dudlambdaVDW[i] = -dudlambdaVDW[i];
@@ -495,6 +499,7 @@ export struct RunningEnergy
     crossLink *= b;
     tail *= b;
     polarization *= b;
+    mbxEnergy *= b;
     for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
     {
       dudlambdaVDW[i] *= b;
@@ -510,7 +515,7 @@ export struct RunningEnergy
   }
 
 
-  std::uint64_t versionNumber{1};  ///< Version number for serialization.
+  std::uint64_t versionNumber{2};  ///< Version number for serialization.
 
   double externalFieldVDW;         ///< Energy from van der Waals interactions with external field.
   double frameworkMoleculeVDW;     ///< Energy from van der Waals interactions between framework and molecules.
@@ -538,6 +543,7 @@ export struct RunningEnergy
   double intraCoul;                   ///< Intramolecular Coulomb energy.
   double crossLink;                   ///< Cross-link bonded energy (inter-molecular bonds, junction bends, formation energies).
   double tail;                        ///< Tail correction energy for van der Waals interactions.
+  double mbxEnergy{};                 ///< Retained many-body guest and host electrostatic energy.
   double polarization;                ///< Energy contribution from polarization effects.
   std::array<double, maximumNumberOfDUDlambdaGroups>
       dudlambdaVDW;  ///< Per-group derivative of van der Waals energy with respect to lambda.
@@ -592,6 +598,7 @@ export inline RunningEnergy operator+(const RunningEnergy& a, const RunningEnerg
   m.crossLink = a.crossLink + b.crossLink;
   m.tail = a.tail + b.tail;
   m.polarization = a.polarization + b.polarization;
+  m.mbxEnergy = a.mbxEnergy + b.mbxEnergy;
   for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
   {
     m.dudlambdaVDW[i] = a.dudlambdaVDW[i] + b.dudlambdaVDW[i];
@@ -636,6 +643,7 @@ export inline RunningEnergy operator-(const RunningEnergy& a, const RunningEnerg
   m.crossLink = a.crossLink - b.crossLink;
   m.tail = a.tail - b.tail;
   m.polarization = a.polarization - b.polarization;
+  m.mbxEnergy = a.mbxEnergy - b.mbxEnergy;
   for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
   {
     m.dudlambdaVDW[i] = a.dudlambdaVDW[i] - b.dudlambdaVDW[i];
@@ -679,6 +687,7 @@ export inline RunningEnergy operator*(double a, const RunningEnergy b)
   m.crossLink = a * b.crossLink;
   m.tail = a * b.tail;
   m.polarization = a * b.polarization;
+  m.mbxEnergy = a * b.mbxEnergy;
   for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
   {
     m.dudlambdaVDW[i] = a * b.dudlambdaVDW[i];
@@ -723,6 +732,7 @@ export inline RunningEnergy operator*(const RunningEnergy a, double b)
   m.crossLink = b * a.crossLink;
   m.tail = b * a.tail;
   m.polarization = b * a.polarization;
+  m.mbxEnergy = b * a.mbxEnergy;
   for (std::size_t i = 0; i < maximumNumberOfDUDlambdaGroups; ++i)
   {
     m.dudlambdaVDW[i] = b * a.dudlambdaVDW[i];

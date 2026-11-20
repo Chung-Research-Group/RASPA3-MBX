@@ -1093,11 +1093,119 @@ static RunningEnergy interMolecularEnergyWithPolymerLinks(const ForceField& forc
   return energy;
 }
 
-RunningEnergy System::computeTotalEnergies(bool* overlap) noexcept
+void System::validateMBX() const
+{
+  if (!usesMBX()) return;
+  if (!mbxAvailable()) throw std::runtime_error("This system requires RASPA built with -DBUILD_MBX=ON");
+  if (Units::unitSystem == Units::System::ReducedUnits) throw std::runtime_error("MBX requires physical RASPA units");
+  if ((framework && framework->hasMobileAtoms()) || forceField.computePolarization || !crossLinks.empty() ||
+      !polymerLinks.empty() || !reactions.list.empty() || propertyRadialDistributionFunction)
+    throw std::runtime_error(
+        "MBX requires rigid molecules and a fixed host, and supplies its own polarization. "
+        "Reactions, cross-links and force-based RDF sampling are unsupported.");
+  for (std::size_t i = 0; i < std::to_underlying(Move::Types::Count); ++i)
+  {
+    const auto move = static_cast<Move::Types>(i);
+    if (move == Move::Types::Translation || move == Move::Types::Rotation || move == Move::Types::Swap ||
+        move == Move::Types::SwapCBMC || move == Move::Types::ReinsertionCBMC || move == Move::Types::Widom ||
+        (move == Move::Types::VolumeChange && !tmmc.doTMMC && !framework && !hasExternalField))
+      continue;
+    if (mc_moves_probabilities.getProbability(move) > 0.0 ||
+        std::ranges::any_of(components,
+                            [move](const Component& c) { return c.mc_moves_probabilities.getProbability(move) > 0.0; }))
+      throw std::runtime_error(std::format("Move '{}' is unsupported with MBX", Move::moveNames[i]));
+  }
+  for (const Component& component : components)
+  {
+    if (component.hasFractionalMolecule || component.fixedLambdaBin)
+      throw std::runtime_error("MBX requires integer molecules");
+    if (!component.rigid)
+    {
+      throw std::runtime_error(
+          std::format("[System MBX validation]: component '{}' is flexible; MBX supports rigid guests only "
+                      "because the retained target excludes the one-body deformation energy",
+                      component.name));
+    }
+
+    std::array<std::size_t, 3> expectedAtomicNumbers{};
+    if (component.name == "co2")
+    {
+      expectedAtomicNumbers = {6, 8, 8};
+    }
+    else if (component.name == "h2o")
+    {
+      expectedAtomicNumbers = {8, 1, 1};
+    }
+    else
+    {
+      // Do not invent site conventions for other MBX monomers. Their supported site order
+      // remains a contract of the installed MBX database and the supplied component definition.
+      continue;
+    }
+
+    if (component.definedAtoms.size() != expectedAtomicNumbers.size())
+    {
+      throw std::runtime_error(std::format(
+          "[System MBX validation]: monomer '{}' requires three physical sites in MBX database order", component.name));
+    }
+    for (std::size_t site = 0; site < expectedAtomicNumbers.size(); ++site)
+    {
+      const std::size_t type = static_cast<std::size_t>(component.definedAtoms[site].first.type);
+      if (type >= forceField.pseudoAtoms.size() ||
+          forceField.pseudoAtoms[type].atomicNumber != expectedAtomicNumbers[site])
+      {
+        throw std::runtime_error(
+            std::format("[System MBX validation]: monomer '{}' site {} must have atomic number {}; "
+                        "use C,O,O for co2 and O,H,H for h2o, including coordinate restart files",
+                        component.name, site, expectedAtomicNumbers[site]));
+      }
+    }
+  }
+}
+
+RunningEnergy System::mbxTrialDifference(std::size_t component, std::optional<std::size_t> replacedMolecule,
+                                         std::span<const Atom> trial, const RunningEnergy& shortRange) const
+{
+  RunningEnergy result;
+  result.externalFieldVDW = shortRange.externalFieldVDW;
+  result.externalFieldCharge = shortRange.externalFieldCharge;
+  result.frameworkMoleculeVDW = shortRange.frameworkMoleculeVDW;
+  // Translation, rotation and regrowth preserve the number and type of sites in the box.
+  if (!replacedMolecule || trial.empty())
+  {
+    auto old = replacedMolecule ? spanOfMolecule(component, *replacedMolecule) : std::span<const Atom>{};
+    result.tail = Interactions::computeFrameworkMoleculeTailEnergyDifference(forceField, simulationBox,
+                                                                             spanOfFrameworkAtoms(), trial, old)
+                      .tail;
+  }
+  result.mbxEnergy = mbxEnergy(component, replacedMolecule, trial) - runningEnergies.mbxEnergy;
+  return result;
+}
+
+RunningEnergy System::computeTotalEnergies(bool* overlap)
 {
   if (fixedFrameworkStoredEik.empty())
   {
     precomputeTotalRigidEnergy();
+  }
+
+  if (usesMBX())
+  {
+    const auto host = spanOfFrameworkAtoms();
+    const auto guests = spanOfMoleculeAtoms();
+    RunningEnergy result;
+    Interactions::computeExternalFieldEnergy(hasExternalField, forceField, simulationBox, guests, result,
+                                             externalFieldInterpolationGrid, overlap);
+    result.frameworkMoleculeVDW = Interactions::computeFrameworkMoleculeEnergy(
+                                      forceField, simulationBox, interpolationGrids, framework, host, guests, overlap)
+                                      .frameworkMoleculeVDW;
+    result.tail = Interactions::computeFrameworkMoleculeTailEnergy(forceField, simulationBox, host, guests).tail;
+    // The classical pressure diagnostic and the next trial use these reciprocal-space caches.
+    (void)Interactions::computeEwaldFourierEnergy(eik_x, eik_y, eik_z, eik_xy, fixedFrameworkStoredEik, storedEik,
+                                                  forceField, simulationBox, components, numberOfMoleculesPerComponent,
+                                                  guests, netChargeFramework, framework, host);
+    result.mbxEnergy = mbxEnergy();
+    return result;
   }
 
   std::span<const Atom> frameworkAtomPositions = spanOfFrameworkAtoms();
@@ -1350,7 +1458,7 @@ void System::computeTotalElectricField() noexcept
                                                  netChargeFramework, framework, frameworkAtomPositions);
 }
 
-std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
+std::pair<EnergyStatus, double3x3> System::computeMolecularPressure()
 {
   // Scratch buffer so molecular-pressure sampling does not mutate live MD site gradients.
   // Strain-derivative routines write intermolecular/framework forces here for the atomic-to-molecular
@@ -1571,6 +1679,20 @@ std::pair<EnergyStatus, double3x3> System::computeMolecularPressure() noexcept
     pressureInfo.second += polarizationStrain;
   }
 
+  if (usesMBX())
+  {
+    // The classical virial remains a diagnostic. Only the retained energy terms enter averages and heats.
+    auto& status = pressureInfo.first;
+    for (auto& entry : status.interComponentEnergies) entry.zero();
+    for (auto& entry : status.intraComponentEnergies) entry.zero();
+    for (auto& entry : status.frameworkComponentEnergies)
+    {
+      entry.CoulombicReal = EnergyDuDlambda(0.0, 0.0);
+      entry.CoulombicFourier = EnergyDuDlambda(0.0, 0.0);
+    }
+    status.frameworkEnergy = EnergyDuDlambda(0.0, 0.0);
+    status.mbxEnergy = EnergyDuDlambda(mbxEnergy(), 0.0);
+  }
   pressureInfo.first.sumTotal();
 
   double pressureTailCorrection = 0.0;
@@ -2030,7 +2152,8 @@ void System::initializeMoleculeProperties(std::size_t numberOfBlocks, bool timeA
 
 Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System& s)
 {
-  archive << s.versionNumber;
+  const std::uint64_t version = s.usesMBX() ? s.versionNumber : 4;
+  archive << version;
 
   archive << s.temperature;
   archive << s.pressure;
@@ -2185,6 +2308,12 @@ Archive<std::ofstream>& operator<<(Archive<std::ofstream>& archive, const System
   // 'interpolationGrids' and 'externalFieldInterpolationGrid' are intentionally not serialized:
   // they are derived data that can dominate the checkpoint size and are rebuilt deterministically
   // on restart (MonteCarlo/MolecularDynamics::createInterpolationGrids).
+
+  if (s.usesMBX())
+  {
+    archive << s.mbxSettings;
+    archive << s.mbxFrameworkPermanentEnergy;
+  }
 
 #if DEBUG_ARCHIVE
   archive << static_cast<std::uint64_t>(0x6f6b6179);  // magic number 'okay' in hex
@@ -2430,6 +2559,15 @@ Archive<std::ifstream>& operator>>(Archive<std::ifstream>& archive, System& s)
   {
     s.polymerLinks.activate(s.components, s.numberOfMoleculesPerComponent);
     s.polymerLinks.rebuild(s.forceField, s.components, s.numberOfMoleculesPerComponent, s.spanOfMoleculeAtoms());
+  }
+
+  s.mbxSettings.clear();
+  s.mbxFrameworkPermanentEnergy = 0.0;
+  if (versionNumber >= 5)
+  {
+    archive >> s.mbxSettings;
+    archive >> s.mbxFrameworkPermanentEnergy;
+    s.validateMBX();
   }
 
 #if DEBUG_ARCHIVE

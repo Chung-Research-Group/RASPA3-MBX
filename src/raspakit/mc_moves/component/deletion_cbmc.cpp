@@ -126,6 +126,14 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
     double logCorrectionFactorEwald =
         -system.beta * (energyFourierDifference.potentialEnergy() + tailEnergyDifference.potentialEnergy() +
                         polarizationDifference.potentialEnergy());
+    RunningEnergy targetDifference;
+    if (system.usesMBX())
+    {
+      const RunningEnergy proposalDifference = -retraceData.energies;
+      targetDifference = system.mbxTrialDifference(selectedComponent, selectedMolecule, {}, proposalDifference);
+      logCorrectionFactorEwald =
+          -system.beta * (targetDifference.potentialEnergy() - proposalDifference.potentialEnergy());
+    }
 
     // Compute acceptance probability factors
     double fugacity = component.molFraction * component.fugacityCoefficient.value_or(1.0) * system.pressure;
@@ -165,7 +173,9 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMoveCBMC(Rand
 
       system.deleteMolecule(selectedComponent, selectedMolecule, molecule);
 
-      return {retraceData.energies - energyFourierDifference - tailEnergyDifference - polarizationDifference,
+      return {system.usesMBX()
+                  ? -targetDifference
+                  : retraceData.energies - energyFourierDifference - tailEnergyDifference - polarizationDifference,
               double3(Pacc, 1.0 - Pacc, 0.0)};
     };
     return {std::nullopt, double3(Pacc, 1.0 - Pacc, 0.0)};

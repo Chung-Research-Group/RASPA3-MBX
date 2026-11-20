@@ -35,6 +35,8 @@ project(raspa3
   HOMEPAGE_URL "https://github.com/iraspa/raspa3"
   LANGUAGES C CXX)
 
+option(BUILD_MBX "Enable the MBX many-body potential for rigid-molecule Monte Carlo" OFF)
+
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake")
 
 add_definitions(-DVERSION=${PROJECT_VERSION})
@@ -44,7 +46,6 @@ find_package(ZLIB)
 find_package(BLAS REQUIRED)
 find_package(LAPACK)
 find_package(OpenCL)
-include_directories(${OpenCL_INCLUDE_DIRS})
 
 set(MSVC_WARNINGS /W4 /w14242 /w14254 /w14263 /w14265 /w14287 /we4289 /w14296 /w14311 /w14545 /w14546 /w14547 /w14549 /w14555 /w14619 /w14640 /w14826 /w14826 /w14905 /w14906 /w14928 /permissive-)
 
@@ -108,6 +109,9 @@ FetchContent_MakeAvailable(hdf5)
 unset(BUILD_TESTING)
 set(HDF5_INCLUDE_DIRS "$<BUILD_INTERFACE:${hdf5_SOURCE_DIR}/src/;${hdf5_SOURCE_DIR}/src/H5FDsubfiling;${hdf5_SOURCE_DIR}/c++/src;${hdf5_BINARY_DIR};${hdf5_BINARY_DIR}/src>")
 include_directories(${HDF5_INCLUDE_DIRS})
+# An OpenCL installation may share a prefix with a different HDF5 release. Apply its include path
+# only to RASPA targets, after the bundled HDF5 targets have been configured.
+include_directories(${OpenCL_INCLUDE_DIRS})
 
 # Our kits and drivers use `import std`; enable it only for targets created from here on.
 set(CMAKE_CXX_MODULE_STD ON)

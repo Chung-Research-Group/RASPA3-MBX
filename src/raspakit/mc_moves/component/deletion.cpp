@@ -81,7 +81,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     // Compute molecule-molecule energy contribution (and, for molecule-molecule polarization, the electric field
     // on the deleted molecule as well as the change of the field on every remaining molecule)
     std::optional<RunningEnergy> interMolecule;
-    if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
+    if (system.usesMBX())
+    {
+      interMolecule = RunningEnergy{};
+    }
+    else if (system.forceField.computePolarization && !system.forceField.omitInterPolarization)
     {
       electricFieldNeighborDelta.assign(system.spanOfMoleculeAtoms().size(), double3(0.0, 0.0, 0.0));
       interMolecule = Interactions::computeInterMolecularPolarizationElectricFieldDifference(
@@ -148,12 +152,17 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     // Get the total difference in energy
     RunningEnergy energyDifference = externalFieldMolecule.value() + frameworkMolecule.value() + interMolecule.value() +
                                      energyFourierDifference + tailEnergyDifference + polarizationDifference;
+    if (system.usesMBX())
+      energyDifference = system.mbxTrialDifference(selectedComponent, selectedMolecule, {},
+                                                   *externalFieldMolecule + *frameworkMolecule);
 
     // Upon acceptance the conformation of the deleted molecule leaves the system, so its intra-molecular
     // energy is removed from the running energies. It does not enter the acceptance rule: the reverse
     // (insertion) move draws the conformation from the ideal-gas Boltzmann distribution, so the intra
     // energy cancels against that generation probability (zero for rigid molecules).
-    RunningEnergy internalEnergyOld = component.intraMolecularPotentials.computeInternalEnergies(system.forceField, system.simulationBox, molecule);
+    RunningEnergy internalEnergyOld = system.usesMBX() ? RunningEnergy{}
+                                                       : component.intraMolecularPotentials.computeInternalEnergies(
+                                                             system.forceField, system.simulationBox, molecule);
 
     // Increment constructed swap deletion move counts
     component.mc_moves_statistics.addConstructed(move, 1);
@@ -167,10 +176,11 @@ std::pair<std::optional<RunningEnergy>, double3> MC_Moves::deletionMove(RandomNu
     // 'System::intraCoulombScalingEnergy')
     // The exponent is added to the logarithm of the prefactor and held to the range of a double: the Boltzmann
     // factor of a strongly bound ion underflowed to zero before the prefactor could bring it back.
-    double Pacc = MC_Moves::biasedAcceptance(preFactor,
-                                             -system.beta * (energyDifference.potentialEnergy() -
-                                                             system.intraCoulombScalingEnergy(molecule)),
-                                             0.0)
+    double Pacc = MC_Moves::biasedAcceptance(
+                      preFactor,
+                      -system.beta * (energyDifference.potentialEnergy() -
+                                      (system.usesMBX() ? 0.0 : system.intraCoulombScalingEnergy(molecule))),
+                      0.0)
                       .physical;
     std::size_t oldN = system.numberOfIntegerMoleculesPerComponent[selectedComponent];
 

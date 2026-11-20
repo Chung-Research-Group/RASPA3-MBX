@@ -44,6 +44,8 @@ std::string System::writeOutputHeader() const
 {
   std::ostringstream stream;
 
+  if (usesMBX())
+    std::print(stream, "MBX rigid-molecule potential enabled. Reported pressure tensors use the classical virial.\n");
   std::print(stream, "Compiler and run-time data\n");
   std::print(stream, "========================================================================================================================\n");
 

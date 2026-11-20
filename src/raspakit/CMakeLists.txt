@@ -144,3 +144,16 @@ target_link_libraries(${PROJECT_NAME} PUBLIC structurekit symmetrykit mathkit fo
 # PUBLIC; only the header location has to be repeated here.
 find_path(FFTW3_INCLUDE_DIR fftw3.h PATHS /opt/homebrew/include /usr/local/include REQUIRED)
 target_include_directories(${PROJECT_NAME} PRIVATE ${FFTW3_INCLUDE_DIR})
+
+if(BUILD_MBX)
+  find_path(MBX_INCLUDE_DIR bblock/system.h HINTS "${MBX_ROOT}" ENV MBX_ROOT PATH_SUFFIXES include REQUIRED)
+  find_path(MBX_CONFIG_INCLUDE_DIR mbx_version.h HINTS "${MBX_INCLUDE_DIR}" REQUIRED)
+  find_library(MBX_LIBRARY mbx HINTS "${MBX_ROOT}" ENV MBX_ROOT PATH_SUFFIXES lib lib64 REQUIRED)
+  find_package(OpenMP REQUIRED COMPONENTS CXX)
+  target_sources(${PROJECT_NAME} PRIVATE mbx/energy.cpp)
+  set_source_files_properties(mbx/energy.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${MBX_INCLUDE_DIR};${MBX_CONFIG_INCLUDE_DIR}")
+  target_link_libraries(${PROJECT_NAME} PRIVATE "${MBX_LIBRARY}" "${FFTW3_LIBRARY}" "$<LINK_ONLY:OpenMP::OpenMP_CXX>")
+else()
+  target_sources(${PROJECT_NAME} PRIVATE mbx/unavailable.cpp)
+endif()

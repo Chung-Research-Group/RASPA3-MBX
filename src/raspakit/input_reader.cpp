@@ -4153,6 +4153,20 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
             std::format("[Input reader]: system key 'Type' must have value 'Box' or 'Framework'\n"));
       }
 
+      if (value.contains("UseMBX") && !value["UseMBX"].is_boolean())
+        throw std::runtime_error("'UseMBX' must be a boolean");
+      if (value.value("UseMBX", false))
+      {
+        if (simulationType != SimulationType::MonteCarlo &&
+            simulationType != SimulationType::MonteCarloTransitionMatrix)
+          throw std::runtime_error("UseMBX supports MonteCarlo and single-box MonteCarloTransitionMatrix");
+        if (simulationType == SimulationType::MonteCarloTransitionMatrix && jsonNumberOfSystems != 1)
+          throw std::runtime_error("MBX transition-matrix sampling requires one fixed-volume system");
+        if (!value.contains("MBXSettingsFile") || !value["MBXSettingsFile"].is_string())
+          throw std::runtime_error("UseMBX requires a string 'MBXSettingsFile'");
+        systems[systemId].configureMBX(value["MBXSettingsFile"].get<std::string>());
+      }
+
       // the system renormalizes the mole fractions over its swappable components (and copies a pair driver's to
       // its partner), so the imposed fugacities survive only when every such component has a chemical potential
       for (std::size_t i = 0; hasChemicalPotentials && i != jsonNumberOfComponents; ++i)
@@ -6641,6 +6655,23 @@ void InputReader::parseMolecularSimulations(const nlohmann::basic_json<nlohmann:
     }
   }
 
+  for (std::size_t i = 0; i < systems.size(); ++i)
+  {
+    const auto& system = systems[i];
+    system.validateMBX();
+    // A classical box can initiate a Gibbs or tempering move on its MBX neighbour.
+    const bool hasMBXNeighbour = (i > 0 && systems[i - 1].usesMBX()) ||
+                                 (i + 1 < systems.size() && systems[i + 1].usesMBX());
+    if (!hasMBXNeighbour || system.usesMBX()) continue;
+    for (const auto move : crossSystemMoves)
+    {
+      if (system.mc_moves_probabilities.getProbability(move) > 0.0 ||
+          std::ranges::any_of(system.components, [move](const Component& c)
+                             { return c.mc_moves_probabilities.getProbability(move) > 0.0; }))
+        throw std::runtime_error("Cross-system moves involving an MBX system are unsupported");
+    }
+  }
+
   if (simulationType == SimulationType::NLDFT)
   {
     if (systems.size() != 1)
@@ -6784,6 +6815,8 @@ const std::set<std::string, InputReader::InsensitiveCompare> InputReader::genera
 
 const std::set<std::string, InputReader::InsensitiveCompare> InputReader::systemOptions = {
     "ForceField",
+    "UseMBX",
+    "MBXSettingsFile",
     "OmitEwaldFourier",
     "ComputePolarization",
     "ChargeMethod",

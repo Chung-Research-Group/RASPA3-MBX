@@ -8,6 +8,9 @@
 
 <h4 align="center">This software is a general purpose classical simulation package.</h4>
 
+RASPA can use MBX for rigid-molecule Monte Carlo. Enable it at build time with `-DBUILD_MBX=ON` and select it per simulation system with `UseMBX`. See the [installation guide](INSTALLATION.md#optional-mbx-support).
+
+
 <p align="center">It has been developed at the University of Amsterdam (Amsterdam, The Netherlands) during 2022/2026 in active collaboration with Eindhoven University of Technology (Eindhoven, Netherlands), Delft University of Technology (Delft, The Netherlands), and Northwestern University (Evanston, USA).</p>
 
 <p align="center">

@@ -21,3 +21,7 @@ endif()
 if(BUILD_TESTING_RASPA3)
 add_subdirectory(raspa3-tests)
 endif()
+
+if(BUILD_MBX AND BUILD_TESTING_RASPAKIT)
+  add_subdirectory(mbx-tests)
+endif()

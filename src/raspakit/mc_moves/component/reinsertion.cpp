@@ -155,6 +155,14 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
   double logAcceptance =
       -system.beta * (energyFourierDifference.potentialEnergy() + polarizationDifference.potentialEnergy()) +
       growData->logRosenbluthWeight - retraceData.logRosenbluthWeight;
+  RunningEnergy targetDifference;
+  if (system.usesMBX())
+  {
+    const RunningEnergy proposalDifference = growData->energies - retraceData.energies;
+    targetDifference = system.mbxTrialDifference(selectedComponent, selectedMolecule, newMolecule, proposalDifference);
+    logAcceptance = growData->logRosenbluthWeight - retraceData.logRosenbluthWeight -
+                    system.beta * (targetDifference.potentialEnergy() - proposalDifference.potentialEnergy());
+  }
 
   // Apply Metropolis acceptance criterion.
   // the exponent held to the range of a double: a regrowth out of a high-energy state overflowed to infinity
@@ -188,7 +196,9 @@ std::optional<RunningEnergy> MC_Moves::reinsertionMove(RandomNumber &random, Sys
     molecule = growData->molecule;
     molecule.atomIndex = atomIndex;
 
-    return (growData->energies - retraceData.energies) + energyFourierDifference + polarizationDifference;
+    return system.usesMBX()
+               ? targetDifference
+               : (growData->energies - retraceData.energies) + energyFourierDifference + polarizationDifference;
   };
 
   // Move is rejected.

@@ -1188,6 +1188,17 @@ void MonteCarlo::output()
     outputJsons[system_id]["output"]["runningEnergies"] = system.runningEnergies.jsonMC();
     outputJsons[system_id]["output"]["recomputedEnergies"] = recomputedEnergies.jsonMC();
     outputJsons[system_id]["output"]["drift"] = drift.jsonMC();
+    if (system.usesMBX())
+    {
+      auto& output = outputJsons[system_id]["output"];
+      output["pressureEstimator"] = "classical virial diagnostic";
+      std::array<double, 7> terms{};
+      system.mbxEnergy(0, {}, {}, &terms);
+      output["mbxRawEnergyTerms [kcal/mol]"] = {
+          {"oneBody (1B)", terms[0]},         {"twoBody (2B)", terms[1]}, {"threeBody (3B)", terms[2]},
+          {"fourBody (4B)", terms[3]},        {"dispersion", terms[4]},   {"permanentElectrostatics", terms[5]},
+          {"inducedElectrostatics", terms[6]}};
+    }
 
     outputJsons[system_id]["output"]["MCMoveStatistics"]["system"] = system.jsonMCMoveStatistics();
     // outputJsons[system.systemId]["output"]["MCMoveStatistics"]["summedOverAllSystems"] =
