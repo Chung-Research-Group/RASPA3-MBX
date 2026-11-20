@@ -16,7 +16,7 @@ if [ ! -x "$raspa3_executable" ]; then
 fi
 
 # An installation made with cmake --install --prefix may have moved since configure.
-if [ -z "${RASPA_DIR:-}" ]; then
+if [ -z "$(printenv RASPA_DIR 2>/dev/null)" ]; then
   executable_prefix=$(CDPATH= cd -- "$(dirname -- "$raspa3_executable")/.." && pwd)
   if [ -d "$executable_prefix/share/raspa3/forcefields" ]; then
     RASPA_DIR=$executable_prefix
