@@ -33,12 +33,18 @@ void runSimulation(InputReader& inputReader)
   // The device of the multiple-try CBMC grower is a property of the machine running the job, not of the state: it
   // is not stored in a binary restart (a resumed run may lack the device), and the systems read from one come back
   // with the default. The choice of the input the run was started with is put back after reading.
+  // Drivers take ownership of the input systems before the checkpoint is read.
+  std::vector<bool> inputUsesMBX;
+  if (inputReader.restartFromBinary)
+  {
+    for (const System& system : inputReader.systems) inputUsesMBX.push_back(system.usesMBX());
+  }
   auto applyInputDevices = [&](std::vector<System>& systems)
   {
     for (std::size_t i = 0; i < systems.size(); ++i)
     {
       System& system = systems[i];
-      if (i < inputReader.systems.size() && system.usesMBX() != inputReader.systems[i].usesMBX())
+      if (i < inputUsesMBX.size() && system.usesMBX() != inputUsesMBX[i])
         throw std::runtime_error("UseMBX in the input does not match the energy model in the binary restart");
       system.cbmcDevice = inputReader.cbmcDevice;
     }
