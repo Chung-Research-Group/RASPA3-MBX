@@ -70,15 +70,17 @@ if(BUILD_MBX)
   add_compile_definitions(BUILD_MBX)
   find_path(MBX_INCLUDE_DIR
     NAMES bblock/system.h
+    HINTS "$ENV{MBX_ROOT}/include"
     DOC "Directory containing the MBX headers"
     REQUIRED)
   find_path(MBX_CONFIG_INCLUDE_DIR
     NAMES mbx_version.h
-    HINTS "${MBX_INCLUDE_DIR}/.." "${MBX_INCLUDE_DIR}/../include"
+    HINTS "${MBX_INCLUDE_DIR}" "${MBX_INCLUDE_DIR}/.." "${MBX_INCLUDE_DIR}/../include"
     DOC "Directory containing the generated MBX configuration headers"
     REQUIRED)
   find_library(MBX_LIBRARY
     NAMES mbx
+    HINTS "$ENV{MBX_ROOT}/lib" "$ENV{MBX_ROOT}/lib64"
     DOC "MBX library"
     REQUIRED)
   find_path(FFTW_INCLUDE_DIR

@@ -1,6 +1,8 @@
 # H₂O–CO₂ NVT-W window in CALF-20
 
-Run `raspa3` from this directory. The conventional force field describes four H₂O and four CO₂ molecules in a 3 × 3 × 3 CALF-20 supercell at 295 K and a reservoir pressure of 97,000 Pa. The input runs 2 initialization cycles, 2 equilibration cycles and 20 production cycles as a short functionality test.
+After installing the app and examples, copy this directory to a writable location and run `./run` there. In a source checkout, run the built `raspa3` directly from the example directory. [Installation guide](https://github.com/Chung-Research-Group/RASPA3-MBX/blob/mbx/INSTALLATION.md)
+
+The conventional force field describes four H₂O and four CO₂ molecules in a 3 × 3 × 3 CALF-20 supercell at 295 K and a reservoir pressure of 97,000 Pa. The input runs 2 initialization cycles, 2 equilibration cycles and 20 production cycles as a short functionality test.
 
 Each component sets its minimum and maximum macrostate to 4. Translation, rotation and reinsertion sample configurations within the fixed population. The sampler evaluates insertion and deletion proposals for both species and retains their unbiased virtual transition weights at the window boundaries.
 

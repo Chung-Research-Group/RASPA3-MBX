@@ -5,7 +5,7 @@ You may copy any one directory elsewhere and run it without its parent directory
 other examples, an installed force-field database, or downloading a structure.
 The executable and its runtime libraries are the only external requirements.
 Use a RASPA3-MBX build with `BUILD_MBX=ON`, built against the maintained
-[MBX v1.4.0 dependency](../../README.md#building).
+[MBX v1.4.0 dependency](../../INSTALLATION.md#build-public-mbx-for-the-rigid-guest-model).
 
 | Directory | Calculation |
 | --- | --- |

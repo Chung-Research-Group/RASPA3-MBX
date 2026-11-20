@@ -11,17 +11,17 @@ optional MBX path for supported Monte Carlo calculations, Morse-potential
 inputs, accepted-move and Widom-trial energy diagnostics, configurable coordinate restarts,
 and one-shot evaluation of coordinate snapshots.
 
-This is a research fork, not an official iRASPA release. The current
-integration uses the RASPA3 3.1.0 source layout and contains the audited
-upstream history through commit `a8a70ca7`. The exact merge decisions,
-scientific energy convention, verification record, and future update process
-are documented in [the synchronization report](docs/mbx-upstream-sync.md).
+Use `main` or `mbx` for the combined rigid-MBX and two-component TMMC implementation.
+The [standalone 2d-tmmc branch](https://github.com/Chung-Research-Group/RASPA3-MBX/tree/2d-tmmc)
+provides the force-field implementation on the v3.0.30 release base. For the Linux
+executable, start with the [branch installation guide](INSTALLATION.md).
 
 ## What this fork adds
 
 | Capability | RASPA3-MBX behavior |
 |---|---|
 | MBX guest energy | Enabled per system with `"UseMBX": true` and an `MBXSettingsFile` |
+| Two-component TMMC | Set per-component population windows for force-field or rigid MBX exchange. See the [input reference](docs/manual/commands.md#joint-particle-number-windows-for-transition-matrix-monte-carlo). |
 | Morse potential | Supported by the current native RASPA3 force-field implementation and retained in the MOF-74 inputs |
 | Energy-term logs | Opt in with `PrintEnergyTerms: true` to write accepted moves to `output/energy_terms.s<id>.csv` and conventional Widom trials to `output/widom_energy_terms.s<id>.csv` |
 | Zero-loading heat | `ComputeZeroLoadingHeatOfAdsorption` reports energy-weighted conventional-Widom (Q_{st}^0) statistics |
@@ -76,184 +76,17 @@ be read as the test receipt for a new build.
 
 ## Building
 
-### Requirements
+The [installation guide](INSTALLATION.md) walks through cloning the right branch,
+creating the compiler environment, building public MBX when needed, installing
+the executable and checking it with a calculation.
 
-The current Linux build requires:
+| Linux x86-64 application | Configure preset | Build directory |
+| --- | --- | --- |
+| Rigid MBX and force-field calculations, including 2D-TMMC | `raspa-mbx` | `build-mbx-app` |
+| Force-field calculations, including 2D-TMMC | `raspa-classical` | `build-classical` |
 
-- CMake 4.0.3 through 4.4.x, Ninja, and a compiler with the required C++26
-  module support; the maintained build was tested with Clang 20. `import std`
-  is still an experimental CMake feature whose activation token can change
-  between CMake releases, so newer CMake versions must be reviewed before use;
-- BLAS, LAPACK, OpenMP, OpenCL, zlib, and HDF5;
-- for an MBX-enabled build, MBX headers, the generated `mbx_version.h`, the MBX
-  library, and FFTW3.
-
-RASPA3-MBX and MBX must use a compatible OpenMP runtime. For example, do not
-mix an MBX library built with LLVM `libomp` into a RASPA3 executable configured
-for GNU `libgomp`.
-
-MBX is an external dependency and is not vendored here. The maintained public
-dependency is [paesanilab/MBX](https://github.com/paesanilab/MBX), pinned to
-release `v1.4.0` at commit
-`0e01b75b47611d7d51f27a34b112bdc5e2090a50`. It replaces the former private
-MBX 1.3.3 fork: the private fork contained no private potential, coefficient,
-or RASPA API, and its one compile-only OpenMP patch is superseded in v1.4.0.
-Compatibility with arbitrary moving MBX branches is not implied. See the
-[public-MBX migration audit](docs/mbx-public-migration.md) for the source,
-API, numerical, and licensing comparison.
-
-This is a source-compatible migration, not a binary hot-swap. Do not relink
-old RASPA objects against the new archive: public v1.4.0 also updates MBX's
-bundled JSON implementation. Reconfigure from a fresh RASPA build tree using
-the public headers and library together.
-
-Record the exact MBX source revision alongside each RASPA3-MBX release. MBX
-also has licensing terms separate from this repository's MIT license, so
-consult the license supplied with your MBX build.
-
-`BUILD_MBX` defaults to `ON` in this fork. Pass `-DBUILD_MBX=OFF` explicitly
-when configuring a classical-only build without the external MBX dependency.
-
-### Build the audited public MBX dependency
-
-Use MBX's basic, non-MPI installation. The following is the validated
-Clang/Conda workflow; choose a permanent versioned path for `MBX_ROOT`:
-
-```bash
-git clone https://github.com/paesanilab/MBX.git
-cd MBX
-git checkout --detach 0e01b75b47611d7d51f27a34b112bdc5e2090a50
-
-export MBX_ROOT=/path/to/dependencies/mbx-1.4.0-0e01b75b
-export FFTW_HOME="$CONDA_PREFIX"
-export LD_LIBRARY_PATH="$CONDA_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-
-autoreconf -fi
-CC="$CONDA_PREFIX/bin/clang" \
-  CXX="$CONDA_PREFIX/bin/clang++" \
-  LDFLAGS="-L$CONDA_PREFIX/lib" \
-  ./configure --prefix="$MBX_ROOT"
-
-make -j8
-make check
-make install
-```
-
-Passing the Conda library directory in `LDFLAGS` during `configure` is
-important. In the maintained Clang environment it lets MBX select the
-`libiomp5` compatibility name for LLVM `libomp`, instead of falling back to GNU
-`libgomp`. Verify the installed executable before building RASPA3-MBX:
-
-```bash
-ldd "$MBX_ROOT/bin/single_point" | grep -E 'fftw|[ig]?omp'
-```
-
-The maintained build shows Conda `libfftw3.so` and one `libomp.so`; it does not
-load both `libgomp` and `libomp`. All 34 MBX v1.4.0 tests must pass before the
-installation is used.
-
-### Build RASPA3-MBX against MBX
-
-The most reproducible local setup is an ignored `CMakeUserPresets.json` that
-inherits the tracked `linux_conda` preset and supplies machine-specific MBX,
-FFTW, and matching OpenMP paths. Start from the provided template; absolute
-dependency paths should not be committed:
-
-```bash
-cp CMakeUserPresets.json.example CMakeUserPresets.json
-export MBX_ROOT=/path/to/installed/mbx
-
-cmake --preset mbx-local --fresh
-cmake --build --preset mbx-local --parallel
-ctest --preset mbx-local
-```
-
-Activate the Conda dependency environment first so `CONDA_PREFIX` is defined.
-The template expects `libmbx.a` under `$MBX_ROOT/lib`; edit the ignored local
-preset if your installation layout differs. It uses LLVM `libomp`, matching the
-maintained build. Select a different but consistent compiler/OpenMP combination
-when rebuilding both RASPA3-MBX and MBX together.
-
-Before configuring, confirm that the active `cmake` is the one from the Conda
-environment. On the maintained workstation, `/usr/local/bin/cmake` is an older
-3.28 installation and must not be used for this source tree:
-
-```bash
-conda activate raspa3-mbx
-hash -r
-command -v cmake
-cmake --version
-```
-
-The user-preset template provides three roles without creating separate source
-repositories:
-
-| Preset | Build directory | Intended use |
-|---|---|---|
-| `mbx-local` | `build-mbx` | Portable validation build with focused MBX tests |
-| `mbx-release-avx2` | `build-mbx-release-avx2` | Production build for the current AVX2 workstation |
-| `mbx-server` | `build-mbx-server` | Portable x86-64 server build without workstation-specific `-march` flags |
-
-For the optimized workstation executable, use:
-
-```bash
-cmake --preset mbx-release-avx2 --fresh
-cmake --build --preset mbx-release-avx2 --parallel
-```
-
-For a server, clone this same repository, install the matching Conda environment
-and audited MBX dependency on that server, set `MBX_ROOT`, copy the user-preset
-template, and run:
-
-```bash
-cmake --preset mbx-server --fresh
-cmake --build --preset mbx-server --parallel
-```
-
-Build on the server itself unless its compiler, standard library, and CPU are
-known to match the workstation. C++ module artifacts are toolchain-specific;
-copying the source repository and rebuilding is safer than copying a build
-directory. The old `MBX_INCLUDES` spelling is intentionally not used: this
-version expects `MBX_INCLUDE_DIR`, `MBX_CONFIG_INCLUDE_DIR`, and `MBX_LIBRARY`.
-
-If configuration reports that `CXX_MODULE_STD` lacks toolchain support, first
-run the configure command with `--fresh`. Then verify the CMake version as
-shown above. RASPA3-MBX contains the experimental activation tokens for CMake
-4.0.3--4.4.x; a version outside that range now stops with a direct diagnostic
-instead of failing later while generating `raspakit_base`.
-
-The main executable is:
-
-```text
-build-mbx/app/raspa3
-```
-
-### Create the dependency environment
-
-The tracked [`env.yml`](env.yml) defines the validated Linux x86-64 direct
-dependencies: Clang 20, CMake 4.0.3, OpenBLAS, HDF5, FFTW, the OpenCL loader,
-and LLVM OpenMP. It also includes Autotools and related utilities needed to
-build the audited public MBX dependency:
-
-```bash
-conda env create -f env.yml
-conda activate raspa3-mbx
-```
-
-The compiler and CMake versions are intentionally pinned because C++ standard
-library module artifacts are compiler-specific and CMake's `import std` gate is
-version-sensitive. The YAML has no `prefix`, so each user can install it in a
-normal writable Conda environment. It is intended for Linux x86-64 servers;
-other operating systems need a platform-specific environment.
-
-MBX itself is not installed by this YAML because the audited MBX revision is
-not distributed as the required Conda package. Build and install public MBX
-with this activated environment using the preceding instructions, then set
-`MBX_ROOT` to that installation before configuring RASPA3-MBX.
-
-`ocl-icd` supplies the OpenCL loader. A server still needs an appropriate
-vendor OpenCL implementation if OpenCL calculations are requested; the NVIDIA,
-AMD, or Intel driver is normally managed outside Conda by the cluster.
+Both presets are available in a fresh checkout. For developer tests and the
+optional AVX2 and server profiles, see [additional build profiles](INSTALLATION.md#additional-build-profiles).
 
 ### Use the executable from the build tree
 
@@ -266,7 +99,7 @@ conda activate raspa3-mbx
 export LD_LIBRARY_PATH="$CONDA_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 
 cd /path/to/calculation
-/path/to/RASPA3-MBX/build-mbx/app/raspa3
+/path/to/RASPA3-MBX/build-mbx-app/app/raspa3
 ```
 
 Useful checks are:
@@ -287,8 +120,10 @@ application directory. Do not expose only the build directory without its
 matching Conda runtime libraries:
 
 ```bash
-cmake --build --preset mbx-server --parallel
-cmake --install build-mbx-server --prefix /shared/apps/raspa3-mbx/REPLACE_WITH_VERSION
+cmake --preset raspa-mbx
+cmake --build build-mbx-app --target raspa3 --parallel 4
+cmake --install build-mbx-app --component app --prefix /shared/apps/raspa3-mbx/REPLACE_WITH_VERSION
+cmake --install build-mbx-app --component examples --prefix /shared/apps/raspa3-mbx/REPLACE_WITH_VERSION
 ```
 
 An Lmod module template is provided at
@@ -298,8 +133,7 @@ module performs three required operations:
 
 - adds the installed `bin` directory to `PATH`;
 - adds the matching Conda `lib` directory to `LD_LIBRARY_PATH`;
-- sets `RASPA_DIR` so installed force fields and molecule definitions can be
-  found under `share/raspa3`.
+- sets `RASPA_DIR` to the installation prefix for force-field lookup. Installed molecule definitions are available to copy from `$RASPA_DIR/share/raspa3/molecules`.
 
 After the administrator installs the module file, users can run:
 
@@ -328,17 +162,8 @@ simulation starts.
 
 ### Classical build without MBX
 
-Use a separate disposable build directory:
-
-```bash
-cmake --preset linux_conda -B build-classical \
-  -DBUILD_MBX=OFF \
-  -DBUILD_TESTING_MBX=OFF
-
-cmake --build build-classical --parallel
-```
-
-This build must not require MBX headers or libraries.
+On this branch, select the `raspa-classical` preset and follow the
+[force-field build](INSTALLATION.md#build-and-install-raspa3).
 
 ## Running an MBX calculation
 
@@ -354,7 +179,7 @@ For example:
 ```bash
 RASPA3_MBX_ROOT=/path/to/RASPA3-MBX
 cd "$RASPA3_MBX_ROOT/examples/raspa3_mbx/5_water_npt"
-RASPA3_EXECUTABLE="$RASPA3_MBX_ROOT/build-mbx/app/raspa3" ./run.sh
+RASPA3_EXECUTABLE="$RASPA3_MBX_ROOT/build-mbx-app/app/raspa3" ./run.sh
 ```
 
 For adsorption, use `6_gcmc_co2_mg_mof74` instead. The default inputs are short
@@ -531,7 +356,7 @@ assume that every interpolation or OpenCL path implements a Morse override.
 
 ## Testing
 
-Run the configured suite with:
+After configuring and building the [developer test profile](INSTALLATION.md#additional-build-profiles), run its suite with:
 
 ```bash
 ctest --preset mbx-local
@@ -545,35 +370,16 @@ ctest --preset mbx-local \
   --output-on-failure
 ```
 
-The current source-bound test results and repair scope are recorded in
+The combined branch validation on `e6659c5d` is recorded in the [hosted build and calculation results](https://github.com/Chung-Research-Group/RASPA3-MBX/actions/runs/44571393370). Earlier MBX-specific repair results are recorded in
 [Maintained verification](docs/validation-current.md). Earlier synchronization
 counts are preserved as historical evidence, not as this edition's results.
 
 ## Keeping the fork synchronized
 
-Use one active checkout with two remotes:
-
-```text
-origin    https://github.com/Chung-Research-Group/RASPA3-MBX.git
-upstream  https://github.com/iRASPA/RASPA3.git
-```
-
-Do not make a new directory for each upstream update, and do not merge
-`upstream/main` blindly into the release branch. Use a temporary integration
-branch:
-
-```bash
-git fetch upstream
-git switch main
-git switch -c sync/upstream-YYYYMMDD-SHA
-git merge --no-ff upstream/main
-```
-
-Resolve build architecture in favor of upstream, then reapply and review the
-small MBX interfaces. Build with MBX both enabled and disabled, run the MBX,
-Morse, snapshot, logger, and upstream tests, and only then merge the sync branch
-into `main` and create a release tag. The detailed process and CI matrix are in
-[Long-term branch and update plan](docs/mbx-upstream-sync.md#long-term-branch-and-update-plan).
+The daily release check stages each new published stable release in
+`sync-to-upstream/<tag>`. After validation with MBX enabled and disabled,
+the job advances `main` and `mbx` together. The independent `2d-tmmc`
+branch retains its release base. See the [release synchronization guide](docs/mbx-upstream-sync.md#published-release-synchronization-19-november-2026).
 
 ## Documentation
 

@@ -1,3 +1,5 @@
+To install the native executable from this branch, follow the [Linux installation guide](https://github.com/Chung-Research-Group/RASPA3-MBX/blob/mbx/INSTALLATION.md).
+
 <h1 align="center">
   <br>
   <a href="https://github.com/iRASPA/raspa3"><img src="https://avatars.githubusercontent.com/u/46400041?s=200&v=4" alt="Markdownify" width="200"></a>

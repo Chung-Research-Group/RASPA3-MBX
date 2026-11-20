@@ -1,162 +1,132 @@
-# RASPA 3 – Installation Guide
+# Install RASPA3–MBX on Linux x86-64
 
-> **RASPA3-MBX users:** the upstream-oriented package instructions below do
-> not describe this fork's MBX build. RASPA3-MBX is currently validated with
-> the dynamically linked Conda environment in [`env.yml`](env.yml), CMake
-> 4.0.3, and Clang 20. Follow the [RASPA3-MBX build, runtime, and server-module
-> instructions](README.md#building). In particular, the matching Conda `lib`
-> directory must be available at runtime.
+Use the `mbx` or `main` branch for rigid MBX and two-component TMMC. For the
+standalone contribution based on RASPA3 v3.0.30, use the
+[2d-tmmc installation guide](https://github.com/Chung-Research-Group/RASPA3-MBX/blob/2d-tmmc/INSTALLATION.md).
+Official iRASPA packages follow the [upstream installation instructions](https://github.com/iRASPA/RASPA3/blob/main/INSTALLATION.md).
 
-RASPA 3 is a modern Monte‑Carlo simulation package that uses C++23.
-Pre‑built binaries are **statically linked** and therefore do not require any external runtime libraries.
-If you only want to *use* RASPA 3, download a pre‑built package.
-If you want to *develop* or *debug* RASPA 3, follow the build‑from‑source instructions.
-
-> **Tested toolchain:** LLVM 18 / Clang 18
-
----
-
-## 1. Quick Start (Pre‑built Packages)
-
-All official releases are published on the **GitHub “Releases” tab**.
-Choose the file that matches your operating system, CPU architecture and AVX capability.
-
-| Platform        | File suffix | Example                                           |
-| --------------- | ----------- | ------------------------------------------------- |
-| Conda           | –           | install with `conda install raspa3 raspalib`      |
-| Debian / Ubuntu | `.deb`      | `raspa‑{VERSION}‑{OS}‑{ARCH}‑{AVX}.deb`      |
-| RPM‑based Linux | `.rpm`      | `raspa‑{VERSION}‑{OS}‑{ARCH}‑{AVX}.rpm` |
-| macOS           | `.pkg`      | `raspa‑{VERSION}‑mac‑{ARCH}.pkg`                      |
-| Windows         | `.exe`      | `raspa‑{VERSION}‑windows‑{ARCH}‑{AVX}.exe`       |
-
-### 1.1 Conda (all platforms)
+## Prepare the environment
 
 ```bash
-conda install -c conda-forge raspa3 raspalib
-```
-
-### 1.2 Debian / Ubuntu (.deb)
-
-```bash
-apt install ./raspa3-<VERSION>-ubuntu<20|22|24>-<ARCH>-<AVX>.deb
-```
-
-### 1.3 RPM‑based Linux (.rpm)
-
-```bash
-rpm -i raspa3-<VERSION>-<OS>-<ARCH>-<AVX>.rpm
-```
-
-*To unpack without installing:* `rpm2cpio raspa3-*.rpm | cpio -idmv`
-
-### 1.4 macOS (.pkg)
-
-Pick either the arm64 version (Apple silicon) or the x86_64 version (intel chips). Double‑click the `.pkg` and follow the wizard.
-
-### 1.5 Windows (.exe)
-
-Run the `.exe`; the wizard adds `%RASPA3_HOME%\bin` to your `%PATH%`.
-
-### 1.6 Choosing AVX2 vs AVX‑512
-
-| Binary         | Use when                                             |
-| -------------- | ---------------------------------------------------- |
-| core‑avx2      | Intel ≥ Haswell (2013) or any AMD ≥ Excavator (2015) |
-| skylake‑avx512 | Intel CPUs with AVX‑512 (≈ 25 % faster)              |
-
----
-
-## 2. Building from Source
-
-### 2.1 Prerequisites
-
-| Package                | Min. version |
-| ---------------------- | ------------ |
-| clang/clang++          | 18           |
-| cmake                  | 3.28         |
-| ninja                  | 1.11         |
-| python                 | 3.11         |
-| pybind11               | 2.12         |
-| BLAS + LAPACK          | 64‑bit ints  |
-| HDF5                   | 1.12         |
-| OpenMP · OpenCL        | latest       |
-
-### 2.2 Build with Conda (recommended)
-
-```bash
-git clone https://github.com/raspa3/raspa3.git
-cd raspa3
+git clone --branch mbx https://github.com/Chung-Research-Group/RASPA3-MBX.git
+cd RASPA3-MBX
 conda env create -f env.yml
-conda activate raspa
-cmake --preset=linux_conda  # or mac_conda / windows_conda_raspa3
-ninja -C build
-ninja -C build install      # optional
+conda activate raspa3-mbx
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+cmake --version
 ```
 
-**Note**: remove the package ocl-icd from env.yml for Mac and Windows installations, as OpenCL is only available for Linux. For MacOS using the system OpenCL is recommended.
+The environment pins CMake 4.0.3, Clang 20.1.6, GCC 15 libstdc++, Ninja,
+LLVM OpenMP and LP64 OpenBLAS. The Linux sources use C++26 standard-library
+modules. The preset uses the environment’s HDF5, zlib and OpenCL loader.
+OpenCL calculations additionally require a device implementation on the host.
 
-**Note**: it is often necessary to add the conda installed libraries raspa3 links against to your dynamic library path using `export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib:$LD_LIBRARY_PATH`.
+## Build public MBX for the rigid-guest model
 
-### 2.3 Linux examples
-
-#### Ubuntu 24.04
+For a force-field-only installation, go directly to **Build and install RASPA3**.
+For rigid MBX, build the pinned public MBX 1.4.0 library in the active
+environment. If it is already installed, set `MBX_ROOT` to its installation
+prefix. Use matching headers, library and LLVM OpenMP runtime.
 
 ```bash
-sudo apt install -y git ca-certificates cmake ninja-build \
-  llvm lld clang clang-tidy libc++-dev libc++abi-dev \
-  libomp-dev libclang-rt-dev python3 python3-dev pybind11-dev \
-  liblapack64-dev libblas64-dev
-
-git clone https://github.com/raspa3/raspa3.git
-cd raspa3
-cmake -B build --preset=linux-x86_64-core-avx2-ubuntu-24
-ninja -C build
-ninja -C build install
+export MBX_ROOT="$HOME/.local/mbx-1.4.0"
+git clone https://github.com/paesanilab/MBX.git ../MBX-1.4.0
+(
+  cd ../MBX-1.4.0
+  git checkout --detach 0e01b75b47611d7d51f27a34b112bdc5e2090a50
+  export FFTW_HOME="$CONDA_PREFIX"
+  autoreconf -fi &&
+    CC="$CONDA_PREFIX/bin/clang" CXX="$CONDA_PREFIX/bin/clang++" \
+    LDFLAGS="-L$CONDA_PREFIX/lib" ./configure --prefix="$MBX_ROOT" &&
+    make -j4 && make check && make install
+)
+ldd "$MBX_ROOT/bin/single_point" | grep -E 'fftw|[ig]?omp'
 ```
 
-#### Fedora 40
+The dependency suite contains 34 tests. The dependency and application should
+resolve the same LLVM OpenMP runtime. The [public MBX audit](docs/mbx-public-migration.md)
+records the version, model and licensing details.
+
+## Build and install RASPA3
+
+From the RASPA3-MBX checkout, configure the application you want.
+
+**Rigid MBX and force-field calculations**
 
 ```bash
-sudo dnf install -y git llvm lld cmake clang clang-tools-extra ninja-build \
-  libomp-devel libcxx libcxx-devel libcxxabi libcxxabi-devel \
-  lapack64 blas64 python3 python3-devel pybind11-devel
-
-git clone https://github.com/raspa3/raspa3.git
-cd raspa3
-cmake -B build --preset=linux-x86_64-core-avx2-fedora-40
-ninja -C build
-ninja -C build install
+cmake --preset raspa-mbx
+build=build-mbx-app
 ```
 
-### 2.4 macOS (Homebrew)
+**Force-field calculations only** (no MBX dependency)
 
-```zsh
-brew install llvm lld libomp hdf5 libaec ninja cmake doxygen graphviz lapack pybind11
-export PATH="$(brew --prefix llvm)/bin:$PATH"  # clang‑18
-export HDF5_ROOT="$(brew --prefix hdf5)"
-git clone https://github.com/raspa3/raspa3.git
-cd raspa3
-cmake -B build --preset=macos-apple-silicon  # or macos-x64-core-avx2
-ninja -C build
-ninja -C build install
+```bash
+cmake --preset raspa-classical
+build=build-classical
 ```
 
----
+**Install the selected build**
 
-## 3. CMake Presets
+```bash
+export RASPA_DIR="$HOME/.local/$build"
+cmake --build "$build" --target raspa3 --parallel 4
+cmake --install "$build" --prefix "$RASPA_DIR" --component app
+cmake --install "$build" --prefix "$RASPA_DIR" --component examples
+```
 
-Run `cmake --list-presets` to see every preset.
-Common shortcuts:
+## Verify the installed executable
 
-| Preset                                 | Target                |
-| -------------------------------------- | --------------------- |
-| linux\_conda                           | Generic Linux + Conda |
-| linux-x86\_64-core-avx2-ubuntu-24      | Ubuntu 24, AVX2       |
-| linux-x86\_64-skylake-avx512-fedora-40 | Fedora 40, AVX‑512    |
-| mac\_conda                             | macOS + Conda         |
-| macos-apple-silicon                    | macOS Apple Silicon   |
-| windows\_conda\_raspa3                 | Windows + Conda       |
+In each new shell, reactivate the Conda environment and set `RASPA_DIR` to the application prefix used above. The executable
+reads `simulation.json` from the working directory. Copy the installed example
+into a writable directory so different users can run it independently.
 
----
+```bash
+export PATH="$RASPA_DIR/bin:$PATH"
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+work=$(mktemp -d)
+cp -R "$RASPA_DIR/share/raspa3/examples/advanced/2d_nvt_w_calf20" "$work/calf20"
+(cd "$work/calf20" && OMP_NUM_THREADS=1 ./run)
+cat "$work/calf20/tmmc/tmmc_statistics.txt"
+```
 
-Need help?  Open an issue on [GitHub](https://www.github.com/iRASPA/RASPA3/issues) or ask on the discussion forum.
+The force-field run fixes four waters and four CO₂ molecules in CALF-20. Its
+single production row should have populations `4 4`, four positive outward
+exchange weights, and five collection weights that sum to the reported trial
+count within floating-point precision.
+
+For an MBX-enabled install, also run the supplied rigid CO₂ snapshot calculation.
+This exercises the MBX backend directly.
+
+```bash
+cp -R "$RASPA_DIR/share/raspa3/examples/raspa3_mbx/3_snapshot_energy_evaluation" "$work/snapshot"
+(cd "$work/snapshot" && ./run.sh)
+```
+
+## Additional build profiles
+
+The tracked application presets work without a user preset file. For a focused
+MBX test build, start with the supplied template in a fresh checkout. If you
+already have `CMakeUserPresets.json`, keep your local settings and add the
+profiles you need from the template.
+
+```bash
+cp -n CMakeUserPresets.json.example CMakeUserPresets.json
+cmake --preset mbx-local
+cmake --build --preset mbx-local --target raspa3 unit_tests_mbx --parallel 4
+ctest --preset mbx-local --output-on-failure
+```
+
+The template also provides `mbx-server` (portable x86-64) and
+`mbx-release-avx2` (AVX2 CPUs). For multi-user installations, point the
+[modulefile template](packaging/modulefiles/raspa3-mbx.lua.example) at the
+application prefix and the dependency environment. The [runtime instructions](README.md#install-and-expose-raspa3-mbx-as-a-server-module)
+include a Slurm example. Changing compiler, CMake module version or MBX headers
+requires a fresh build directory.
+
+The combined CMake configuration recognizes the experimental `import std` gates
+from 4.0.3 through 4.4.x. If the compiler reports missing standard modules,
+check `command -v cmake`, `cmake --version` and the active environment. If MBX
+lives outside the usual include/lib layout, pass `-DMBX_INCLUDE_DIR=...`,
+`-DMBX_CONFIG_INCLUDE_DIR=...` and `-DMBX_LIBRARY=...` on the configure command.
+Use headers and the library from the same installation. MBX licensing terms
+are supplied with the public MBX source.
