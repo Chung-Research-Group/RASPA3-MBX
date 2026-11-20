@@ -31,6 +31,13 @@
   <a href="#dependencies">Dependencies</a> •
 </p>
 
+## Standalone 2D-TMMC installation
+
+This branch builds the force-field RASPA3 v3.0.30 executable with two-component
+transition-matrix windows. Follow the [Linux installation guide](INSTALLATION.md)
+for the Conda environment, `raspa-2d-tmmc` CMake preset and installed CALF-20
+example. For rigid MBX calculations, use the [combined branch](https://github.com/Chung-Research-Group/RASPA3-MBX/tree/mbx).
+
 # Authors
 
 Drs. Youri Ran, University of Amsterdam<br>
@@ -65,7 +72,7 @@ cd examples/basic/1_mc_methane_in_box
 - grand canonical ensemble (CBMC, CFCMC, and CB/CFCMC)
 - Gibbs ensemble (CBMC, CFCMC, and CB/CFCMC)
 - Monte Carlo NPT ensemble
-- transition matrix Monte Carlo
+- one- and two-component particle-number transition matrix Monte Carlo
 - Molecular Dynamics NVT ensemble (Nose-Hoover thermostat)
 - binary restart
 - blocking pockets

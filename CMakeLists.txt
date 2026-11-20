@@ -41,7 +41,6 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} ${OpenMP_CXX_FLAGS}")
   #add_compile_options("$<$<COMPILE_LANGUAGE:CXX>:-fopenmp>")
   #add_link_options("-fopenmp")
 find_package(OpenCL)
-include_directories(${OpenCL_INCLUDE_DIRS})
 
 set(MSVC_WARNINGS /W4 /w14242 /w14254 /w14263 /w14265 /w14287 /we4289 /w14296 /w14311 /w14545 /w14546 /w14547 /w14549 /w14555 /w14619 /w14640 /w14826 /w14826 /w14905 /w14906 /w14928 /permissive-)
 
@@ -91,6 +90,7 @@ include(FetchContent)
 
 FetchContent_Declare(voro++
   GIT_REPOSITORY https://github.com/chr1shr/voro.git
+  GIT_TAG b0dac575a47af0f90b5b100e6dc199a493c7cb83
   EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(voro++)
 
@@ -104,7 +104,9 @@ FetchContent_Declare(hdf5
   EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(hdf5)
 set(HDF5_INCLUDE_DIRS "$<BUILD_INTERFACE:${hdf5_SOURCE_DIR}/src/;${hdf5_SOURCE_DIR}/src/H5FDsubfiling;${hdf5_SOURCE_DIR}/c++/src;${hdf5_BINARY_DIR};${hdf5_BINARY_DIR}/src>")
-include_directories(${HDF5_INCLUDE_DIRS})
+# Limit the OpenCL include path to RASPA targets. Adding the entire Conda include
+# directory to bundled HDF5 can mix headers from two different HDF5 versions.
+include_directories(${HDF5_INCLUDE_DIRS} ${OpenCL_INCLUDE_DIRS})
 
 function(raspa_target_link_libraries target_name)
   if(CONDA)

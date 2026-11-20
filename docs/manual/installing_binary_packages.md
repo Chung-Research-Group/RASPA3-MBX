@@ -1,6 +1,10 @@
 # Installing `RASPA` pre-Compiled Packages
 \page installing_binary_packages Installing pre-Compiled Packages
 
+To install the native executable from this branch, follow the [Linux installation guide](https://github.com/Chung-Research-Group/RASPA3-MBX/blob/2d-tmmc/INSTALLATION.md).
+The package commands below install the upstream RASPA3 distribution.
+
+
 RASPA 3 is a modern Monte‑Carlo simulation package that uses C++23.
 Pre‑built binaries for mac and windows are **statically linked** and therefore do not require any external runtime libraries.
 If you only want to *use* RASPA 3, download a pre‑built package.

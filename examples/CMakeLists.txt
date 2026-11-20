@@ -121,3 +121,8 @@ install(DIRECTORY external_fields DESTINATION share/raspa3/examples
         COMPONENT examples
         PATTERN "run" 
         PERMISSIONS  OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_EXECUTE GROUP_READ WORLD_EXECUTE WORLD_READ)
+
+configure_file(run.cmake.in "${CMAKE_CURRENT_BINARY_DIR}/2d_nvt_w_run" @ONLY)
+install(PROGRAMS "${CMAKE_CURRENT_BINARY_DIR}/2d_nvt_w_run"
+        DESTINATION share/raspa3/examples/advanced/2d_nvt_w_calf20
+        RENAME run COMPONENT examples)

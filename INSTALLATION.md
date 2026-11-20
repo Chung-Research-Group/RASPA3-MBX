@@ -1,155 +1,56 @@
-# RASPA 3 – Installation Guide
+# Install standalone 2D-TMMC on Linux x86-64
 
-RASPA 3 is a modern Monte‑Carlo simulation package that uses C++23.
-Pre‑built binaries are **statically linked** and therefore do not require any external runtime libraries.
-If you only want to *use* RASPA 3, download a pre‑built package.
-If you want to *develop* or *debug* RASPA 3, follow the build‑from‑source instructions.
+This branch adds component-resolved particle-number windows to the conventional
+force-field RASPA3 v3.0.30 executable. For the combined rigid-MBX implementation,
+use the [mbx branch guide](https://github.com/Chung-Research-Group/RASPA3-MBX/blob/mbx/INSTALLATION.md).
+The published upstream packages contain the upstream release.
 
-> **Tested toolchain:** LLVM 18 / Clang 18
-
----
-
-## 1. Quick Start (Pre‑built Packages)
-
-All official releases are published on the **GitHub “Releases” tab**.
-Choose the file that matches your operating system, CPU architecture and AVX capability.
-
-| Platform        | File suffix | Example                                           |
-| --------------- | ----------- | ------------------------------------------------- |
-| Conda           | –           | install with `conda install raspa3 raspalib`      |
-| Debian / Ubuntu | `.deb`      | `raspa‑{VERSION}‑{OS}‑{ARCH}‑{AVX}.deb`      |
-| RPM‑based Linux | `.rpm`      | `raspa‑{VERSION}‑{OS}‑{ARCH}‑{AVX}.rpm` |
-| macOS           | `.pkg`      | `raspa‑{VERSION}‑mac‑{ARCH}.pkg`                      |
-| Windows         | `.exe`      | `raspa‑{VERSION}‑windows‑{ARCH}‑{AVX}.exe`       |
-
-### 1.1 Conda (all platforms)
+## Build and install
 
 ```bash
-conda install -c conda-forge raspa3 raspalib
+git clone --branch 2d-tmmc https://github.com/Chung-Research-Group/RASPA3-MBX.git
+cd RASPA3-MBX
+conda env create -f env-linux-2d-tmmc.yml
+conda activate raspa-2d-tmmc
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+cmake --version
+cmake --preset raspa-2d-tmmc
+cmake --build build-2d-tmmc --target raspa3 --parallel 4
+export RASPA_DIR="$HOME/.local/raspa-2d-tmmc"
+cmake --install build-2d-tmmc --prefix "$RASPA_DIR" --component app
+cmake --install build-2d-tmmc --prefix "$RASPA_DIR" --component examples
 ```
 
-### 1.2 Debian / Ubuntu (.deb)
+The Linux preset uses CMake 4.3.x, Clang 20.1.6, GCC 15 libstdc++, Ninja,
+LLVM OpenMP, LP64 OpenBLAS, zlib and an OpenCL loader. It builds the native
+C++26 executable. Initial configuration fetches HDF5 2.1.1 and Voro++ from
+GitHub. For an offline build, supply local source checkouts to CMake with
+`-DFETCHCONTENT_SOURCE_DIR_HDF5=/path/to/hdf5` and
+`-DFETCHCONTENT_SOURCE_DIR_VORO++=/path/to/voro`. Use the revisions in
+the top-level CMakeLists.txt. The application and this preset have no MBX
+dependency. The build-tree executable is `build-2d-tmmc/app/raspa3`.
+
+## Verify the installed executable
+
+In each new shell, reactivate the Conda environment and set `RASPA_DIR` to the application prefix used above. The executable
+reads `simulation.json` from the working directory. Copy the installed example
+into a writable directory so different users can run it independently.
 
 ```bash
-apt install ./raspa3-<VERSION>-ubuntu<20|22|24>-<ARCH>-<AVX>.deb
+export PATH="$RASPA_DIR/bin:$PATH"
+export LD_LIBRARY_PATH="$CONDA_PREFIX/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+work=$(mktemp -d)
+cp -R "$RASPA_DIR/share/raspa3/examples/advanced/2d_nvt_w_calf20" "$work/calf20"
+(cd "$work/calf20" && OMP_NUM_THREADS=1 ./run)
+cat "$work/calf20/tmmc/tmmc_statistics.txt"
 ```
 
-### 1.3 RPM‑based Linux (.rpm)
+The force-field run fixes four waters and four CO₂ molecules in CALF-20. Its
+single production row should have populations `4 4`, four positive outward
+exchange weights, and five collection weights that sum to the reported trial
+count within floating-point precision.
 
-```bash
-rpm -i raspa3-<VERSION>-<OS>-<ARCH>-<AVX>.rpm
-```
-
-*To unpack without installing:* `rpm2cpio raspa3-*.rpm | cpio -idmv`
-
-### 1.4 macOS (.pkg)
-
-Pick either the arm64 version (Apple silicon) or the x86_64 version (intel chips). Double‑click the `.pkg` and follow the wizard.
-
-### 1.5 Windows (.exe)
-
-Run the `.exe`; the wizard adds `%RASPA3_HOME%\bin` to your `%PATH%`.
-
-### 1.6 Choosing AVX2 vs AVX‑512
-
-| Binary         | Use when                                             |
-| -------------- | ---------------------------------------------------- |
-| core‑avx2      | Intel ≥ Haswell (2013) or any AMD ≥ Excavator (2015) |
-| skylake‑avx512 | Intel CPUs with AVX‑512 (≈ 25 % faster)              |
-
----
-
-## 2. Building from Source
-
-### 2.1 Prerequisites
-
-| Package                | Min. version |
-| ---------------------- | ------------ |
-| clang/clang++          | 18           |
-| cmake                  | 3.28         |
-| ninja                  | 1.11         |
-| python                 | 3.11         |
-| pybind11               | 2.12         |
-| BLAS + LAPACK          | 64‑bit ints  |
-| HDF5                   | 1.12         |
-| OpenMP · OpenCL        | latest       |
-
-### 2.2 Build with Conda (recommended)
-
-```bash
-git clone https://github.com/raspa3/raspa3.git
-cd raspa3
-conda env create -f env.yml
-conda activate raspa
-cmake --preset=linux_conda  # or mac_conda / windows_conda_raspa3
-ninja -C build
-ninja -C build install      # optional
-```
-
-**Note**: remove the package ocl-icd from env.yml for Mac and Windows installations, as OpenCL is only available for Linux. For MacOS using the system OpenCL is recommended.
-
-**Note**: it is often necessary to add the conda installed libraries raspa3 links against to your dynamic library path using `export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib:$LD_LIBRARY_PATH`.
-
-### 2.3 Linux examples
-
-#### Ubuntu 24.04
-
-```bash
-sudo apt install -y git ca-certificates cmake ninja-build \
-  llvm lld clang clang-tidy libc++-dev libc++abi-dev \
-  libomp-dev libclang-rt-dev python3 python3-dev pybind11-dev \
-  liblapack64-dev libblas64-dev
-
-git clone https://github.com/raspa3/raspa3.git
-cd raspa3
-cmake -B build --preset=linux-x86_64-core-avx2-ubuntu-24
-ninja -C build
-ninja -C build install
-```
-
-#### Fedora 40
-
-```bash
-sudo dnf install -y git llvm lld cmake clang clang-tools-extra ninja-build \
-  libomp-devel libcxx libcxx-devel libcxxabi libcxxabi-devel \
-  lapack64 blas64 python3 python3-devel pybind11-devel
-
-git clone https://github.com/raspa3/raspa3.git
-cd raspa3
-cmake -B build --preset=linux-x86_64-core-avx2-fedora-40
-ninja -C build
-ninja -C build install
-```
-
-### 2.4 macOS (Homebrew)
-
-```zsh
-brew install llvm lld libomp hdf5 libaec ninja cmake doxygen graphviz lapack pybind11
-export PATH="$(brew --prefix llvm)/bin:$PATH"  # clang‑18
-export HDF5_ROOT="$(brew --prefix hdf5)"
-git clone https://github.com/raspa3/raspa3.git
-cd raspa3
-cmake -B build --preset=macos-apple-silicon  # or macos-x64-core-avx2
-ninja -C build
-ninja -C build install
-```
-
----
-
-## 3. CMake Presets
-
-Run `cmake --list-presets` to see every preset.
-Common shortcuts:
-
-| Preset                                 | Target                |
-| -------------------------------------- | --------------------- |
-| linux\_conda                           | Generic Linux + Conda |
-| linux-x86\_64-core-avx2-ubuntu-24      | Ubuntu 24, AVX2       |
-| linux-x86\_64-skylake-avx512-fedora-40 | Fedora 40, AVX‑512    |
-| mac\_conda                             | macOS + Conda         |
-| macos-apple-silicon                    | macOS Apple Silicon   |
-| windows\_conda\_raspa3                 | Windows + Conda       |
-
----
-
-Need help?  Open an issue on [GitHub](https://www.github.com/iRASPA/RASPA3/issues) or ask on the discussion forum.
+For further checks, run the executable regression cases from the checkout with
+`python tests/native_tmmc.py --binary "$RASPA_DIR/bin/raspa3" --source . --output "$work/native"`.
+The [input reference](docs/manual/commands.md#joint-particle-number-windows-for-transition-matrix-monte-carlo)
+explains how system and component macrostate bounds interact.
